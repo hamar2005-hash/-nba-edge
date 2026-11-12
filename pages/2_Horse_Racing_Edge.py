@@ -151,7 +151,58 @@ else:
         st.error(f"Could not process the racecards: {exc}")
 
 st.divider()
-st.subheader("Prediction model — build stage")
+st.subheader("Historical data and model training")
+st.write("Upload a runner-level historical results CSV. The model builds pre-race form features from earlier runs only, then tests on the latest 20% of races in date order.")
+st.info("The free Racing API feed supplies today's racecards, not the historical results needed for honest training. No picks will be shown until a real results file has been supplied and the backtest passes basic checks.")
+
+with st.expander("Required CSV format"):
+    st.markdown("""
+**Required columns:** `race_date`, `horse`, `finish_position`.
+
+**Recommended columns:** `race_id`, `course`, `distance`, `going`, `field_size`, `weight`, `age`, `draw`, `trainer`, `jockey`, `class`.
+
+Column names such as `date`, `horse_name`, `position`, `track`, and `dist` are also recognised. One row must represent one runner. Include all runners, not just winners.
+""")
+    example = pd.DataFrame([
+        {"race_date":"2025-01-01","race_id":"EXAMPLE-1","horse":"Example Horse A","finish_position":1,"course":"Example","distance":"1m","going":"Good","field_size":8,"weight":"9-5","age":4,"draw":2,"trainer":"Trainer A","jockey":"Jockey A","class":"4"},
+        {"race_date":"2025-01-01","race_id":"EXAMPLE-1","horse":"Example Horse B","finish_position":2,"course":"Example","distance":"1m","going":"Good","field_size":8,"weight":"9-2","age":5,"draw":5,"trainer":"Trainer B","jockey":"Jockey B","class":"4"},
+    ])
+    st.download_button("Download CSV format example", example.to_csv(index=False), "horse_racing_history_template.csv", "text/csv")
+
+history_file = st.file_uploader("Upload historical results CSV", type=["csv"], key="racing_history_upload")
+if history_file is not None:
+    try:
+        history_df = pd.read_csv(history_file)
+        st.caption(f"Loaded {len(history_df):,} runner rows across {history_df.shape[1]} columns.")
+        if st.button("Train and run chronological backtest", type="primary", key="train_racing_model"):
+            from racing_model import train_and_backtest
+            with st.spinner("Building historical form features and testing on unseen later races…"):
+                racing_model, racing_columns, racing_metrics, racing_test = train_and_backtest(history_df)
+            st.session_state["racing_model"] = racing_model
+            st.session_state["racing_model_columns"] = racing_columns
+            st.session_state["racing_model_metrics"] = racing_metrics
+            st.session_state["racing_model_test"] = racing_test
+            st.success("Training and chronological backtest completed.")
+    except Exception as exc:
+        st.error(f"Could not read or train from this file: {exc}")
+
+if "racing_model_metrics" in st.session_state:
+    metrics = st.session_state["racing_model_metrics"]
+    st.markdown("**Chronological holdout results**")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Test races", f'{metrics["test_races"]:,}')
+    m2.metric("Top-ranked win rate", f'{metrics["top_pick_win_rate"]:.1%}')
+    m3.metric("Brier score", f'{metrics["brier"]:.4f}', help="Lower is better. This is a probability error metric.")
+    m4.metric("Log loss", f'{metrics["log_loss"]:.4f}', help="Lower is better. Penalises confident incorrect predictions.")
+    st.caption(f'Trained on {metrics["train_races"]:,} earlier races and tested on {metrics["test_races"]:,} later races from {metrics["cutoff"]}. Test-set win rate across all runners: {metrics["base_win_rate"]:.2%}.')
+    st.dataframe(st.session_state["racing_model_test"].sort_values(["race_date", "race_key", "rank"]), use_container_width=True, hide_index=True)
+    st.warning("This is a first baseline, not proof of betting profitability. It does not yet account for bookmaker odds, commission, non-runner rules or place terms. Live selections remain disabled until historical runner form can be matched safely to the current racecards.")
+else:
+    st.caption("Model status: waiting for a historical results CSV. The model will not invent predictions from racecards alone.")
+
+
+st.divider()
+st.subheader("Model status")
 left, right = st.columns(2)
 with left:
     st.markdown("**Planned inputs**")
@@ -163,4 +214,4 @@ with right:
     st.write("- Historical, time-ordered backtesting")
     st.write("- Win and place probability calibration")
     st.write("- Blind results tracking, including non-runners")
-st.warning("No selections or confidence percentages are displayed until the model has been trained and tested. Racecards alone are not enough to make reliable predictions.")
+st.caption("The historical-data trainer and chronological holdout report are available above. Live runner predictions remain disabled until the current racecards can be joined to historical runner form.")
