@@ -39,6 +39,9 @@ def main():
         for year, month in periods:
             first = f'{year}-{month:02d}-01'
             last = f'{year}-{month:02d}-{calendar.monthrange(year, month)[1]:02d}'
+            # nba_api date_from_nullable/date_to_nullable require MM/DD/YYYY.
+            api_first = f'{month:02d}/01/{year}'
+            api_last = f'{month:02d}/{calendar.monthrange(year, month)[1]:02d}/{year}'
             cache = cache_dir / f'player_logs_{year}_{month:02d}.csv'
             if cache.exists():
                 try:
@@ -54,7 +57,7 @@ def main():
                     endpoint = leaguegamelog.LeagueGameLog(
                         player_or_team_abbreviation='P', season=season,
                         season_type_all_star='Regular Season', league_id='00',
-                        date_from_nullable=first, date_to_nullable=last,
+                        date_from_nullable=api_first, date_to_nullable=api_last,
                         timeout=35, headers=HEADERS)
                     chunk = endpoint.get_data_frames()[0]
                     if not chunk.empty:
