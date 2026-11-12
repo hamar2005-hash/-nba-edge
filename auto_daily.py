@@ -140,6 +140,16 @@ def main():
     result = result.sort_values(["game_time_utc", "game", "team", "player"])
     output = Path(args.out)
     output.parent.mkdir(parents=True, exist_ok=True)
+    # Archive the previous slate before replacing it; repeated same-day refreshes are deduplicated.
+    if output.exists():
+        previous = pd.read_csv(output)
+        history_path = output.parent / "prediction_history.csv"
+        if not previous.empty:
+            old_history = pd.read_csv(history_path) if history_path.exists() else pd.DataFrame()
+            history = pd.concat([old_history, previous], ignore_index=True)
+            history_keys = [c for c in ["game_date", "player", "team", "opponent"] if c in history]
+            history = history.drop_duplicates(history_keys, keep="last")
+            history.to_csv(history_path, index=False)
     result.to_csv(output, index=False)
     print(f"Generated {len(result)} player projections across {len(events)} scheduled games for {game_date}.")
     print(f"Saved to {output}")
