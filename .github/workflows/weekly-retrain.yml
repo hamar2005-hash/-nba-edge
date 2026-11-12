@@ -1,0 +1,68 @@
+name: Weekly NBA Edge model improvement
+
+on:
+  schedule:
+    - cron: "0 8 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nba-edge-weekly-retraining
+  cancel-in-progress: false
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Restore monthly NBA game-log cache
+        uses: actions/cache@v4
+        with:
+          path: data/monthly_cache
+          key: nba-player-logs-v1-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            nba-player-logs-v1-${{ runner.os }}-${{ github.ref_name }}-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Collect latest historical player game logs
+        run: python collect_nba_data.py --start-season 2021-22 --end-season 2026-27 --out data/player_game_logs.csv --sleep 1.5 --retries 2
+      - name: Train and validate weekly candidates
+        run: python weekly_retrain.py
+      - name: Package current accepted models
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile
+          required = [
+              "models/points_model.joblib",
+              "models/rebounds_model.joblib",
+              "models/assists_model.joblib",
+              "models/latest_player_features.csv",
+              "models/weekly_retrain_report.json",
+          ]
+          missing = [p for p in required if not Path(p).exists()]
+          if missing:
+              raise SystemExit("Cannot package incomplete models: " + ", ".join(missing))
+          with zipfile.ZipFile("NBA_Trained_Models.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+              for path in required:
+                  archive.write(path, path)
+              for market in ("points", "rebounds", "assists"):
+                  archive.write(f"models/{market}_model.joblib", f"models/{market}_model.joblib")
+          PY
+      - name: Commit updated data, models and report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/player_game_logs.csv data/monthly_cache models NBA_Trained_Models.zip
+          git diff --cached --quiet || git commit -m "Weekly validated NBA model update"
+          git push
