@@ -83,7 +83,7 @@ def discover_players(slate, wanted_keys=None):
         slug = next((item.get(k) for k in slug_fields if item.get(k) not in (None, "")), None)
         slug = slug or next((player_obj.get(k) for k in slug_fields if player_obj.get(k) not in (None, "")), None)
         slug = str(slug or slugify(name))
-        team = item.get("teamAbbreviation") or item.get("team_abbreviation") or item.get("team") or player_obj.get("teamAbbreviation") or player_obj.get("team") or ""
+        team = item.get("teamAbbreviation") or item.get("team_abbreviation") or item.get("teamAbbr") or item.get("team") or player_obj.get("teamAbbreviation") or player_obj.get("teamAbbr") or player_obj.get("team") or ""
         found[(key, slug)] = (name, slug, str(team))
     return list(found.values())
 
