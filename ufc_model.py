@@ -249,7 +249,7 @@ def train_and_evaluate(results):
                 "per_class": {
                     name: {"precision": float(report[name]["precision"]),
                            "recall": float(report[name]["recall"]),
-                           "f1": float(report[name]["f1"]),
+                           "f1": float(report[name]["f1-score"]),
                            "support": int(report[name]["support"])}
                     for name in sorted(seen)
                 },
