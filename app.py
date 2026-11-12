@@ -64,6 +64,10 @@ features_file = MODELS / "latest_player_features.csv"
 models_ready = all(path.exists() for path in model_files) and features_file.exists()
 
 with st.sidebar:
+    st.subheader("📂 Sports")
+    st.page_link("pages/2_🐎_Horse_Racing_Edge.py", label="🐎 Horse Racing Edge")
+    st.page_link("pages/3_🥊_UFC_Edge.py", label="🥊 UFC Edge")
+    st.divider()
     st.subheader("⚙️ System status")
     if models_ready:
         st.success("Trained models available")
