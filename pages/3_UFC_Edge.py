@@ -86,6 +86,10 @@ if st.button("Train UFC winner model", type="primary", use_container_width=True)
         st.session_state["ufc_metrics"] = metrics
         st.session_state["ufc_trained"] = True
     except Exception as exc:
+        st.session_state["ufc_trained"] = False
+        st.session_state.pop("ufc_metrics", None)
+        st.session_state.pop("ufc_model", None)
+        st.session_state.pop("ufc_snapshot", None)
         st.error(f"Model training failed: {exc}")
 
 if st.session_state.get("ufc_trained"):
