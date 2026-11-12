@@ -7,13 +7,15 @@ Automated NBA player projections built with Streamlit and the existing trained m
 - Automatically reads the NBA schedule and team rosters from ESPN's public data feed.
 - Generates points, rebounds and assists projections.
 - Shows top 10 projected players for each market, with recent average minutes for context.
+- Compares model projections with current NBA points, rebounds and assists prop lines from Stat Pick's public API.
+- Displays projection gaps and model-estimated over/under probabilities; source bookmaker names and prices are discarded.
 - Archives daily slates and compares them with completed ESPN box scores.
 - Tracks mean absolute error by market and by date.
 - Refreshes projections and settles completed games through GitHub Actions.
 
 ## No bookmaker data
 
-NBA Edge does not request, display, compare or calculate bookmaker odds, betting lines, prices or expected value.
+NBA Edge does not display bookmaker odds, prices or expected value. It retrieves player prop line numbers only, then discards bookmaker prices and source bookmaker details.
 
 ## Model files
 
