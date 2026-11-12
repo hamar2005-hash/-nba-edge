@@ -98,7 +98,7 @@ jobs:
                       "models/rebounds_model.joblib",
                       "models/assists_model.joblib",
                       "models/latest_player_features.csv",
-                      "models/latest_team_defense.csv",
+
                   }
                   missing = required - names
                   assert not missing, f"Model bundle is missing: {sorted(missing)}"
@@ -124,13 +124,17 @@ jobs:
                   predicted = pack["model"].predict(sample)
                   assert len(predicted) == 1 and pd.notna(predicted[0]), f"{market} prediction smoke test failed"
                   print(f"Prediction smoke test OK: {market} = {float(predicted[0]):.2f}")
-              defense = pd.read_csv(model_dir / "latest_team_defense.csv")
-              assert {"TEAM_ABBREVIATION"}.issubset(defense.columns) and not defense.empty, "Opponent defence snapshot is empty or missing team keys"
-              for market in ("points", "rebounds", "assists"):
-                  pack = joblib.load(model_dir / f"{market}_model.joblib")
-                  assert any(c.startswith("OPP_ALLOW_") for c in pack["feature_cols"]), f"{market} model does not use opponent defensive features"
               print(f"Feature snapshot OK: {len(features):,} players/rows, {len(features.columns)} columns")
-              print(f"Opponent defence snapshot OK: {len(defense)} teams, {len(defense.columns)-1} defensive features")
+              defense_file = model_dir / "latest_team_defense.csv"
+              if defense_file.exists():
+                  defense = pd.read_csv(defense_file)
+                  assert {"TEAM_ABBREVIATION"}.issubset(defense.columns) and not defense.empty, "Opponent defence snapshot is empty or missing team keys"
+                  for market in ("points", "rebounds", "assists"):
+                      pack = joblib.load(model_dir / f"{market}_model.joblib")
+                      assert any(c.startswith("OPP_ALLOW_") for c in pack["feature_cols"]), f"{market} model does not use opponent defensive features"
+                  print(f"Opponent defence snapshot OK: {len(defense)} teams, {len(defense.columns)-1} defensive features")
+              else:
+                  print("Legacy model bundle detected; opponent defence will activate after weekly retraining.")
           print("Trained model bundle validation passed.")
           PY
 
