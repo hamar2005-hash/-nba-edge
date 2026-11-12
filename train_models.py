@@ -16,45 +16,37 @@ STATS = ['PTS','REB','AST','MIN','FGA','FG3A','FG3M','FTA','TOV','STL','BLK']
 DEFENSE_STATS = ['PTS','REB','AST','FG3M','FG3A','FGA','FTA','TOV','STL','BLK']
 
 def add_opponent_defense(df):
-    """Add opponent defensive form using only that opponent's prior games."""
+    """Build opponent allowed-stat trends from completed games only."""
     df = df.copy()
     df['OPPONENT'] = df['MATCHUP'].astype(str).str.extract(r'(?:vs\\.|@)\\s*([A-Z]{2,3})', expand=False)
-    team = df.groupby(['GAME_ID','GAME_DATE','TEAM_ABBREVIATION'], as_index=False)[DEFENSE_STATS].sum(min_count=1)
-    team = team.sort_values(['TEAM_ABBREVIATION','GAME_DATE','GAME_ID']).reset_index(drop=True)
-    team['OPPONENT'] = team['MATCHUP'] if 'MATCHUP' in team else None
-    # Each team's allowed stats are the opposing team's box-score totals in the same game.
-    matchup = df[['GAME_ID','TEAM_ABBREVIATION','OPPONENT']].dropna().drop_duplicates()
-    team = team.merge(matchup, on=['GAME_ID','TEAM_ABBREVIATION'], how='left')
-    allowed = team[['GAME_ID','GAME_DATE','TEAM_ABBREVIATION'] + DEFENSE_STATS].merge(
-        team[['GAME_ID','TEAM_ABBREVIATION'] + DEFENSE_STATS],
-        on='GAME_ID', suffixes=('_against','_own')
-    )
-    allowed = allowed[allowed['TEAM_ABBREVIATION_against'] != allowed['TEAM_ABBREVIATION_own']].copy()
-    # Rows are indexed by the defending team; own box score is what that team conceded.
-    allowed['DEF_TEAM'] = allowed['TEAM_ABBREVIATION_against']
+    team_games = df.groupby(['GAME_ID','GAME_DATE','TEAM_ABBREVIATION'], as_index=False)[DEFENSE_STATS].sum(min_count=1)
+    # For each defending team, the other team's box score is what it allowed.
+    allowed = team_games.merge(team_games, on='GAME_ID', suffixes=('_def','_opp'))
+    allowed = allowed[allowed['TEAM_ABBREVIATION_def'] != allowed['TEAM_ABBREVIATION_opp']].copy()
+    allowed['DEF_TEAM'] = allowed['TEAM_ABBREVIATION_def']
     for stat in DEFENSE_STATS:
-        allowed[f'OPP_ALLOW_{stat}'] = allowed[f'{stat}_own']
-    allowed = allowed[['GAME_ID','GAME_DATE','DEF_TEAM'] + [f'OPP_ALLOW_{s}' for s in DEFENSE_STATS]]
-    allowed = allowed.sort_values(['DEF_TEAM','GAME_DATE','GAME_ID'])
-    grouped = allowed.groupby('DEF_TEAM')
-    feature_cols = []
+        allowed[f'ALLOW_{stat}'] = allowed[f'{stat}_opp']
+    allowed = allowed[['GAME_ID','GAME_DATE_def','DEF_TEAM'] + [f'ALLOW_{x}' for x in DEFENSE_STATS]]
+    allowed = allowed.rename(columns={'GAME_DATE_def':'GAME_DATE'})
+    allowed = allowed.sort_values(['DEF_TEAM','GAME_DATE','GAME_ID']).reset_index(drop=True)
+    features = []
     for stat in DEFENSE_STATS:
-        col = f'OPP_ALLOW_{stat}'
+        col = f'ALLOW_{stat}'
         for n in (5,10):
-            name = f'{col}_L{n}'
-            allowed[name] = grouped[col].transform(lambda s: s.shift(1).rolling(n,min_periods=2).mean())
-            feature_cols.append(name)
-        name = f'{col}_SEASON_PRE'
-        allowed[name] = grouped[col].transform(lambda s: s.shift(1).expanding(min_periods=2).mean())
-        feature_cols.append(name)
-    # Per-team latest pregame defensive profile for today's opponent lookup.
-    latest = allowed.sort_values('GAME_DATE').groupby('DEF_TEAM',as_index=False).tail(1)
-    latest = latest[['DEF_TEAM'] + feature_cols].rename(columns={'DEF_TEAM':'TEAM_ABBREVIATION'})
-    # Attach historical pregame opponent defence to every player row.
-    df = df.merge(allowed[['GAME_ID','DEF_TEAM'] + feature_cols],
+            name = f'OPP_{col}_L{n}'
+            allowed[name] = allowed.groupby('DEF_TEAM')[col].transform(
+                lambda values: values.shift(1).rolling(n, min_periods=2).mean())
+            features.append(name)
+        name = f'OPP_{col}_SEASON_PRE'
+        allowed[name] = allowed.groupby('DEF_TEAM')[col].transform(
+            lambda values: values.shift(1).expanding(min_periods=2).mean())
+        features.append(name)
+    latest = allowed.sort_values(['GAME_DATE','GAME_ID']).groupby('DEF_TEAM',as_index=False).tail(1)
+    latest = latest[['DEF_TEAM'] + features].rename(columns={'DEF_TEAM':'TEAM_ABBREVIATION'})
+    df = df.merge(allowed[['GAME_ID','DEF_TEAM'] + features],
                   left_on=['GAME_ID','OPPONENT'], right_on=['GAME_ID','DEF_TEAM'], how='left')
-    df = df.drop(columns=['DEF_TEAM'])
-    return df, latest, feature_cols
+    return df.drop(columns=['DEF_TEAM']), latest
+
 
 def prepare(path):
     df = pd.read_csv(path)
