@@ -2,44 +2,41 @@
 
 Automated NBA player projections built with Streamlit and the existing trained machine-learning models.
 
-## What it does
+## Features
 
 - Automatically reads the NBA schedule and team rosters from ESPN's public data feed.
-- Generates player projections for **points, rebounds and assists** using the saved trained models and historical player feature snapshot.
-- Displays today's projections in the Streamlit dashboard, with game and player filters.
-- Refreshes on a GitHub Actions schedule and can also be refreshed manually from the app.
+- Generates points, rebounds and assists projections.
+- Shows top 10 projected players for each market, with recent average minutes for context.
+- Archives daily slates and compares them with completed ESPN box scores.
+- Tracks mean absolute error by market and by date.
+- Refreshes projections and settles completed games through GitHub Actions.
 
 ## No bookmaker data
 
 NBA Edge does not request, display, compare or calculate bookmaker odds, betting lines, prices or expected value.
 
-## Setup
+## Model files
 
-The repository must contain `NBA_Trained_Models.zip` with these files under the `models/` directory:
+The repository must contain `NBA_Trained_Models.zip` with:
 
-- `points_model.joblib`
-- `rebounds_model.joblib`
-- `assists_model.joblib`
-- `latest_player_features.csv`
+- `models/points_model.joblib`
+- `models/rebounds_model.joblib`
+- `models/assists_model.joblib`
+- `models/latest_player_features.csv`
 
-The GitHub Actions workflow requires repository Contents write permission so it can commit the daily CSV. Streamlit Community Cloud should be connected to the same repository and `app.py` as the entry point.
+## Automation
 
-## Schedule
+GitHub Actions runs at 10:00, 16:00, 20:00 and 23:00 UTC. It archives the previous slate, settles yesterday's completed games from ESPN box scores, generates today's projections and commits the CSV history. Runs can be delayed by GitHub.
 
-The GitHub Actions workflow runs at 16:00, 20:00 and 23:00 UTC every day, and can also be run manually from the Actions tab. GitHub scheduled runs can be delayed during periods of high load.
+## Limitations
 
-## Important limitations
-
-- The current models cover points, rebounds and assists only; combo props and team totals are not included.
-- Player projections use the latest historical feature snapshot included in the trained bundle. They are not retrained automatically each day.
-- Recent historical minutes are shown as context, not as a forecast of tonight's playing time.
-- ESPN roster data may not reflect late injury news or confirmed lineups. The app does not yet have a verified live injury/starting-lineup adjustment.
-- Model estimates are not guarantees. Track performance and calibration over time.
+The trained models cover points, rebounds and assists only. Historical minutes are context, not a forecast of actual playing time. ESPN roster status and box-score feeds can be delayed or incomplete. Accuracy statistics only include players matched to final box scores; DNPs and unmatched names may be excluded. Model estimates are not guarantees.
 
 ## Run locally
 
 ```bash
 pip install -r requirements.txt
 python auto_daily.py
+python settle_results.py
 streamlit run app.py
 ```
