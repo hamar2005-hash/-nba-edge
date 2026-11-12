@@ -96,7 +96,12 @@ if st.session_state.get("ufc_trained"):
     m2.metric("Log loss", f"{metrics['log_loss']:.3f}")
     m3.metric("Brier score", f"{metrics['brier']:.3f}", f"{metrics['brier']-metrics['baseline_brier']:+.3f} vs baseline")
     m4.metric("Test fights", f"{metrics['test_fights']:,}")
-    st.caption(f"Training fights: {metrics['train_fights']:,} · Holdout period: {metrics['test_start']} to {metrics['test_end']}. Lower log loss and Brier score are better.")
+    st.caption(f"Training fights: {metrics['train_fights']:,} · Calibration fights: {metrics['calibration_fights']:,} ({metrics['calibration_start']} to {metrics['calibration_end']}) · Untouched test: {metrics['test_start']} to {metrics['test_end']}. Lower log loss and Brier score are better.")
+    with st.expander("Raw vs calibrated probability comparison"):
+        raw_a, raw_b, raw_c = st.columns(3)
+        raw_a.metric("Raw Brier", f"{metrics['raw_brier']:.3f}")
+        raw_b.metric("Calibrated Brier", f"{metrics['brier']:.3f}", f"{metrics['brier']-metrics['raw_brier']:+.3f}")
+        raw_c.metric("Raw log loss", f"{metrics['raw_log_loss']:.3f}")
     st.subheader("Calibration")
     st.write("Compare predicted win probabilities with observed holdout outcomes.")
     if metrics.get("calibration"):
@@ -104,6 +109,17 @@ if st.session_state.get("ufc_trained"):
         cal["predicted"] = (cal["predicted"] * 100).round(1)
         cal["observed"] = (cal["observed"] * 100).round(1)
         st.dataframe(cal.rename(columns={"band": "Probability band", "fights": "Fights", "predicted": "Predicted %", "observed": "Observed %"}), use_container_width=True, hide_index=True)
+
+    st.subheader("Confidence-threshold backtest")
+    st.caption("Accuracy and share of unseen test fights selected at each minimum confidence. This is not a profit/ROI test because historical bookmaker odds are not included.")
+    if metrics.get("thresholds"):
+        threshold_table = pd.DataFrame(metrics["thresholds"])
+        threshold_table["threshold"] = (threshold_table["threshold"] * 100).round(0).astype(int).astype(str) + "%"
+        threshold_table["coverage"] = (threshold_table["coverage"] * 100).round(1)
+        threshold_table["accuracy"] = (threshold_table["accuracy"] * 100).round(1)
+        st.dataframe(threshold_table.rename(columns={"threshold": "Minimum confidence", "fights": "Selected fights", "coverage": "Coverage %", "accuracy": "Accuracy %"}), use_container_width=True, hide_index=True)
+    else:
+        st.info("No test fights met the selected confidence thresholds.")
 
     st.subheader("Historical holdout simulation")
     if metrics.get("temporal"):
@@ -170,7 +186,8 @@ with left:
     st.write("- Chronological holdout accuracy")
     st.write("- Brier score and log loss")
     st.write("- Calibration by probability band")
-    st.write("- Performance by division and favourite level")
+    st.write("- Performance by division and confidence threshold")
+    st.write("- Separate calibration period before final holdout")
 with right:
     st.markdown("**Leakage controls**")
     st.write("- No post-fight stats in pre-fight features")
