@@ -54,10 +54,12 @@ def main():
     features = features.drop_duplicates("player_key", keep="last").set_index("player_key", drop=False)
 
     packs = {}
-    for market in ("points", "rebounds", "assists"):
+    for market in ("points", "rebounds", "assists", "threes", "steals", "blocks", "turnovers"):
         model_path = models_dir / f"{market}_model.joblib"
         if not model_path.exists():
-            raise SystemExit(f"Missing trained model: {model_path}")
+            if market in ("points", "rebounds", "assists"):
+                raise SystemExit(f"Missing trained model: {model_path}")
+            continue
         packs[market] = joblib.load(model_path)
 
     scoreboard = get_json(f"{ESPN}/scoreboard", {"dates": date_key})
@@ -131,6 +133,13 @@ def main():
                     projection = float(pack["model"].predict(pd.DataFrame([xrow], columns=pack["feature_cols"]))[0])
                     record[f"{market}_projection"] = round(max(0.0, projection), 1)
                 record["minutes_baseline"] = round(float(base.get("MIN_L5", base.get("MIN_L10", 0)) or 0), 1)
+                record["player_status"] = status_text or "Not supplied"
+                for stat in ("PTS", "REB", "AST"):
+                    l5 = pd.to_numeric(base.get(f"{stat}_L5"), errors="coerce")
+                    l10 = pd.to_numeric(base.get(f"{stat}_L10"), errors="coerce")
+                    record[f"{stat.lower()}_last5"] = round(float(l5), 1) if pd.notna(l5) else None
+                    record[f"{stat.lower()}_last10"] = round(float(l10), 1) if pd.notna(l10) else None
+                    record[f"{stat.lower()}_trend"] = round(float(l5-l10), 1) if pd.notna(l5) and pd.notna(l10) else None
                 rows.append(record)
 
     if not rows:
