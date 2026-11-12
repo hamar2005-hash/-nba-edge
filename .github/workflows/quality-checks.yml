@@ -115,6 +115,14 @@ jobs:
               needed = {"PLAYER_ID", "PLAYER_NAME", "GAME_DATE"}
               assert needed.issubset(features.columns), f"Feature snapshot is missing {sorted(needed - set(features.columns))}"
               assert not features.empty, "Feature snapshot is empty"
+              for market in ("points", "rebounds", "assists"):
+                  pack = joblib.load(model_dir / f"{market}_model.joblib")
+                  missing_features = set(pack["feature_cols"]) - set(features.columns)
+                  assert not missing_features, f"{market} model input fields missing: {sorted(missing_features)}"
+                  sample = features.loc[:, pack["feature_cols"]].head(1)
+                  predicted = pack["model"].predict(sample)
+                  assert len(predicted) == 1 and pd.notna(predicted[0]), f"{market} prediction smoke test failed"
+                  print(f"Prediction smoke test OK: {market} = {float(predicted[0]):.2f}")
               print(f"Feature snapshot OK: {len(features):,} players/rows, {len(features.columns)} columns")
           print("Trained model bundle validation passed.")
           PY
