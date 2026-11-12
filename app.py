@@ -49,6 +49,28 @@ with st.sidebar:
             st.error("Refresh failed. The schedule/roster feed may be temporarily unavailable.")
             st.code((run.stderr or run.stdout)[-8000:])
 
+# If today's file is missing or stale, generate it when the user opens the app.
+if models_ready:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    today_et = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
+    needs_refresh = not PREDICTIONS.exists()
+    if not needs_refresh:
+        try:
+            existing_date = str(pd.read_csv(PREDICTIONS, usecols=["game_date"])["game_date"].iloc[0])
+            needs_refresh = existing_date != today_et
+        except Exception:
+            needs_refresh = True
+    if needs_refresh:
+        with st.spinner("Preparing today's NBA projections automatically…"):
+            first_run = subprocess.run(
+                [sys.executable, str(ROOT / "auto_daily.py"), "--models", str(MODELS), "--out", str(PREDICTIONS)],
+                cwd=ROOT, capture_output=True, text=True, timeout=300
+            )
+        if first_run.returncode != 0:
+            st.warning("Today's automatic refresh did not complete. Use the refresh button in the sidebar to try again.")
+            st.caption((first_run.stderr or first_run.stdout)[-2000:])
+
 if not models_ready:
     st.warning("The model files or historical feature snapshot are missing. Automated projections cannot run until the trained bundle is complete.")
 elif not PREDICTIONS.exists():
