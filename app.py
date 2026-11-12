@@ -299,6 +299,22 @@ else:
                 line = pd.to_numeric(row.get("line"), errors="coerce")
                 if pd.isna(projection) or pd.isna(line):
                     continue
+
+                # Sanity-check source lines against both broad NBA market bounds
+                # and the player's own model projection. This prevents a bad
+                # feed mapping (e.g. 11.5 assists for a 1.3-assist projection)
+                # from being presented as a high-confidence pick.
+                hard_max = {"points": 60.0, "rebounds": 30.0, "assists": 25.0}
+                max_gap = {
+                    "points": max(18.0, float(projection) * 1.5),
+                    "rebounds": max(8.0, float(projection) * 1.5),
+                    "assists": max(5.0, float(projection) * 1.5),
+                }
+                if float(line) < 0.5 or float(line) > hard_max[market]:
+                    continue
+                if abs(float(line) - float(projection)) > max_gap[market]:
+                    continue
+
                 sd = residual_spreads.get(market, 1.0)
                 z = (float(line) + 0.5 - float(projection)) / sd
                 p_over = 1 - (0.5 * (1 + math.erf(z / math.sqrt(2))))
