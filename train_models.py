@@ -9,7 +9,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
 
-TARGETS = {'points': 'PTS', 'rebounds': 'REB', 'assists': 'AST'}
+TARGETS = {'points': 'PTS', 'rebounds': 'REB', 'assists': 'AST', 'threes': 'FG3M', 'steals': 'STL', 'blocks': 'BLK', 'turnovers': 'TOV'}
 STATS = ['PTS','REB','AST','MIN','FGA','FG3A','FTA','TOV','STL','BLK']
 
 def prepare(path):
