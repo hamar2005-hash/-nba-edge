@@ -18,7 +18,7 @@ DEFENSE_STATS = ['PTS','REB','AST','FG3M','FG3A','FGA','FTA','TOV','STL','BLK']
 def add_opponent_defense(df):
     """Build opponent allowed-stat trends from completed games only."""
     df = df.copy()
-    df['OPPONENT'] = df['MATCHUP'].astype(str).str.extract(r'(?:vs\\.|@)\\s*([A-Z]{2,3})', expand=False)
+    df['OPPONENT'] = df['MATCHUP'].astype(str).str.extract(r'(?:vs\.|@)\s*([A-Z]{2,3})', expand=False)
     team_games = df.groupby(['GAME_ID','GAME_DATE','TEAM_ABBREVIATION'], as_index=False)[DEFENSE_STATS].sum(min_count=1)
     # For each defending team, the other team's box score is what it allowed.
     allowed = team_games.merge(team_games, on='GAME_ID', suffixes=('_def','_opp'))
