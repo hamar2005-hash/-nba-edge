@@ -143,6 +143,9 @@ else:
                     use_container_width=True, hide_index=True
                 )
 
+    else:
+        st.warning("The daily predictions file is empty.")
+
 st.divider()
 st.subheader("Daily accuracy tracker")
 SETTLED = DATA / "settled_results.csv"
@@ -190,8 +193,6 @@ else:
             st.caption("Daily mean absolute error (lower is better)")
             st.dataframe(pd.DataFrame(daily_rows).sort_values(["Date", "Market"], ascending=[False, True]), use_container_width=True, hide_index=True)
     st.download_button("Download accuracy history", settled.to_csv(index=False), "nba_edge_accuracy_history.csv", "text/csv")
-    else:
-        st.warning("The daily predictions file is empty.")
 
 with st.expander("About the model and its limitations"):
     st.markdown("""
