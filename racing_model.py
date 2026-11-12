@@ -62,7 +62,9 @@ def standardise_history(frame):
     df["finish_position"] = pd.to_numeric(
         df["finish_position"].astype(str).str.extract(r"(\d+)")[0], errors="coerce"
     )
-    df = df.dropna(subset=["race_date", "horse", "finish_position"]).copy()
+    # Keep pulled-up, fell and refused runners as non-winners instead of dropping them.
+    df["finish_position"] = df["finish_position"].fillna(99)
+    df = df.dropna(subset=["race_date", "horse"]).copy()
     df["horse_key"] = df["horse"].astype(str).str.strip().str.lower()
     df["trainer_key"] = df["trainer"].fillna("").astype(str).str.strip().str.lower()
     df["jockey_key"] = df["jockey"].fillna("").astype(str).str.strip().str.lower()
