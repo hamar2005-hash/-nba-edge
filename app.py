@@ -49,15 +49,17 @@ hr { border-color: var(--edge-line); }
 </div>
 """, unsafe_allow_html=True)
 
-# Restore the committed trained model bundle if Streamlit's instance starts clean.
-if BUNDLE.exists() and not (MODELS / "points_model.joblib").exists():
+# Restore the committed trained model bundle if Streamlit's instance starts clean
+# or if a previous extraction left only part of the required files behind.
+model_files = [MODELS / f"{market}_model.joblib" for market in ("points", "rebounds", "assists")]
+required_bundle_files = model_files + [MODELS / "latest_player_features.csv"]
+if BUNDLE.exists() and not all(path.exists() for path in required_bundle_files):
     try:
         with zipfile.ZipFile(BUNDLE) as archive:
             archive.extractall(ROOT)
     except Exception as exc:
         st.error(f"Could not extract trained model bundle: {exc}")
 
-model_files = [MODELS / f"{market}_model.joblib" for market in ("points", "rebounds", "assists")]
 features_file = MODELS / "latest_player_features.csv"
 models_ready = all(path.exists() for path in model_files) and features_file.exists()
 
