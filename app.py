@@ -216,6 +216,30 @@ with train_tab:
     hist_file = st.file_uploader('Historical player-game logs (.csv)', type=['csv'], key='history_upload')
     if hist_file:
         st.caption(f'{hist_file.name} • {hist_file.size:,} bytes')
+    st.markdown('#### Automatic historical data download')
+    st.caption('Try the free NBA Stats data collector first. NBA Stats may block cloud-hosted requests; if that happens, use the CSV upload option below.')
+    c1, c2 = st.columns(2)
+    start_season = c1.selectbox('Start season', ['2021-22','2022-23','2023-24','2024-25','2025-26'], index=0)
+    end_season = c2.selectbox('End season', ['2025-26','2026-27'], index=1)
+    if st.button('Download historical logs and train models', type='primary', disabled=is_trained):
+        hist_path = DATA/'player_game_logs.csv'
+        with st.spinner('Downloading historical NBA player-game logs. This may take several minutes…'):
+            collect = subprocess.run([sys.executable, str(ROOT/'collect_nba_data.py'), '--start-season', start_season, '--end-season', end_season, '--out', str(hist_path)], cwd=ROOT, capture_output=True, text=True, timeout=2400)
+        if collect.returncode:
+            st.error('The free NBA Stats feed could not be reached from the hosting server. No paid service is required; you can still upload a historical CSV manually.')
+            st.code((collect.stderr or collect.stdout)[-12000:])
+        else:
+            st.success(f'Downloaded historical logs: {hist_path.stat().st_size:,} bytes')
+            with st.spinner('Training points, rebounds and assists models…'):
+                train = subprocess.run([sys.executable, str(ROOT/'train_models.py'), '--input', str(hist_path), '--outdir', str(MODELS)], cwd=ROOT, capture_output=True, text=True, timeout=1800)
+            if train.returncode:
+                st.error('Data downloaded, but model training failed.')
+                st.code(train.stderr or train.stdout)
+            else:
+                st.success('All three models trained successfully.')
+                st.code(train.stdout)
+                st.info('Download the trained model bundle below, then add its models/ files to GitHub so they survive app restarts.')
+                st.rerun()
     if st.button('Train points, rebounds and assists', type='primary', disabled=hist_file is None):
         try:
             hist_path = DATA/'player_game_logs.csv'; hist_path.write_bytes(hist_file.getvalue())
