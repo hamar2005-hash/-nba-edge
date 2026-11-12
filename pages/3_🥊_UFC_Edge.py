@@ -72,7 +72,51 @@ except Exception as exc:
     st.button("Retry data connection", on_click=load_dataset.clear)
 
 st.divider()
-st.subheader("2. Model build plan")
+st.subheader("2. Train and validate the winner model")
+st.write("This first model uses only each fighter's historical results before the bout: Elo rating, win/loss record, experience, recent form, streak and time since last fight. Draws are excluded from the binary winner model. Fight statistics recorded after the bout are deliberately not used.")
+if st.button("Train UFC winner model", type="primary", use_container_width=True):
+    try:
+        from ufc_model import train_and_evaluate
+        with st.spinner("Building pre-fight histories and running the chronological holdout…"):
+            model, metrics, snapshot, frame = train_and_evaluate(results)
+        st.session_state["ufc_model"] = model
+        st.session_state["ufc_snapshot"] = snapshot
+        st.session_state["ufc_metrics"] = metrics
+        st.session_state["ufc_trained"] = True
+    except Exception as exc:
+        st.error(f"Model training failed: {exc}")
+
+if st.session_state.get("ufc_trained"):
+    metrics = st.session_state["ufc_metrics"]
+    st.success("Model trained. The metrics below are from a later-in-time holdout that was not used to fit the model.")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Holdout accuracy", f"{metrics['accuracy']*100:.1f}%", f"{(metrics['accuracy']-metrics['baseline_accuracy'])*100:+.1f} pp vs baseline")
+    m2.metric("Log loss", f"{metrics['log_loss']:.3f}")
+    m3.metric("Brier score", f"{metrics['brier']:.3f}", f"{metrics['brier']-metrics['baseline_brier']:+.3f} vs baseline")
+    m4.metric("Test fights", f"{metrics['test_fights']:,}")
+    st.caption(f"Training fights: {metrics['train_fights']:,} · Holdout period: {metrics['test_start']} to {metrics['test_end']}. Lower log loss and Brier score are better.")
+    st.subheader("Try a matchup")
+    names = sorted(st.session_state["ufc_snapshot"].keys())
+    f1 = st.selectbox("Fighter 1", names, key="ufc_f1")
+    f2 = st.selectbox("Fighter 2", names, index=min(1, max(0, len(names)-1)), key="ufc_f2")
+    if st.button("Predict winner", disabled=(f1 == f2 or not names)):
+        from ufc_model import FEATURES
+        snap = st.session_state["ufc_snapshot"]
+        a, b = snap[f1], snap[f2]
+        feature_row = pd.DataFrame([{key: a[key] - b[key] for key in [
+            "elo", "wins", "losses", "experience", "win_rate",
+            "recent5", "recent10", "streak", "days_since_fight"
+        ]}])
+        feature_row.columns = FEATURES
+        prob = float(st.session_state["ufc_model"].predict_proba(feature_row)[0, 1])
+        chosen = f1 if prob >= 0.5 else f2
+        st.metric("Model lean", chosen, f"{max(prob, 1-prob)*100:.1f}% estimated win probability")
+        st.caption("This is a historical-profile matchup estimate, not a verified upcoming-card prediction. Check current injuries, layoffs, weight changes and bout context separately.")
+else:
+    st.info("The model has not been trained in this app yet. Tap the button above once the historical data has loaded.")
+
+st.divider()
+st.subheader("3. Model build plan")
 steps = [
     ("Historical data audit", "Check dates, duplicates, outcomes, missing values and fighter-name consistency.", True),
     ("Pre-fight feature engineering", "Build each fighter's record, recent form, streaks and opponent strength using past fights only.", False),
