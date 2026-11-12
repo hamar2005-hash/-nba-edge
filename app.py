@@ -166,13 +166,13 @@ else:
             st.rerun()
 
         @st.cache_data(ttl=900, show_spinner=False)
-        def load_prop_lines():
+        def load_prop_lines(player_names):
             from prop_lines import fetch_current_lines
-            return fetch_current_lines()
+            return fetch_current_lines(player_names)
 
         try:
             with st.spinner("Fetching current NBA player prop lines…"):
-                prop_lines = load_prop_lines()
+                prop_lines = load_prop_lines(tuple(predictions["player"].dropna().astype(str).unique()))
             prediction_rows = predictions[["player", "team", "opponent", "minutes_baseline",
                                                "points_projection", "rebounds_projection", "assists_projection"]].copy()
             prediction_rows["player_key"] = prediction_rows["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
