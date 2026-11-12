@@ -5,7 +5,9 @@ Automated NBA player projections built with Streamlit and the existing trained m
 ## Features
 
 - Automatically reads the NBA schedule and team rosters from ESPN's public data feed.
-- Generates points, rebounds and assists projections.
+- Generates points, rebounds and assists projections, with weekly-trained extensions for three-pointers made, steals, blocks and turnovers.
+- Displays roster-feed availability labels and recent last-five versus last-ten player form.
+- Shows expanded player leaderboards across the supported markets.
 - Shows top 10 projected players for each market, with recent average minutes for context.
 - Compares model projections with current NBA points, rebounds and assists prop lines from Stat Pick's public API.
 - Displays projection gaps and model-estimated over/under probabilities; source bookmaker names and prices are discarded.
@@ -33,7 +35,7 @@ GitHub Actions runs at 10:00, 16:00, 20:00 and 23:00 UTC. It archives the previo
 
 ## Limitations
 
-The trained models cover points, rebounds and assists only. Historical minutes are context, not a forecast of actual playing time. ESPN roster status and box-score feeds can be delayed or incomplete. Accuracy statistics only include players matched to final box scores; DNPs and unmatched names may be excluded. Model estimates are not guarantees.
+The original bundle covers points, rebounds and assists. Additional markets appear after the weekly retraining workflow successfully builds and validates their first models. Availability is based on ESPN roster data and is not a substitute for confirmed team injury reports. Team-level score, matchup-adjusted defense, first-quarter and calibrated probability models are future development items. Historical minutes are context, not a forecast of actual playing time. ESPN roster status and box-score feeds can be delayed or incomplete. Accuracy statistics only include players matched to final box scores; DNPs and unmatched names may be excluded. Model estimates are not guarantees.
 
 ## Run locally
 
