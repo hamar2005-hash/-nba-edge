@@ -14,6 +14,41 @@ PREDICTIONS = DATA / "daily_predictions.csv"
 
 st.set_page_config(page_title="NBA Edge", page_icon="🏀", layout="wide")
 
+# NBA Edge visual identity: dark court, warm orange accent, compact mobile-friendly cards.
+st.markdown("""
+<style>
+:root { --edge-orange: #ff8a32; --edge-amber: #ffb15c; --edge-line: rgba(255,255,255,.09); }
+.stApp { background: radial-gradient(ellipse at 12% 0%, rgba(255,138,50,.11), transparent 34%), #0c1016; }
+.block-container { max-width: 1440px; padding-top: 1.5rem; padding-bottom: 3rem; }
+[data-testid="stHeader"] { background: rgba(12,16,22,.72); }
+h1, h2, h3 { letter-spacing: -.035em; }
+h2 { padding-top: .3rem; }
+[data-testid="stMetric"] { background: linear-gradient(145deg, rgba(255,255,255,.065), rgba(255,255,255,.025)); border: 1px solid var(--edge-line); border-radius: 16px; padding: 16px 18px; }
+[data-testid="stMetricLabel"] { color: #aeb7c4; font-size: .82rem; }
+[data-testid="stMetricValue"] { color: #fff; font-weight: 750; }
+[data-testid="stDataFrame"], [data-testid="stTable"] { border: 1px solid var(--edge-line); border-radius: 14px; overflow: hidden; }
+.stButton > button, .stDownloadButton > button { border-radius: 11px; border: 1px solid rgba(255,138,50,.45); transition: all .15s ease; font-weight: 650; }
+.stButton > button[kind="primary"] { background: linear-gradient(100deg,#f47721,#ff9a45); color: #111; border: 0; }
+.stButton > button:hover, .stDownloadButton > button:hover { border-color: var(--edge-orange); transform: translateY(-1px); }
+[data-testid="stTextInput"] input, [data-testid="stSelectbox"] > div, [data-testid="stMultiSelect"] > div { border-radius: 11px; }
+[data-testid="stExpander"] { border: 1px solid var(--edge-line); border-radius: 14px; background: rgba(255,255,255,.025); }
+[data-testid="stSidebar"] { background: #111720; border-right: 1px solid var(--edge-line); }
+hr { border-color: var(--edge-line); }
+.edge-hero { border: 1px solid rgba(255,138,50,.22); border-radius: 22px; padding: 25px 28px; margin: 0 0 24px; background: linear-gradient(112deg, rgba(255,138,50,.17), rgba(255,255,255,.035) 58%, rgba(255,138,50,.06)); }
+.edge-kicker { color: #ffad68; text-transform: uppercase; letter-spacing: .16em; font-size: .72rem; font-weight: 800; }
+.edge-title { color: #fff; font-size: clamp(2rem,5vw,3.15rem); font-weight: 850; letter-spacing: -.055em; line-height: 1.05; margin: 8px 0; }
+.edge-subtitle { color: #aeb7c4; font-size: .98rem; }
+.edge-pill { display:inline-block; padding:5px 10px; margin:4px 5px 0 0; border-radius:999px; background:rgba(255,138,50,.13); border:1px solid rgba(255,138,50,.25); color:#ffc18f; font-size:.76rem; font-weight:650; }
+@media (max-width: 640px) { .block-container { padding-left: .8rem; padding-right: .8rem; } .edge-hero { padding: 20px 18px; border-radius: 17px; } [data-testid="stMetric"] { padding: 12px; } }
+</style>
+<div class="edge-hero">
+  <div class="edge-kicker">Basketball intelligence</div>
+  <div class="edge-title">🏀 NBA EDGE</div>
+  <div class="edge-subtitle">Daily player projections, prop-line comparisons and model performance.</div>
+  <span class="edge-pill">POINTS</span><span class="edge-pill">REBOUNDS</span><span class="edge-pill">ASSISTS</span><span class="edge-pill">NO ODDS OR PRICES</span>
+</div>
+""", unsafe_allow_html=True)
+
 # Restore the committed trained model bundle if Streamlit's instance starts clean.
 if BUNDLE.exists() and not (MODELS / "points_model.joblib").exists():
     try:
@@ -22,15 +57,12 @@ if BUNDLE.exists() and not (MODELS / "points_model.joblib").exists():
     except Exception as exc:
         st.error(f"Could not extract trained model bundle: {exc}")
 
-st.title("🏀 NBA Edge")
-st.caption("Automated NBA player projections • Points • Rebounds • Assists")
-
 model_files = [MODELS / f"{market}_model.joblib" for market in ("points", "rebounds", "assists")]
 features_file = MODELS / "latest_player_features.csv"
 models_ready = all(path.exists() for path in model_files) and features_file.exists()
 
 with st.sidebar:
-    st.subheader("System status")
+    st.subheader("⚙️ System status")
     if models_ready:
         st.success("Trained models available")
     else:
@@ -97,7 +129,7 @@ else:
 
     if not predictions.empty:
         date = str(predictions["game_date"].iloc[0])
-        st.subheader(f"Projections for {date}")
+        st.subheader(f"📊 Today's projections · {date}")
         a, b, c, d = st.columns(4)
         a.metric("Games", predictions["game"].nunique())
         b.metric("Players", predictions["player"].nunique())
@@ -127,7 +159,7 @@ else:
         st.caption("Projections use the saved historical player feature snapshot. Minutes are a recent historical average, not a confirmed playing-time forecast. ESPN roster availability can be incomplete or delayed.")
 
         st.divider()
-        st.subheader("Player prop line comparison")
+        st.subheader("🎯 Player prop line comparison")
         st.caption("Current lines are fetched from Stat Pick. Bookmaker names, odds and prices are not shown or stored.")
         if st.button("Refresh prop lines", key="refresh_prop_lines"):
             st.cache_data.clear()
@@ -205,7 +237,7 @@ else:
             st.caption(str(exc))
 
         st.divider()
-        st.subheader("Top 10 projected performances")
+        st.subheader("🏆 Top projected performances")
         for market_label, market_col in [
             ("Points", "points_projection"),
             ("Rebounds", "rebounds_projection"),
@@ -226,7 +258,7 @@ else:
         st.warning("The daily predictions file is empty.")
 
 st.divider()
-st.subheader("Daily accuracy tracker")
+st.subheader("📈 Daily accuracy tracker")
 SETTLED = DATA / "settled_results.csv"
 if SETTLED.exists():
     try:
@@ -276,7 +308,7 @@ else:
 with st.expander("About the model and its limitations"):
     st.markdown("""
 - The current trained models predict **points, rebounds and assists** only.
-- No bookmaker odds, betting lines, prices or expected-value calculations are used or displayed.
+- Player prop line numbers may be shown for comparison, but bookmaker names, odds, prices and expected-value calculations are not displayed.
 - Player projections are generated for players found on ESPN's team rosters and matched to the saved historical feature snapshot.
 - The model uses historical rolling statistics. It does **not** yet make reliable adjustments for confirmed starting lineups, late injury news, matchup-specific defensive factors or expected minutes changes.
 - A projection is an estimate, not a guarantee. Track results over time before relying on it.
