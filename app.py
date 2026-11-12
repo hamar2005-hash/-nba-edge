@@ -141,11 +141,12 @@ else:
         try:
             with st.spinner("Fetching current NBA player prop lines…"):
                 prop_lines = load_prop_lines()
+            prediction_rows = predictions[["player", "team", "opponent", "minutes_baseline",
+                                               "points_projection", "rebounds_projection", "assists_projection"]].copy()
+            prediction_rows["player_key"] = prediction_rows["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
             compare = prop_lines.merge(
-                predictions[["player", "team", "opponent", "minutes_baseline",
-                             "points_projection", "rebounds_projection", "assists_projection"]],
-                left_on="player_key",
-                right_on=predictions["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True),
+                prediction_rows,
+                on="player_key",
                 how="inner",
                 suffixes=("_line", "_projection"),
             )
