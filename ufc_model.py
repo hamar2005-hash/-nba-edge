@@ -230,12 +230,29 @@ def train_and_evaluate(results):
             ])
             method_model.fit(method_train[FEATURES], method_train["method_group"])
             mp = method_model.predict(method_test[FEATURES])
+            from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
+            actual_methods = method_test["method_group"]
+            majority_class = method_train["method_group"].value_counts().idxmax()
+            report = classification_report(
+                actual_methods, mp, labels=sorted(seen), output_dict=True, zero_division=0
+            )
             method_metrics = {
                 "available": True, "train_fights": int(len(method_train)),
                 "test_fights": int(len(method_test)),
-                "accuracy": float(accuracy_score(method_test["method_group"], mp)),
+                "accuracy": float(accuracy_score(actual_methods, mp)),
+                "majority_baseline_accuracy": float((actual_methods == majority_class).mean()),
+                "majority_class": str(majority_class),
+                "balanced_accuracy": float(balanced_accuracy_score(actual_methods, mp)),
+                "macro_f1": float(f1_score(actual_methods, mp, labels=sorted(seen), average="macro", zero_division=0)),
                 "classes": sorted(seen),
-                "class_counts": method_test["method_group"].value_counts().to_dict(),
+                "class_counts": actual_methods.value_counts().to_dict(),
+                "per_class": {
+                    name: {"precision": float(report[name]["precision"]),
+                           "recall": float(report[name]["recall"]),
+                           "f1": float(report[name]["f1"]),
+                           "support": int(report[name]["support"])}
+                    for name in sorted(seen)
+                },
             }
 
     metrics["calibration"] = calibration
