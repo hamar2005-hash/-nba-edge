@@ -55,10 +55,15 @@ def build_chronological_rows(results):
             sa, sb = _state_features(states[a], day), _state_features(states[b], day)
             rows.append({
                 "date": day,
-                **{f: sa[f] - sb[f] for f in [
-                    "elo", "wins", "losses", "experience", "win_rate",
-                    "recent5", "recent10", "streak", "days_since_fight"
-                ]},
+                "elo_diff": sa["elo"] - sb["elo"],
+                "wins_diff": sa["wins"] - sb["wins"],
+                "losses_diff": sa["losses"] - sb["losses"],
+                "experience_diff": sa["experience"] - sb["experience"],
+                "win_rate_diff": sa["win_rate"] - sb["win_rate"],
+                "recent5_diff": sa["recent5"] - sb["recent5"],
+                "recent10_diff": sa["recent10"] - sb["recent10"],
+                "streak_diff": sa["streak"] - sb["streak"],
+                "days_since_fight_diff": sa["days_since_fight"] - sb["days_since_fight"],
                 "target": int(fight["result"] == 1),
                 "fighter1": a, "fighter2": b,
             })
