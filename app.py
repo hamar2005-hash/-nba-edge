@@ -274,6 +274,16 @@ else:
                 "assists": "assists_projection",
             }
             compare_rows = []
+            # Load each trained market model once per render, not once per prop row.
+            # A slate can contain hundreds of lines, so disk-loading inside the loop
+            # needlessly stalls Streamlit and leaves the page in its dark loading state.
+            residual_spreads = {}
+            for market in compare["market"].dropna().unique():
+                model_path = MODELS / f"{market}_model.joblib"
+                if model_path.exists():
+                    pack = joblib.load(model_path)
+                    residual_spreads[market] = max(float(pack.get("residual_std", 1.0)), 0.5)
+
             for _, row in compare.iterrows():
                 market = row["market"]
                 projection_col = market_to_col.get(market)
@@ -283,8 +293,7 @@ else:
                 line = pd.to_numeric(row.get("line"), errors="coerce")
                 if pd.isna(projection) or pd.isna(line):
                     continue
-                pack = joblib.load(MODELS / f"{market}_model.joblib")
-                sd = max(float(pack.get("residual_std", 1.0)), 0.5)
+                sd = residual_spreads.get(market, 1.0)
                 z = (float(line) + 0.5 - float(projection)) / sd
                 p_over = 1 - (0.5 * (1 + math.erf(z / math.sqrt(2))))
                 p_over = min(max(p_over, 0.0001), 0.9999)
