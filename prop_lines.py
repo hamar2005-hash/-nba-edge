@@ -122,8 +122,8 @@ def extract_rows(payload, player, team, slug):
                 market = market_name(value)
                 if market:
                     break
-        if not market:
-            market = market_name(parent_key)
+        # Only accept an explicitly named market on the same object as its line.
+        # Parent-key inheritance can mislabel nested or alternate line objects.
         if not market:
             continue
         line = None
