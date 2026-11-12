@@ -127,7 +127,7 @@ jobs:
               data = payload.get("data") if isinstance(payload, dict) else payload
               print("Data container type:", type(data).__name__)
               def describe_shape(node, path="data", depth=0):
-                  if depth > 4:
+                  if depth > 7:
                       return
                   if isinstance(node, dict):
                       print("Object fields at", path, ":", sorted(node.keys())[:80])
