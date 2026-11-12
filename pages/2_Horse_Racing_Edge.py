@@ -42,7 +42,7 @@ def get_credentials():
         return "", ""
 
 def unpack_racecards(payload):
-    data = payload.get("data", []) if isinstance(payload, dict) else payload
+    data = (payload.get("racecards") or payload.get("data") or []) if isinstance(payload, dict) else payload
     if isinstance(data, dict):
         data = [data]
     rows = []
