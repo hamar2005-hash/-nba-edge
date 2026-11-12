@@ -45,13 +45,16 @@ def as_number(value):
         return None
 
 def market_name(value):
+    """Map only explicit single-stat labels.
+
+    Do not use endswith(): combined markets such as 'Rebounds + Assists'
+    and 'Points + Assists' end in 'assists' and were being mislabelled as
+    standalone assists props (e.g. Dean Wade R+A 4.5).
+    """
     raw = norm(value)
-    if raw in ALIASES["points"] or raw.endswith("points"):
-        return "points"
-    if raw in ALIASES["rebounds"] or raw.endswith("rebounds"):
-        return "rebounds"
-    if raw in ALIASES["assists"] or raw.endswith("assists"):
-        return "assists"
+    for market, aliases in ALIASES.items():
+        if raw in aliases:
+            return market
     return None
 
 def walk(value, parent_key=""):
