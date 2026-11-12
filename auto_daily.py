@@ -49,12 +49,11 @@ def main():
 
     features = pd.read_csv(feature_path)
     defense_path = models_dir / "latest_team_defense.csv"
-    if not defense_path.exists():
-        raise SystemExit(f"Missing {defense_path}. Retrain models with opponent-defence features first.")
-    team_defense = pd.read_csv(defense_path)
-    if "TEAM_ABBREVIATION" not in team_defense:
-        raise SystemExit("The opponent defensive snapshot is missing TEAM_ABBREVIATION.")
-    team_defense = team_defense.drop_duplicates("TEAM_ABBREVIATION").set_index("TEAM_ABBREVIATION")
+    team_defense = pd.read_csv(defense_path) if defense_path.exists() else pd.DataFrame()
+    if not team_defense.empty and "TEAM_ABBREVIATION" in team_defense:
+        team_defense = team_defense.drop_duplicates("TEAM_ABBREVIATION").set_index("TEAM_ABBREVIATION")
+    else:
+        team_defense = pd.DataFrame()
     if "PLAYER_NAME" not in features or "PLAYER_ID" not in features:
         raise SystemExit("The feature snapshot is missing PLAYER_NAME or PLAYER_ID.")
     features["player_key"] = features["PLAYER_NAME"].map(norm)
@@ -114,7 +113,7 @@ def main():
                 base = features.loc[key]
                 if isinstance(base, pd.DataFrame):
                     base = base.iloc[-1]
-                opponent_defense = team_defense.loc[opponent] if opponent in team_defense.index else None
+                opponent_defense = team_defense.loc[opponent] if not team_defense.empty and opponent in team_defense.index else None
                 record = {
                     "game_date": game_date,
                     "game": event.get("name", ""),
