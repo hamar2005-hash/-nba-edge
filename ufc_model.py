@@ -80,6 +80,7 @@ def build_chronological_rows(results):
                 "streak_diff": sa["streak"] - sb["streak"],
                 "days_since_fight_diff": sa["days_since_fight"] - sb["days_since_fight"],
                 "target": int(fight["result"] == 1),
+                "outcome": int(fight["result"]),
                 "method_group": fight["method_group"],
                 "division": fight["division"],
                 "fighter1": a, "fighter2": b,
@@ -104,7 +105,10 @@ def build_chronological_rows(results):
                 state["recent5"].append(won)
                 state["recent10"].append(won)
                 state["dates"].append(day)
-    return pd.DataFrame(rows), states
+    frame = pd.DataFrame(rows)
+    # Draws are not wins for either side and must be excluded from binary training.
+    frame = frame[frame["outcome"].isin([1, 2])].drop(columns=["outcome"]).reset_index(drop=True)
+    return frame, states
 
 def train_and_evaluate(results):
     frame, states = build_chronological_rows(results)
