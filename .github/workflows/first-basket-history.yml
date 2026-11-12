@@ -1,0 +1,56 @@
+name: Build NBA Edge first-basket history
+
+on:
+  schedule:
+    - cron: "0 9 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nba-edge-first-basket-history
+  cancel-in-progress: false
+
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install first-basket dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy requests
+
+      - name: Collect completed-game starters and first baskets
+        run: |
+          mkdir -p data
+          python first_basket.py --mode collect --start 2024-10-22 --end "$(date -u +%F)" --games data/first_basket_games.csv
+
+      - name: Build player history when source data exists
+        run: |
+          if [ -s data/first_basket_games.csv ]; then
+            python first_basket.py --mode history --games data/first_basket_games.csv --history data/first_basket_player_history.csv
+          else
+            echo "No first-basket source records are available yet."
+          fi
+
+      - name: Commit first-basket history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for file in data/first_basket_games.csv data/first_basket_player_history.csv; do
+            if [ -s "$file" ]; then git add "$file"; fi
+          done
+          git diff --cached --quiet && exit 0
+          git commit -m "Update first-basket history"
+          git pull --rebase origin main
+          git push
