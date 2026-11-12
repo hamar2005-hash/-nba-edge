@@ -149,7 +149,7 @@ def train_and_evaluate(results):
     temporal = []
     for idx, chunk in enumerate(np.array_split(test, 4), start=1):
         if len(chunk):
-            pp = probabilities[chunk.index.get_indexer(chunk.index)]
+            pp = probabilities[test.index.get_indexer(chunk.index)]
             temporal.append({"period": idx, "fights": int(len(chunk)),
                              "accuracy": float(accuracy_score(chunk["target"], (pp >= .5).astype(int))),
                              "start": str(chunk["date"].min().date()), "end": str(chunk["date"].max().date())})
