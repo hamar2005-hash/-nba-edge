@@ -244,14 +244,18 @@ else:
                 all_lines["_player_match"] = all_lines["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
                 return all_lines[all_lines["_player_match"].isin(wanted)].drop(columns="_player_match")
 
-        if st.button("Refresh prop lines", key="refresh_prop_lines"):
-            # Clear only this function's cache, not every cached object in the app.
+        refresh_props = st.button("Refresh prop lines", key="refresh_prop_lines")
+        if refresh_props:
+            # The button already triggers a rerun; do not call st.rerun() again.
             load_prop_lines.clear()
-            st.rerun()
 
         try:
-            with st.spinner("Fetching today's posted prop lines…"):
-                prop_lines = load_prop_lines(tuple(predictions["player"].dropna().astype(str).unique()))
+            if refresh_props or "nba_edge_prop_lines" not in st.session_state:
+                with st.spinner("Fetching today's posted prop lines…"):
+                    st.session_state["nba_edge_prop_lines"] = load_prop_lines(
+                        tuple(predictions["player"].dropna().astype(str).unique())
+                    )
+            prop_lines = st.session_state["nba_edge_prop_lines"]
             prediction_rows = predictions[["player", "team", "opponent", "minutes_baseline",
                                                "points_projection", "rebounds_projection", "assists_projection"]].copy()
             prediction_rows["player_key"] = prediction_rows["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
