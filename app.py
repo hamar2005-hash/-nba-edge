@@ -65,7 +65,6 @@ models_ready = all(path.exists() for path in model_files) and features_file.exis
 
 with st.sidebar:
     st.subheader("📂 Sports")
-    st.page_link("app.py", label="🏀 NBA Edge")
     st.page_link("pages/2_🐎_Horse_Racing_Edge.py", label="🐎 Horse Racing Edge")
     st.page_link("pages/3_🥊_UFC_Edge.py", label="🥊 UFC Edge")
     st.divider()
