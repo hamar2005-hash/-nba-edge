@@ -48,6 +48,18 @@ with st.sidebar:
         else:
             st.error("Refresh failed. The schedule/roster feed may be temporarily unavailable.")
             st.code((run.stderr or run.stdout)[-8000:])
+    if st.button("Update yesterday's accuracy", use_container_width=True):
+        with st.spinner("Checking completed NBA box scores…"):
+            settle = subprocess.run(
+                [sys.executable, str(ROOT / "settle_results.py")],
+                cwd=ROOT, capture_output=True, text=True, timeout=300
+            )
+        if settle.returncode == 0:
+            st.success(settle.stdout.strip() or "Accuracy tracker updated.")
+            st.rerun()
+        else:
+            st.error("Could not update the accuracy tracker.")
+            st.code((settle.stderr or settle.stdout)[-5000:])
 
 # If today's file is missing or stale, generate it when the user opens the app.
 if models_ready:
@@ -114,11 +126,70 @@ else:
         st.caption("Projections use the saved historical player feature snapshot. Minutes are a recent historical average, not a confirmed playing-time forecast. ESPN roster availability can be incomplete or delayed.")
 
         st.divider()
-        st.subheader("Highest projected performances")
-        market = st.segmented_control("Choose a market", ["Points", "Rebounds", "Assists"], default="Points")
-        market_col = {"Points": "points_projection", "Rebounds": "rebounds_projection", "Assists": "assists_projection"}[market]
-        leaders = predictions.sort_values(market_col, ascending=False).head(10)
-        st.dataframe(leaders[["player", "team", "opponent", market_col]].rename(columns={market_col: f"Projected {market.lower()}"}), use_container_width=True, hide_index=True)
+        st.subheader("Top 10 projected performances")
+        for market_label, market_col in [
+            ("Points", "points_projection"),
+            ("Rebounds", "rebounds_projection"),
+            ("Assists", "assists_projection"),
+        ]:
+            with st.expander(f"Top 10 — {market_label}", expanded=(market_label == "Points")):
+                leaders = predictions.sort_values(market_col, ascending=False).head(10).copy()
+                leaders = leaders.rename(columns={
+                    "player": "Player", "team": "Team", "opponent": "Opponent",
+                    "minutes_baseline": "Recent avg minutes", market_col: f"Projected {market_label.lower()}",
+                })
+                st.dataframe(
+                    leaders[["Player", "Team", "Opponent", "Recent avg minutes", f"Projected {market_label.lower()}"]],
+                    use_container_width=True, hide_index=True
+                )
+
+st.divider()
+st.subheader("Daily accuracy tracker")
+SETTLED = DATA / "settled_results.csv"
+if SETTLED.exists():
+    try:
+        settled = pd.read_csv(SETTLED)
+    except Exception:
+        settled = pd.DataFrame()
+else:
+    settled = pd.DataFrame()
+
+if settled.empty:
+    st.info("No completed games have been matched yet. The tracker will fill in after ESPN publishes final box scores and the next settlement run completes.")
+else:
+    metric_rows = []
+    for market_label, projection_col, actual_col, error_col in [
+        ("Points", "points_projection", "actual_points", "points_absolute_error"),
+        ("Rebounds", "rebounds_projection", "actual_rebounds", "rebounds_absolute_error"),
+        ("Assists", "assists_projection", "actual_assists", "assists_absolute_error"),
+    ]:
+        if {projection_col, actual_col, error_col}.issubset(settled.columns):
+            valid = settled.dropna(subset=[projection_col, actual_col])
+            if not valid.empty:
+                metric_rows.append({
+                    "Market": market_label,
+                    "Settled players": len(valid),
+                    "Mean absolute error": round(valid[error_col].mean(), 2),
+                    "Within 3 stats": f"{(valid[error_col] <= 3).mean() * 100:.1f}%",
+                })
+    if metric_rows:
+        st.dataframe(pd.DataFrame(metric_rows), use_container_width=True, hide_index=True)
+    if "game_date" in settled:
+        daily_rows = []
+        for game_date, day in settled.groupby("game_date"):
+            for market_label, error_col in [
+                ("Points", "points_absolute_error"),
+                ("Rebounds", "rebounds_absolute_error"),
+                ("Assists", "assists_absolute_error"),
+            ]:
+                if error_col in day:
+                    values = pd.to_numeric(day[error_col], errors="coerce").dropna()
+                    if not values.empty:
+                        daily_rows.append({"Date": game_date, "Market": market_label, "Players": len(values), "MAE": round(values.mean(), 2)})
+        if daily_rows:
+            st.caption("Daily mean absolute error (lower is better)")
+            st.dataframe(pd.DataFrame(daily_rows).sort_values(["Date", "Market"], ascending=[False, True]), use_container_width=True, hide_index=True)
+    st.download_button("Download accuracy history", settled.to_csv(index=False), "nba_edge_accuracy_history.csv", "text/csv")
     else:
         st.warning("The daily predictions file is empty.")
 
