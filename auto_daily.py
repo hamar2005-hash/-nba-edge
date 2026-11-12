@@ -88,8 +88,15 @@ def main():
                 name = athlete.get("fullName") or athlete.get("displayName")
                 if not name:
                     continue
-                status = athlete.get("status", {})
-                status_text = str(status.get("type", {}).get("name", status.get("name", ""))).lower() if isinstance(status, dict) else str(status).lower()
+                status = athlete.get("status", "")
+                if isinstance(status, dict):
+                    status_type = status.get("type", "")
+                    if isinstance(status_type, dict):
+                        status_text = str(status_type.get("name", status.get("name", ""))).lower()
+                    else:
+                        status_text = str(status_type or status.get("name", "")).lower()
+                else:
+                    status_text = str(status or "").lower()
                 if athlete.get("active") is False or any(term in status_text for term in ("out", "injured reserve", "suspended")):
                     continue
                 key = norm(name)
