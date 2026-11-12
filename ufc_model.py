@@ -114,29 +114,75 @@ def train_and_evaluate(results):
     frame, states = build_chronological_rows(results)
     if len(frame) < 250:
         raise ValueError(f"Only {len(frame)} usable decisive fights; at least 250 are required.")
-    split = int(len(frame) * 0.8)
-    train, test = frame.iloc[:split].copy(), frame.iloc[split:].copy()
-    if train["target"].nunique() < 2 or test["target"].nunique() < 2:
-        raise ValueError("Chronological split does not contain both winner classes.")
-    model = Pipeline([
+    # Three chronological partitions: fit, calibrate, then final untouched test.
+    n = len(frame)
+    train_end = int(n * 0.70)
+    calibration_end = int(n * 0.80)
+    train = frame.iloc[:train_end].copy()
+    calibration = frame.iloc[train_end:calibration_end].copy()
+    test = frame.iloc[calibration_end:].copy()
+    if any(part["target"].nunique() < 2 for part in (train, calibration, test)):
+        raise ValueError("Chronological train/calibration/test split does not contain both winner classes.")
+
+    base_model = Pipeline([
         ("imputer", SimpleImputer(strategy="median")),
         ("scale", StandardScaler()),
         ("classifier", LogisticRegression(max_iter=2000, class_weight="balanced", C=0.5)),
     ])
-    model.fit(train[FEATURES], train["target"])
+    base_model.fit(train[FEATURES], train["target"])
+
+    # Platt scaling: learn a probability correction on the separate calibration period.
+    calibration_raw = np.clip(base_model.predict_proba(calibration[FEATURES])[:, 1], 1e-6, 1 - 1e-6)
+    calibration_logits = np.log(calibration_raw / (1 - calibration_raw)).reshape(-1, 1)
+    calibrator = LogisticRegression(C=1e6, solver="lbfgs")
+    calibrator.fit(calibration_logits, calibration["target"])
+
+    class CalibratedProbabilityModel:
+        def __init__(self, estimator, probability_calibrator):
+            self.estimator = estimator
+            self.probability_calibrator = probability_calibrator
+
+        def predict_proba(self, X):
+            raw = np.clip(self.estimator.predict_proba(X)[:, 1], 1e-6, 1 - 1e-6)
+            logits = np.log(raw / (1 - raw)).reshape(-1, 1)
+            calibrated = self.probability_calibrator.predict_proba(logits)[:, 1]
+            return np.column_stack([1 - calibrated, calibrated])
+
+    model = CalibratedProbabilityModel(base_model, calibrator)
+    raw_probabilities = base_model.predict_proba(test[FEATURES])[:, 1]
     probabilities = model.predict_proba(test[FEATURES])[:, 1]
     predictions = (probabilities >= 0.5).astype(int)
     baseline = DummyClassifier(strategy="prior").fit(train[FEATURES], train["target"])
     base_probs = baseline.predict_proba(test[FEATURES])[:, 1]
     metrics = {
-        "train_fights": int(len(train)), "test_fights": int(len(test)),
+        "train_fights": int(len(train)), "calibration_fights": int(len(calibration)),
+        "test_fights": int(len(test)),
+        "calibration_start": str(calibration["date"].min().date()),
+        "calibration_end": str(calibration["date"].max().date()),
         "test_start": str(test["date"].min().date()), "test_end": str(test["date"].max().date()),
         "accuracy": float(accuracy_score(test["target"], predictions)),
+        "raw_accuracy": float(accuracy_score(test["target"], (raw_probabilities >= 0.5).astype(int))),
         "baseline_accuracy": float(accuracy_score(test["target"], (base_probs >= 0.5).astype(int))),
         "log_loss": float(log_loss(test["target"], probabilities, labels=[0, 1])),
+        "raw_log_loss": float(log_loss(test["target"], raw_probabilities, labels=[0, 1])),
         "brier": float(brier_score_loss(test["target"], probabilities)),
+        "raw_brier": float(brier_score_loss(test["target"], raw_probabilities)),
         "baseline_brier": float(brier_score_loss(test["target"], base_probs)),
     }
+
+    # Threshold audit: accuracy and coverage on the untouched test period.
+    threshold_results = []
+    confidence = np.maximum(probabilities, 1 - probabilities)
+    correct = ((probabilities >= 0.5).astype(int) == test["target"].to_numpy())
+    for threshold in (0.55, 0.60, 0.65, 0.70):
+        mask = confidence >= threshold
+        if mask.any():
+            threshold_results.append({
+                "threshold": threshold, "fights": int(mask.sum()),
+                "coverage": float(mask.mean()),
+                "accuracy": float(correct[mask].mean()),
+            })
+    metrics["thresholds"] = threshold_results
 
     # Reliability table: compare mean predicted probability with observed win rate.
     calibration = []
@@ -197,7 +243,8 @@ def train_and_evaluate(results):
     metrics["division"] = division
     metrics["division_available"] = bool(division)
     metrics["method"] = method_metrics
-    model.fit(frame[FEATURES], frame["target"])
+    # Keep the calibrated estimator trained on the pre-test era; do not refit it
+    # on test outcomes, which would invalidate the reported validation.
     today = pd.Timestamp.utcnow().tz_localize(None).normalize()
     snapshot = {name: _state_features(state, today) for name, state in states.items()}
     return model, metrics, snapshot, frame
