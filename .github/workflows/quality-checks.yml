@@ -42,25 +42,39 @@ jobs:
               importlib.import_module(name)
               print("Import OK:", name)
 
-          from prop_lines import discover_players, extract_rows
+          from prop_lines import discover_players, extract_rows, parse_slate
           payload = {
               "games": [{
-                  "players": [{
-                      "playerName": "Test Player",
-                      "playerSlug": "test-player",
-                      "headlineMarket": {"statSlug": "points", "line": 21.5},
-                  }]
+                  "homeTeam": {"name": "Fixture Team", "slugName": "fixture-team"},
+                  "players": [
+                      {
+                          "playerName": "Player One",
+                          "playerSlug": "player-one",
+                          "teamAbbr": "AAA",
+                          "headline": {"displayName": "Points", "statSlug": "points", "line": 21.5, "overOdds": 1.9, "underOdds": 1.9},
+                      },
+                      {
+                          "playerName": "Player Two",
+                          "playerSlug": "player-two",
+                          "teamAbbr": "BBB",
+                          "headline": {"displayName": "Rebounds", "statSlug": "rebounds", "line": 8.5, "overOdds": 1.9, "underOdds": 1.9},
+                      },
+                  ],
               }]
           }
           candidates = discover_players(payload)
-          assert candidates, "Player discovery fixture failed"
-          rows = extract_rows(payload, "Test Player", "", "test-player")
-          assert rows and rows[0]["market"] == "points" and rows[0]["line"] == 21.5, rows
-          price_only = {
-              "headlineMarket": {"marketName": "points", "value": 1.91}
+          assert len(candidates) == 2, f"Expected two player records, got {candidates}"
+          frame = parse_slate(payload)
+          assigned = {(row.player, row.market, row.line) for row in frame.itertuples()}
+          expected = {
+              ("Player One", "points", 21.5),
+              ("Player Two", "rebounds", 8.5),
           }
+          assert assigned == expected, f"Player prop lines were misassigned: {assigned}"
+          assert set(frame.columns).isdisjoint({"overOdds", "underOdds", "odds", "price", "bookmaker"}), "Odds/prices leaked into parsed output"
+          price_only = {"headline": {"displayName": "Points", "statSlug": "points", "value": 1.91}}
           assert not extract_rows(price_only, "Test Player", "", "test-player"), "Generic price-like values must not be treated as prop lines"
-          print("Prop parser fixture OK; generic value fields are ignored.")
+          print("Prop parser attribution fixture OK; odds/prices are excluded.")
           PY
 
       - name: Validate trained model bundle
