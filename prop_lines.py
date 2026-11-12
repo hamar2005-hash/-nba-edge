@@ -64,9 +64,13 @@ def walk(value, parent_key=""):
         for child in value:
             yield from walk(child, parent_key)
 
-def discover_players(slate, wanted_keys=None):
-    found = {}
-    name_fields = ("playerName", "fullName", "displayName", "player_name", "name")
+def iter_player_records(slate):
+    """Yield each actual slate player record exactly once.
+
+    Team objects also have names/slugs, so require player-specific fields to
+    avoid accidentally treating team metadata as player records.
+    """
+    name_fields = ("playerName", "fullName", "displayName", "player_name")
     slug_fields = ("playerSlug", "player_slug", "slug", "playerId", "player_id")
     for item, _ in walk(slate):
         player_obj = item.get("player") if isinstance(item.get("player"), dict) else {}
@@ -76,16 +80,35 @@ def discover_players(slate, wanted_keys=None):
             name = item.get("player")
         if not name:
             continue
-        name = str(name).strip()
-        key = norm(name)
-        if wanted_keys and key not in wanted_keys:
+        # Stat Pick's slate exposes playerSlug and headline/statCount; this
+        # guard excludes nested team objects and arbitrary named metadata.
+        if not any(key in item for key in (*slug_fields, "headline", "statCount")):
             continue
+        name = str(name).strip()
         slug = next((item.get(k) for k in slug_fields if item.get(k) not in (None, "")), None)
         slug = slug or next((player_obj.get(k) for k in slug_fields if player_obj.get(k) not in (None, "")), None)
         slug = str(slug or slugify(name))
-        team = item.get("teamAbbreviation") or item.get("team_abbreviation") or item.get("teamAbbr") or item.get("team") or player_obj.get("teamAbbreviation") or player_obj.get("teamAbbr") or player_obj.get("team") or ""
-        found[(key, slug)] = (name, slug, str(team))
-    return list(found.values())
+        team = (
+            item.get("teamAbbreviation") or item.get("team_abbreviation")
+            or item.get("teamAbbr") or item.get("team")
+            or player_obj.get("teamAbbreviation") or player_obj.get("teamAbbr")
+            or player_obj.get("team") or ""
+        )
+        yield name, slug, str(team), item
+
+
+def discover_players(slate, wanted_keys=None):
+    players = []
+    seen = set()
+    for name, slug, team, _record in iter_player_records(slate):
+        key = norm(name)
+        if wanted_keys and key not in wanted_keys:
+            continue
+        identity = (key, slug)
+        if identity not in seen:
+            seen.add(identity)
+            players.append((name, slug, team))
+    return players
 
 def extract_rows(payload, player, team, slug):
     rows, seen = [], set()
@@ -138,39 +161,30 @@ def fetch_one(candidate):
     name, slug, team = candidate
     return extract_rows(get_json(f"/api/nba/prop-pages/player/{slug}"), name, team, slug)
 
-def fetch_current_lines(player_names=None):
-    """Fetch the slate once and extract its posted headline lines.
-
-    Deliberately do not fan out to one player endpoint per candidate: a full
-    NBA slate can otherwise keep the Streamlit page in a running state for
-    a long time. The public slate endpoint already includes each player's
-    headline market and current line.
-    """
-    slate = get_json("/api/nba/prop-pages/slate")
+def parse_slate(slate, player_names=None):
+    """Parse player lines from each player's own record, never the whole slate."""
     wanted = {norm(name) for name in player_names} if player_names else None
-
-    # Discover without filtering first. Stat Pick may include the player name
-    # in a nested player object, and this lets us compare after parsing.
-    candidates = discover_players(slate)
     rows = []
-    for name, slug, team in candidates:
-        rows.extend(extract_rows(slate, name, team, slug))
-
-    # If the slate shape is unusual, still try parsing the full document once
-    # under a neutral label; this captures payloads with flat market records.
+    for name, slug, team, player_record in iter_player_records(slate):
+        if wanted and norm(name) not in wanted:
+            continue
+        rows.extend(extract_rows(player_record, name, team, slug))
     if not rows:
-        rows = extract_rows(slate, "", "", "")
+        return pd.DataFrame(columns=[
+            "player", "player_key", "player_slug", "team", "opponent",
+            "market", "line", "line_source", "line_updated_at",
+        ])
+    return pd.DataFrame(rows).drop_duplicates(["player_key", "market", "line"])
 
-    if wanted:
-        rows = [row for row in rows if row.get("player_key") in wanted]
 
-    if not rows:
+def fetch_current_lines(player_names=None):
+    """Fetch the current slate once and parse each player's headline market."""
+    slate = get_json("/api/nba/prop-pages/slate")
+    result = parse_slate(slate, player_names)
+    if result.empty:
         top_keys = ", ".join(sorted(slate.keys())[:30]) if isinstance(slate, dict) else type(slate).__name__
         raise RuntimeError(
-            "Stat Pick responded, but NBA Edge could not identify any matching PTS/REB/AST prop lines "
-            f"from the slate response. Top-level response keys: {top_keys}. "
-            "No player-detail requests were made, so this check should finish quickly."
+            "Stat Pick responded, but no PTS/REB/AST lines matched the requested players. "
+            f"Top-level response keys: {top_keys}. Check today's slate and player-name matching."
         )
-
-    result = pd.DataFrame(rows)
-    return result.drop_duplicates(["player_key", "market", "line"])
+    return result
