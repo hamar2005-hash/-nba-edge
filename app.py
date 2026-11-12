@@ -252,12 +252,10 @@ else:
             load_prop_lines.clear()
 
         try:
-            if refresh_props or "nba_edge_prop_lines" not in st.session_state:
-                with st.spinner("Fetching today's posted prop lines…"):
-                    st.session_state["nba_edge_prop_lines"] = load_prop_lines(
-                        tuple(predictions["player"].dropna().astype(str).unique())
-                    )
-            prop_lines = st.session_state["nba_edge_prop_lines"]
+            with st.spinner("Fetching today's posted prop lines…"):
+                prop_lines = load_prop_lines(
+                    tuple(predictions["player"].dropna().astype(str).unique())
+                )
             prediction_rows = predictions[["player", "team", "opponent", "minutes_baseline",
                                                "points_projection", "rebounds_projection", "assists_projection"]].copy()
             prediction_rows["player_key"] = prediction_rows["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
