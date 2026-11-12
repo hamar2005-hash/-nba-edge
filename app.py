@@ -1,5 +1,6 @@
 from pathlib import Path
-import subprocess, sys, zipfile
+import math, subprocess, sys, zipfile
+import joblib
 import pandas as pd
 import streamlit as st
 
@@ -124,6 +125,83 @@ else:
         st.dataframe(display[[c for c in cols if c in display]], use_container_width=True, hide_index=True)
         st.download_button("Download today's projections", predictions.to_csv(index=False), "nba_edge_daily_projections.csv", "text/csv")
         st.caption("Projections use the saved historical player feature snapshot. Minutes are a recent historical average, not a confirmed playing-time forecast. ESPN roster availability can be incomplete or delayed.")
+
+        st.divider()
+        st.subheader("Player prop line comparison")
+        st.caption("Current lines are fetched from Stat Pick. Bookmaker names, odds and prices are not shown or stored.")
+        if st.button("Refresh prop lines", key="refresh_prop_lines"):
+            st.cache_data.clear()
+            st.rerun()
+
+        @st.cache_data(ttl=900, show_spinner=False)
+        def load_prop_lines():
+            from prop_lines import fetch_current_lines
+            return fetch_current_lines()
+
+        try:
+            with st.spinner("Fetching current NBA player prop lines…"):
+                prop_lines = load_prop_lines()
+            compare = prop_lines.merge(
+                predictions[["player", "team", "opponent", "minutes_baseline",
+                             "points_projection", "rebounds_projection", "assists_projection"]],
+                left_on="player_key",
+                right_on=predictions["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True),
+                how="inner",
+                suffixes=("_line", "_projection"),
+            )
+            # Use the model's residual spread to estimate over/under probabilities.
+            market_to_col = {
+                "points": "points_projection",
+                "rebounds": "rebounds_projection",
+                "assists": "assists_projection",
+            }
+            compare_rows = []
+            for _, row in compare.iterrows():
+                market = row["market"]
+                projection_col = market_to_col.get(market)
+                if not projection_col:
+                    continue
+                projection = pd.to_numeric(row.get(projection_col), errors="coerce")
+                line = pd.to_numeric(row.get("line"), errors="coerce")
+                if pd.isna(projection) or pd.isna(line):
+                    continue
+                pack = joblib.load(MODELS / f"{market}_model.joblib")
+                sd = max(float(pack.get("residual_std", 1.0)), 0.5)
+                z = (float(line) + 0.5 - float(projection)) / sd
+                p_over = 1 - (0.5 * (1 + math.erf(z / math.sqrt(2))))
+                p_over = min(max(p_over, 0.0001), 0.9999)
+                compare_rows.append({
+                    "Player": row.get("player_line", row.get("player")),
+                    "Team": row.get("team_projection", row.get("team")),
+                    "Opponent": row.get("opponent_projection", row.get("opponent")),
+                    "Market": market.title(),
+                    "Projection": round(float(projection), 1),
+                    "Prop line": float(line),
+                    "Projection gap": round(float(projection) - float(line), 1),
+                    "Over probability": f"{p_over * 100:.1f}%",
+                    "Under probability": f"{(1-p_over) * 100:.1f}%",
+                    "Recent avg minutes": row.get("minutes_baseline"),
+                    "Source": "Stat Pick",
+                })
+            if compare_rows:
+                comparisons = pd.DataFrame(compare_rows)
+                sort_choice = st.selectbox("Rank lines by", ["Largest projection gap", "Highest over probability", "Highest under probability"], key="line_rank")
+                if sort_choice == "Largest projection gap":
+                    comparisons["_sort"] = pd.to_numeric(comparisons["Projection gap"])
+                elif sort_choice == "Highest over probability":
+                    comparisons["_sort"] = comparisons["Over probability"].str.rstrip("%").astype(float)
+                else:
+                    comparisons["_sort"] = comparisons["Under probability"].str.rstrip("%").astype(float)
+                comparisons = comparisons.sort_values("_sort", ascending=False).drop(columns="_sort")
+                market_filter = st.multiselect("Markets", ["Points", "Rebounds", "Assists"], default=["Points", "Rebounds", "Assists"], key="line_markets")
+                comparisons = comparisons[comparisons["Market"].isin(market_filter)]
+                st.dataframe(comparisons, use_container_width=True, hide_index=True)
+                st.download_button("Download prop line comparisons", comparisons.to_csv(index=False), "nba_edge_prop_line_comparisons.csv", "text/csv")
+            else:
+                st.info("No current points, rebounds or assists lines matched players in today's model projections.")
+        except Exception as exc:
+            st.warning("Current prop lines could not be loaded or matched. The projection dashboard is still available.")
+            st.caption(str(exc))
 
         st.divider()
         st.subheader("Top 10 projected performances")
