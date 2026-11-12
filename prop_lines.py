@@ -26,7 +26,7 @@ def slugify(value):
     return re.sub(r"[^a-z0-9]+", "-", str(value or "").lower()).strip("-")
 
 def get_json(path):
-    response = requests.get(BASE + path, headers=HEADERS, timeout=(3, 6))
+    response = requests.get(BASE + path, headers=HEADERS, timeout=(2, 4))
     response.raise_for_status()
     payload = response.json()
     if isinstance(payload, dict) and payload.get("success") is False:
@@ -139,33 +139,38 @@ def fetch_one(candidate):
     return extract_rows(get_json(f"/api/nba/prop-pages/player/{slug}"), name, team, slug)
 
 def fetch_current_lines(player_names=None):
+    """Fetch the slate once and extract its posted headline lines.
+
+    Deliberately do not fan out to one player endpoint per candidate: a full
+    NBA slate can otherwise keep the Streamlit page in a running state for
+    a long time. The public slate endpoint already includes each player's
+    headline market and current line.
+    """
     slate = get_json("/api/nba/prop-pages/slate")
     wanted = {norm(name) for name in player_names} if player_names else None
-    candidates = discover_players(slate, wanted)
-    if not candidates:
-        raise RuntimeError("Stat Pick's slate contained no players matching today's NBA Edge projections.")
-    slate_rows = []
+
+    # Discover without filtering first. Stat Pick may include the player name
+    # in a nested player object, and this lets us compare after parsing.
+    candidates = discover_players(slate)
+    rows = []
     for name, slug, team in candidates:
-        slate_rows.extend(extract_rows(slate, name, team, slug))
-    # Return the slate's headline lines immediately when available. Fetch only a
-    # small batch of player indexes for additional markets so a large slate cannot
-    # leave Streamlit spinning while hundreds of requests complete.
-    detail_rows, errors = [], []
-    detail_candidates = candidates[:16]
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {pool.submit(fetch_one, candidate): candidate[0] for candidate in detail_candidates}
-        for future in as_completed(futures):
-            try:
-                detail_rows.extend(future.result())
-            except Exception as exc:
-                errors.append(f"{futures[future]}: {exc}")
-    all_rows = slate_rows + detail_rows
-    if not all_rows:
-        detail = "; ".join(errors[:3])
+        rows.extend(extract_rows(slate, name, team, slug))
+
+    # If the slate shape is unusual, still try parsing the full document once
+    # under a neutral label; this captures payloads with flat market records.
+    if not rows:
+        rows = extract_rows(slate, "", "", "")
+
+    if wanted:
+        rows = [row for row in rows if row.get("player_key") in wanted]
+
+    if not rows:
+        top_keys = ", ".join(sorted(slate.keys())[:30]) if isinstance(slate, dict) else type(slate).__name__
         raise RuntimeError(
-            "Stat Pick's slate was reachable, but no PTS/REB/AST line fields could be read. "
-            "The API may have changed its response format or today's lines may not be posted. "
-            + detail
+            "Stat Pick responded, but NBA Edge could not identify any matching PTS/REB/AST prop lines "
+            f"from the slate response. Top-level response keys: {top_keys}. "
+            "No player-detail requests were made, so this check should finish quickly."
         )
-    result = pd.DataFrame(all_rows).drop_duplicates(["player_key", "market", "line"])
-    return result
+
+    result = pd.DataFrame(rows)
+    return result.drop_duplicates(["player_key", "market", "line"])
