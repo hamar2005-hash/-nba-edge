@@ -215,45 +215,13 @@ def train_and_evaluate(results):
                 division.append({"division": str(name), "fights": int(len(group)),
                                  "accuracy": float(accuracy_score(group["target"], group["pred"]))})
 
-    # Method-of-victory classifier, trained only on the training-era bouts.
-    method_metrics = {"available": False, "reason": "The source has no usable method labels."}
-    method_train = train[train["method_group"].notna()]
-    method_test = test[test["method_group"].notna()]
-    if len(method_train) >= 250 and method_train["method_group"].nunique() >= 2:
-        seen = set(method_train["method_group"].unique())
-        method_test = method_test[method_test["method_group"].isin(seen)]
-        if len(method_test) >= 30:
-            method_model = Pipeline([
-                ("imputer", SimpleImputer(strategy="median")),
-                ("scale", StandardScaler()),
-                ("classifier", LogisticRegression(max_iter=2500, class_weight="balanced")),
-            ])
-            method_model.fit(method_train[FEATURES], method_train["method_group"])
-            mp = method_model.predict(method_test[FEATURES])
-            from sklearn.metrics import balanced_accuracy_score, f1_score, classification_report
-            actual_methods = method_test["method_group"]
-            majority_class = method_train["method_group"].value_counts().idxmax()
-            report = classification_report(
-                actual_methods, mp, labels=sorted(seen), output_dict=True, zero_division=0
-            )
-            method_metrics = {
-                "available": True, "train_fights": int(len(method_train)),
-                "test_fights": int(len(method_test)),
-                "accuracy": float(accuracy_score(actual_methods, mp)),
-                "majority_baseline_accuracy": float((actual_methods == majority_class).mean()),
-                "majority_class": str(majority_class),
-                "balanced_accuracy": float(balanced_accuracy_score(actual_methods, mp)),
-                "macro_f1": float(f1_score(actual_methods, mp, labels=sorted(seen), average="macro", zero_division=0)),
-                "classes": sorted(seen),
-                "class_counts": actual_methods.value_counts().to_dict(),
-                "per_class": {
-                    name: {"precision": float(report[name]["precision"]),
-                           "recall": float(report[name]["recall"]),
-                           "f1": float(report[name]["f1-score"]),
-                           "support": int(report[name]["support"])}
-                    for name in sorted(seen)
-                },
-            }
+    # Method labels are retained for future research, but the current
+    # classifier is deliberately disabled: prior validation was materially
+    # worse than a majority-class baseline.
+    method_metrics = {
+        "available": False,
+        "reason": "Disabled after failing majority-baseline and balanced-accuracy checks. Rebuild only after adding verified pre-fight attributes and a new chronological validation.",
+    }
 
     metrics["calibration"] = calibration
     metrics["temporal"] = temporal
