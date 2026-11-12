@@ -405,23 +405,31 @@ else:
                         "Best side": "Pick",
                         "Estimated confidence": "Model confidence (%)",
                     })
-                    st.dataframe(confidence_view, use_container_width=True, hide_index=True)
+                    # Mobile-friendly pick cards keep the full market name visible
+                    # instead of hiding it in a horizontally clipped dataframe.
                     for _, pick in confidence_pool.iterrows():
                         market_key = str(pick["Market"]).lower()
-                        stat_name = {"points": "points", "rebounds": "rebounds", "assists": "assists"}.get(market_key, "stat")
+                        stat_name = pick["Market"].lower()
                         projection_gap = abs(float(pick["Projection gap"]))
                         direction = "above" if pick["Best side"] == "Over" else "below"
-                        reasons = [
-                            f"The model projects **{pick['Projection']:.1f} {stat_name}**, which is **{projection_gap:.1f} {stat_name} {direction}** the listed line of {pick['Prop line']:.1f}.",
-                        ]
-                        l5, l10 = pick.get("Recent L5"), pick.get("Recent L10")
-                        if pd.notna(l5) and pd.notna(l10):
-                            form_word = "up" if float(l5) > float(l10) else "down" if float(l5) < float(l10) else "level"
-                            reasons.append(f"Recent form: **{float(l5):.1f} over the last 5 games** versus **{float(l10):.1f} over the last 10** — the short-term average is {form_word}.")
-                        minutes = pd.to_numeric(pd.Series([pick.get("Recent avg minutes")]), errors="coerce").iloc[0]
-                        if pd.notna(minutes):
-                            reasons.append(f"Recent playing-time baseline: **{float(minutes):.1f} minutes per game**. This is historical context, not a confirmed minutes forecast.")
-                        with st.expander(f"{pick['Player']} · {pick['Market']} {pick['Best side']} {pick['Prop line']:.1f} — why?"):
+                        title = (f"{pick['Player']} · {pick['Market']} · "
+                                 f"{pick['Best side']} {pick['Prop line']:.1f}")
+                        with st.expander(title):
+                            st.markdown(f"**Market:** {pick['Market']}")
+                            st.markdown(f"**Pick:** {pick['Best side']} {pick['Prop line']:.1f}")
+                            st.markdown(f"**Projection:** {pick['Projection']:.1f} {stat_name}")
+                            st.markdown(f"**Model confidence:** {pick['Estimated confidence']:.1f}%")
+                            st.markdown(f"**Team / opponent:** {pick['Team']} vs {pick['Opponent']}")
+                            reasons = [
+                                f"The model projects **{pick['Projection']:.1f} {stat_name}**, which is **{projection_gap:.1f} {stat_name} {direction}** the listed line of {pick['Prop line']:.1f}.",
+                            ]
+                            l5, l10 = pick.get("Recent L5"), pick.get("Recent L10")
+                            if pd.notna(l5) and pd.notna(l10):
+                                form_word = "up" if float(l5) > float(l10) else "down" if float(l5) < float(l10) else "level"
+                                reasons.append(f"Recent form: **{float(l5):.1f} over the last 5 games** versus **{float(l10):.1f} over the last 10** — the short-term average is {form_word}.")
+                            minutes = pd.to_numeric(pd.Series([pick.get("Recent avg minutes")]), errors="coerce").iloc[0]
+                            if pd.notna(minutes):
+                                reasons.append(f"Recent playing-time baseline: **{float(minutes):.1f} minutes per game**. This is historical context, not a confirmed minutes forecast.")
                             for reason in reasons:
                                 st.markdown(f"- {reason}")
                             st.caption("The probability is derived from the model projection and historical residual spread. It is an estimate, not a calibrated guarantee. No bookmaker odds are used or displayed.")
