@@ -61,6 +61,7 @@ jobs:
           required = sorted(str(p) for p in Path("models").glob("*_model.joblib")) + [
               "models/latest_player_features.csv",
               "models/weekly_retrain_report.json",
+              "models/latest_team_defense.csv",
           ]
           missing = [p for p in required if not Path(p).exists()]
           if missing:
