@@ -152,11 +152,27 @@ else:
             "points_projection": "Projected points",
             "rebounds_projection": "Projected rebounds",
             "assists_projection": "Projected assists",
+            "threes_projection": "Projected threes",
+            "steals_projection": "Projected steals",
+            "blocks_projection": "Projected blocks",
+            "turnovers_projection": "Projected turnovers",
+            "player_status": "Availability",
         })
-        cols = ["Matchup", "Player", "Team", "Opponent", "Recent avg minutes", "Projected points", "Projected rebounds", "Projected assists"]
+        cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
         st.dataframe(display[[c for c in cols if c in display]], use_container_width=True, hide_index=True)
         st.download_button("Download today's projections", predictions.to_csv(index=False), "nba_edge_daily_projections.csv", "text/csv")
-        st.caption("Projections use the saved historical player feature snapshot. Minutes are a recent historical average, not a confirmed playing-time forecast. ESPN roster availability can be incomplete or delayed.")
+        trend_cols = [c for c in ["pts_last5", "pts_last10", "pts_trend", "reb_last5", "reb_last10", "reb_trend", "ast_last5", "ast_last10", "ast_trend"] if c in predictions.columns]
+        if trend_cols:
+            with st.expander("📈 Recent player form (last 5 vs last 10 games)"):
+                trend_view = predictions[["player", "team", "game"] + trend_cols].copy()
+                trend_view = trend_view.rename(columns={
+                    "player": "Player", "team": "Team", "game": "Matchup",
+                    "pts_last5": "PTS L5", "pts_last10": "PTS L10", "pts_trend": "PTS trend",
+                    "reb_last5": "REB L5", "reb_last10": "REB L10", "reb_trend": "REB trend",
+                    "ast_last5": "AST L5", "ast_last10": "AST L10", "ast_trend": "AST trend",
+                })
+                st.dataframe(trend_view, use_container_width=True, hide_index=True)
+        st.caption("Minutes are recent historical averages, not confirmed playing-time forecasts. Availability is based on the roster feed and may not reflect late injury news.")
 
         st.divider()
         st.subheader("🏀 First basket scorer")
