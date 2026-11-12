@@ -51,15 +51,6 @@ jobs:
           PY
       - name: Collect latest historical player game logs
         run: python collect_nba_data.py --start-season 2021-22 --end-season 2026-27 --out data/player_game_logs.csv --sleep 1.5 --retries 2
-      - name: Update first-basket play-by-play history
-        continue-on-error: true
-        run: |
-          python first_basket.py --mode collect --start 2024-10-22 --end "$(date -u +%F)"
-          if [ -f data/first_basket_games.csv ]; then
-            python first_basket.py --mode history
-          else
-            echo "No first-basket starter records collected; skipping this optional model."
-          fi
       - name: Train and validate weekly candidates
         run: python weekly_retrain.py
       - name: Package current accepted models
