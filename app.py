@@ -215,6 +215,9 @@ else:
                 z = (float(line) + 0.5 - float(projection)) / sd
                 p_over = 1 - (0.5 * (1 + math.erf(z / math.sqrt(2))))
                 p_over = min(max(p_over, 0.0001), 0.9999)
+                p_under = 1 - p_over
+                best_side = "Over" if p_over >= p_under else "Under"
+                best_probability = max(p_over, p_under)
                 compare_rows.append({
                     "Player": row.get("player_line", row.get("player")),
                     "Team": row.get("team_projection", row.get("team")),
@@ -224,7 +227,9 @@ else:
                     "Prop line": float(line),
                     "Projection gap": round(float(projection) - float(line), 1),
                     "Over probability": f"{p_over * 100:.1f}%",
-                    "Under probability": f"{(1-p_over) * 100:.1f}%",
+                    "Under probability": f"{p_under * 100:.1f}%",
+                    "Best side": best_side,
+                    "Estimated confidence": round(best_probability * 100, 1),
                     "Recent avg minutes": row.get("minutes_baseline"),
                     "Source": "Stat Pick",
                 })
@@ -242,6 +247,32 @@ else:
                 comparisons = comparisons[comparisons["Market"].isin(market_filter)]
                 st.dataframe(comparisons, use_container_width=True, hide_index=True)
                 st.download_button("Download prop line comparisons", comparisons.to_csv(index=False), "nba_edge_prop_line_comparisons.csv", "text/csv")
+
+                st.divider()
+                st.subheader("🔥 Most confident picks")
+                st.caption("Ranked by the model's estimated chance of the recommended side. These are model estimates, not calibrated guarantees.")
+                confidence_pool = pd.DataFrame(compare_rows)
+                confidence_pool = confidence_pool[confidence_pool["Estimated confidence"] >= 55].copy()
+                confidence_pool = confidence_pool.sort_values("Estimated confidence", ascending=False).head(10)
+                if confidence_pool.empty:
+                    st.info("No matched prop currently reaches the 55% confidence threshold. No picks are being promoted.")
+                else:
+                    confidence_view = confidence_pool[[
+                        "Player", "Team", "Opponent", "Market", "Best side",
+                        "Prop line", "Projection", "Projection gap",
+                        "Estimated confidence", "Recent avg minutes"
+                    ]].copy()
+                    confidence_view = confidence_view.rename(columns={
+                        "Best side": "Pick",
+                        "Estimated confidence": "Model confidence (%)",
+                    })
+                    st.dataframe(confidence_view, use_container_width=True, hide_index=True)
+                    st.download_button(
+                        "Download most confident picks",
+                        confidence_view.to_csv(index=False),
+                        "nba_edge_most_confident_picks.csv",
+                        "text/csv",
+                    )
             else:
                 st.info("No current points, rebounds or assists lines matched players in today's model projections.")
         except Exception as exc:
