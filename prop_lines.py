@@ -26,7 +26,7 @@ def slugify(value):
     return re.sub(r"[^a-z0-9]+", "-", str(value or "").lower()).strip("-")
 
 def get_json(path):
-    response = requests.get(BASE + path, headers=HEADERS, timeout=(2, 4))
+    response = requests.get(BASE + path, headers=HEADERS, timeout=(2, 3))
     response.raise_for_status()
     payload = response.json()
     if isinstance(payload, dict) and payload.get("success") is False:
@@ -178,54 +178,48 @@ def parse_slate(slate, player_names=None):
 
 
 def fetch_current_lines(player_names=None):
-    """Fetch current lines for today's projected players, with safe fallbacks.
+    """Fetch headline lines and enrich them with each projected player's markets.
 
-    The slate endpoint only supplies a headline market per player. The player
-    detail endpoint supplies all supported markets. Keep the number of calls
-    bounded and parallel, and retain headline lines for any failed detail call.
+    The slate request is made once. Player-detail requests are bounded and
+    concurrent; failures fall back to headline lines rather than blocking the
+    whole comparison.
     """
     slate = get_json("/api/nba/prop-pages/slate")
     wanted = {norm(name) for name in player_names} if player_names else None
-    candidates = discover_players(slate, wanted)
-    if not candidates:
-        raise RuntimeError("No Stat Pick slate players matched today's NBA Edge projections.")
 
-    headline = parse_slate(slate, player_names)
-    detailed_rows = []
-    failed = []
-    # The current Stat Pick slate is small; cap requests so a large projection
-    # file cannot create a request storm or hold Streamlit indefinitely.
-    candidates = candidates[:60]
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        futures = {pool.submit(fetch_one, candidate): candidate[0] for candidate in candidates}
-        for future in as_completed(futures):
-            try:
-                detailed_rows.extend(future.result())
-            except Exception as exc:
-                failed.append((futures[future], str(exc)[:160]))
+    candidates = []
+    seen = set()
+    for name, slug, team, _record in iter_player_records(slate):
+        if wanted and norm(name) not in wanted:
+            continue
+        identity = (norm(name), slug)
+        if identity not in seen:
+            seen.add(identity)
+            candidates.append((name, slug, team))
 
-    if detailed_rows:
-        details = pd.DataFrame(detailed_rows)
-        details = details.drop_duplicates(["player_key", "market", "line"])
-        # Use all-market detail results for players where endpoint succeeded;
-        # retain the slate headline only for candidates with detail failures.
-        successful = set(details["player_key"].dropna().astype(str))
-        if not headline.empty and failed:
-            failed_keys = {norm(name) for name, _ in failed}
-            fallback = headline[headline["player_key"].isin(failed_keys)]
-            result = pd.concat([details, fallback], ignore_index=True)
-        else:
-            result = details
-    else:
-        result = headline
+    # Always keep headline lines as a fast fallback.
+    fallback = parse_slate(slate, player_names)
+    detail_rows, errors = [], []
+    if candidates:
+        with ThreadPoolExecutor(max_workers=min(12, len(candidates))) as pool:
+            futures = {pool.submit(fetch_one, candidate): candidate[0] for candidate in candidates}
+            for future in as_completed(futures):
+                try:
+                    detail_rows.extend(future.result())
+                except Exception as exc:
+                    errors.append(f"{futures[future]}: {type(exc).__name__}")
 
-    if result.empty:
-        summary = "; ".join(f"{name}: {error}" for name, error in failed[:3])
+    rows = detail_rows + (fallback.to_dict("records") if not fallback.empty else [])
+    if not rows:
+        top_keys = ", ".join(sorted(slate.keys())[:30]) if isinstance(slate, dict) else type(slate).__name__
+        detail = "; ".join(errors[:4])
         raise RuntimeError(
-            "Stat Pick responded but no current PTS/REB/AST lines could be extracted. "
-            + summary
+            "Stat Pick responded, but no PTS/REB/AST line fields could be read. "
+            f"Top-level response keys: {top_keys}. {detail}"
         )
-    result = result.drop_duplicates(["player_key", "market", "line"])
-    result.attrs["detail_players_loaded"] = int(result["player_key"].nunique())
-    result.attrs["detail_failures"] = len(failed)
-    return result
+
+    result = pd.DataFrame(rows)
+    result["player_key"] = result["player_key"].fillna(
+        result["player"].map(norm)
+    )
+    return result.drop_duplicates(["player_key", "market", "line"])
