@@ -159,6 +159,56 @@ else:
         st.caption("Projections use the saved historical player feature snapshot. Minutes are a recent historical average, not a confirmed playing-time forecast. ESPN roster availability can be incomplete or delayed.")
 
         st.divider()
+        st.subheader("🏀 First basket scorer")
+        st.caption("Ranks likely first made field-goal scorers using historical starter and opening-basket data. Percentages are model estimates, not bookmaker odds or calibrated guarantees.")
+        FIRST_BASKET = DATA / "first_basket_predictions.csv"
+        FIRST_BASKET_HISTORY = DATA / "first_basket_player_history.csv"
+        if FIRST_BASKET_HISTORY.exists():
+            try:
+                run_fb = subprocess.run(
+                    [sys.executable, str(ROOT / "first_basket.py"), "--mode", "predict",
+                     "--predictions", str(PREDICTIONS), "--history", str(FIRST_BASKET_HISTORY),
+                     "--out", str(FIRST_BASKET)],
+                    cwd=ROOT, capture_output=True, text=True, timeout=120
+                )
+                if run_fb.returncode != 0:
+                    st.info("First-basket rankings are not ready yet: " + (run_fb.stderr or run_fb.stdout)[-800:])
+            except Exception as exc:
+                st.info(f"First-basket ranking could not be refreshed: {exc}")
+        if FIRST_BASKET.exists():
+            try:
+                first_basket = pd.read_csv(FIRST_BASKET)
+                if not first_basket.empty:
+                    fb_view = first_basket.copy()
+                    if selected_game != "All games":
+                        fb_view = fb_view[fb_view["game"] == selected_game]
+                    fb_view = fb_view.rename(columns={
+                        "game": "Matchup", "player": "Player", "team": "Team",
+                        "opponent": "Opponent", "rank": "Rank",
+                        "estimated_chance_pct": "Estimated chance (%)",
+                        "first_baskets": "Career sample first baskets",
+                        "starts": "Historical starts in sample",
+                    })
+                    st.dataframe(
+                        fb_view[["Matchup", "Rank", "Player", "Team", "Opponent",
+                                 "Estimated chance (%)", "Career sample first baskets",
+                                 "Historical starts in sample"]],
+                        use_container_width=True, hide_index=True
+                    )
+                    st.download_button(
+                        "Download first-basket picks",
+                        fb_view.to_csv(index=False),
+                        "nba_edge_first_basket_picks.csv",
+                        "text/csv",
+                    )
+                else:
+                    st.info("No first-basket candidates have enough historical data yet.")
+            except Exception as exc:
+                st.info(f"First-basket predictions are being prepared: {exc}")
+        else:
+            st.info("First-basket history is being collected. Rankings will appear after the first successful historical-data run.")
+
+        st.divider()
         st.subheader("🎯 Player prop line comparison")
         st.caption("Current lines are fetched from Stat Pick. Bookmaker names, odds and prices are not shown or stored.")
         if st.button("Refresh prop lines", key="refresh_prop_lines"):
