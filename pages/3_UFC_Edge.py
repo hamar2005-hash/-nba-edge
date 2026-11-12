@@ -138,9 +138,20 @@ if st.session_state.get("ufc_trained"):
     st.subheader("Method-of-victory validation")
     method = metrics.get("method", {})
     if method.get("available"):
-        st.metric("Method classification accuracy", str(round(method["accuracy"] * 100, 1)) + "%", str(method["test_fights"]) + " unseen bouts")
-        st.write("Classes:", method["classes"])
+        mc1, mc2, mc3 = st.columns(3)
+        mc1.metric("Method accuracy", f"{method['accuracy']*100:.1f}%",
+                   f"{(method['accuracy']-method['majority_baseline_accuracy'])*100:+.1f} pp vs majority")
+        mc2.metric("Majority baseline", f"{method['majority_baseline_accuracy']*100:.1f}%",
+                   method["majority_class"])
+        mc3.metric("Balanced accuracy", f"{method['balanced_accuracy']*100:.1f}%")
+        st.metric("Macro F1", f"{method['macro_f1']:.3f}")
         st.write("Holdout class counts:", method["class_counts"])
+        per_class = pd.DataFrame(method["per_class"]).T.reset_index(names="Method")
+        for col in ("precision", "recall", "f1"):
+            per_class[col] = (per_class[col] * 100).round(1)
+        st.dataframe(per_class.rename(columns={
+            "precision": "Precision %", "recall": "Recall %", "f1": "F1 %", "support": "Fights"
+        }), use_container_width=True, hide_index=True)
     else:
         st.info(method.get("reason", "Method labels are not sufficient for a fair test."))
 
