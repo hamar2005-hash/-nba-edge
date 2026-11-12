@@ -313,20 +313,29 @@ else:
                 # feed mapping (e.g. 11.5 assists for a 1.3-assist projection)
                 # from being presented as a high-confidence pick.
                 hard_max = {"points": 60.0, "rebounds": 30.0, "assists": 25.0}
+                # Reject lines that are too far from the projection to be
+                # credible same-market comparisons. The previous relative
+                # limits admitted extreme mismatches (e.g. 20.5 REB vs 11.0).
                 max_gap = {
-                    "points": max(18.0, float(projection) * 1.5),
-                    "rebounds": max(8.0, float(projection) * 1.5),
-                    "assists": max(5.0, float(projection) * 1.5),
+                    "points": 10.0,
+                    "rebounds": 4.0,
+                    "assists": 3.5,
                 }
                 if float(line) < 0.5 or float(line) > hard_max[market]:
                     continue
                 if abs(float(line) - float(projection)) > max_gap[market]:
                     continue
 
-                sd = residual_spreads.get(market, 1.0)
+                # Guard against degenerate residual estimates. A tiny or
+                # missing spread must never turn a projection into 99-100%
+                # certainty. These are conservative minimum error scales.
+                minimum_sd = {"points": 5.0, "rebounds": 2.5, "assists": 2.0}
+                sd = max(residual_spreads.get(market, minimum_sd[market]), minimum_sd[market])
                 z = (float(line) + 0.5 - float(projection)) / sd
                 p_over = 1 - (0.5 * (1 + math.erf(z / math.sqrt(2))))
-                p_over = min(max(p_over, 0.0001), 0.9999)
+                # Keep probabilities away from false certainty; this is an
+                # estimate from a simple residual model, not a calibrated market.
+                p_over = min(max(p_over, 0.05), 0.95)
                 p_under = 1 - p_over
                 best_side = "Over" if p_over >= p_under else "Under"
                 best_probability = max(p_over, p_under)
