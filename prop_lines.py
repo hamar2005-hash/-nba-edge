@@ -15,6 +15,10 @@ ALIASES = {
     "points": {"points", "point", "pts", "playerpoints", "pointsprop", "playerpointsprop"},
     "rebounds": {"rebounds", "rebound", "reb", "playerrebounds", "reboundsprop", "playerreboundsprop"},
     "assists": {"assists", "assist", "ast", "playerassists", "assistsprop", "playerassistsprop"},
+    "points + rebounds": {"points+rebounds", "pts+reb", "pr", "pointsrebounds", "playerpointsrebounds"},
+    "points + assists": {"points+assists", "pts+ast", "pa", "pointsassists", "playerpointsassists"},
+    "rebounds + assists": {"rebounds+assists", "reb+ast", "ra", "reboundsassists", "playerreboundsassists"},
+    "points + rebounds + assists": {"points+rebounds+assists", "pts+reb+ast", "pra", "pointsreboundsassists", "playerpointsreboundsassists"},
 }
 MARKET_FIELDS = ("statSlug", "stat_slug", "marketSlug", "market_slug", "marketName", "market_name", "statName", "stat_name", "marketType", "market_type", "statType", "stat_type", "market", "stat", "name", "label", "slug")
 LINE_FIELDS = ("currentLine", "current_line", "propLine", "prop_line", "marketLine", "market_line", "line", "lineValue", "line_value", "displayLine", "display_line", "lineNumber", "line_number")
@@ -53,7 +57,7 @@ def market_name(value):
     """
     raw = norm(value)
     for market, aliases in ALIASES.items():
-        if raw in aliases:
+        if raw in aliases or raw == norm(market):
             return market
     return None
 
