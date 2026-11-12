@@ -45,12 +45,19 @@ jobs:
           PY
       - name: Generate today's projections and archive the previous slate
         run: python auto_daily.py --out data/daily_predictions.csv
+      - name: Generate first-basket scorer rankings
+        run: |
+          if [ -f data/first_basket_player_history.csv ]; then
+            python first_basket.py --mode predict
+          else
+            echo "First-basket history is not ready yet; weekly data collection will build it."
+          fi
       - name: Settle yesterday's completed games
         run: python settle_results.py
       - name: Commit projections and accuracy history
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/daily_predictions.csv data/prediction_history.csv data/settled_results.csv
+          git add data/daily_predictions.csv data/first_basket_predictions.csv data/prediction_history.csv data/settled_results.csv
           git diff --cached --quiet || git commit -m "Update NBA projections and accuracy history"
           git push
