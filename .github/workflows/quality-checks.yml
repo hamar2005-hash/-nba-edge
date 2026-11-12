@@ -140,6 +140,14 @@ jobs:
                           if isinstance(value, (dict, list)):
                               describe_shape(value, f"{path}[{index}]", depth + 1)
               describe_shape(data)
+              from prop_lines import fetch_current_lines
+              try:
+                  frame = fetch_current_lines()
+                  print("NBA Edge parsed prop rows:", len(frame))
+                  print("Parsed markets:", sorted(frame["market"].dropna().unique().tolist()))
+                  print("Unique parsed players:", frame["player_key"].nunique())
+              except Exception as parser_exc:
+                  print("NBA Edge parser result:", type(parser_exc).__name__, str(parser_exc)[:300])
           except Exception as exc:
               print("Stat Pick feed probe failed:", type(exc).__name__, str(exc)[:300])
           PY
