@@ -2,7 +2,7 @@ name: Generate daily NBA Edge projections
 
 on:
   schedule:
-    - cron: "0 16,20,23 * * *"
+    - cron: "0 10,16,20,23 * * *"
   workflow_dispatch:
 
 permissions:
@@ -43,12 +43,14 @@ jobs:
           if missing:
               raise SystemExit("Model bundle is missing: " + ", ".join(missing))
           PY
-      - name: Generate today's projections
+      - name: Generate today's projections and archive the previous slate
         run: python auto_daily.py --out data/daily_predictions.csv
-      - name: Commit projections
+      - name: Settle yesterday's completed games
+        run: python settle_results.py
+      - name: Commit projections and accuracy history
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/daily_predictions.csv
-          git diff --cached --quiet || git commit -m "Update daily NBA projections"
+          git add data/daily_predictions.csv data/prediction_history.csv data/settled_results.csv
+          git diff --cached --quiet || git commit -m "Update NBA projections and accuracy history"
           git push
