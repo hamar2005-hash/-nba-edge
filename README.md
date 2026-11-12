@@ -43,3 +43,8 @@ python auto_daily.py
 python settle_results.py
 streamlit run app.py
 ```
+
+
+## First basket scorer
+
+NBA Edge includes a separate first made-field-goal scorer ranking. A weekly GitHub Actions job collects ESPN completed-game play-by-play and starting-lineup records, then builds smoothed player/team history. The daily workflow ranks players on the slate using historical starting frequency and first-basket rates. These are experimental model estimates, not calibrated probabilities; the section stays unavailable until the historical sample has been collected successfully. First basket means the first made field goal (2- or 3-point shot), not a free throw.
