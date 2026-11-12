@@ -231,7 +231,7 @@ else:
             st.cache_data.clear()
             st.rerun()
 
-        @st.cache_data(ttl=900, show_spinner=False)
+        @st.cache_data(ttl=300, show_spinner=False)
         def load_prop_lines(player_names):
             # Streamlit may retain an older imported module across a hot reload.
             import importlib
@@ -249,7 +249,7 @@ else:
                 return all_lines[all_lines["_player_match"].isin(wanted)].drop(columns="_player_match")
 
         try:
-            with st.spinner("Fetching current NBA player prop lines…"):
+            with st.spinner("Loading the NBA prop slate and a limited set of player markets…"):
                 prop_lines = load_prop_lines(tuple(predictions["player"].dropna().astype(str).unique()))
             prediction_rows = predictions[["player", "team", "opponent", "minutes_baseline",
                                                "points_projection", "rebounds_projection", "assists_projection"]].copy()
@@ -340,7 +340,7 @@ else:
                         "text/csv",
                     )
             else:
-                st.info("No current points, rebounds or assists lines matched players in today's model projections.")
+                st.info("The prop feed returned data, but none of its player names and markets matched today's projections. Try refreshing the prop lines shortly.")
         except Exception as exc:
             st.warning("Current prop lines could not be loaded or matched. The projection dashboard is still available.")
             st.caption(str(exc))
