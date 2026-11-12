@@ -71,8 +71,6 @@ jobs:
           with zipfile.ZipFile("NBA_Trained_Models.zip", "w", zipfile.ZIP_DEFLATED) as archive:
               for path in required:
                   archive.write(path, path)
-              for market in ("points", "rebounds", "assists"):
-                  archive.write(f"models/{market}_model.joblib", f"models/{market}_model.joblib")
           PY
       - name: Commit updated data, models and report
         run: |
