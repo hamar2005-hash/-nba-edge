@@ -98,6 +98,10 @@ def main():
     latest = df.sort_values('GAME_DATE').groupby('PLAYER_ID', as_index=False).tail(1)
     cols = ['PLAYER_ID','PLAYER_NAME'] + (['TEAM_ABBREVIATION'] if 'TEAM_ABBREVIATION' in latest else []) + ['GAME_DATE'] + features
     latest[cols].to_csv(MODELS / "latest_player_features.csv", index=False)
+    team_defense = df.attrs.get("team_defense")
+    if team_defense is None or team_defense.empty:
+        raise SystemExit("Opponent defensive feature snapshot could not be generated.")
+    team_defense.to_csv(MODELS / "latest_team_defense.csv", index=False)
     report["any_model_updated"] = accepted_any
     (MODELS / "weekly_retrain_report.json").write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))
