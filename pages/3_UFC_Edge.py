@@ -97,6 +97,31 @@ if st.session_state.get("ufc_trained"):
     m3.metric("Brier score", f"{metrics['brier']:.3f}", f"{metrics['brier']-metrics['baseline_brier']:+.3f} vs baseline")
     m4.metric("Test fights", f"{metrics['test_fights']:,}")
     st.caption(f"Training fights: {metrics['train_fights']:,} · Holdout period: {metrics['test_start']} to {metrics['test_end']}. Lower log loss and Brier score are better.")
+    st.subheader("Calibration")
+    st.write("Compare predicted win probabilities with observed holdout outcomes.")
+    if metrics.get("calibration"):
+        cal = pd.DataFrame(metrics["calibration"])
+        st.dataframe(cal, use_container_width=True, hide_index=True)
+
+    st.subheader("Historical holdout simulation")
+    if metrics.get("temporal"):
+        st.dataframe(pd.DataFrame(metrics["temporal"]), use_container_width=True, hide_index=True)
+
+    st.subheader("Performance by weight class")
+    if metrics.get("division_available"):
+        st.dataframe(pd.DataFrame(metrics["division"]), use_container_width=True, hide_index=True)
+    else:
+        st.info("The current results feed does not include weight class. A reliable bout-to-division mapping is needed before calculating division accuracy.")
+
+    st.subheader("Method-of-victory validation")
+    method = metrics.get("method", {})
+    if method.get("available"):
+        st.metric("Method classification accuracy", str(round(method["accuracy"] * 100, 1)) + "%", str(method["test_fights"]) + " unseen bouts")
+        st.write("Classes:", method["classes"])
+        st.write("Holdout class counts:", method["class_counts"])
+    else:
+        st.info(method.get("reason", "Method labels are not sufficient for a fair test."))
+
     st.subheader("Try a matchup")
     names = sorted(st.session_state["ufc_snapshot"].keys())
     f1 = st.selectbox("Fighter 1", names, key="ufc_f1")
