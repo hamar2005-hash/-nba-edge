@@ -40,7 +40,21 @@ def is_first_made_field_goal(play):
 
 def first_scorer(summary):
     plays = summary.get("plays") or []
-    for play in sorted(plays, key=lambda p: (p.get("period", {}).get("number", 1), p.get("sequenceNumber", 0))):
+    def order(play):
+        period = play.get("period", 1)
+        if isinstance(period, dict):
+            period = period.get("number", 1)
+        sequence = play.get("sequenceNumber", 0)
+        try:
+            period = int(period)
+        except (TypeError, ValueError):
+            period = 1
+        try:
+            sequence = int(sequence)
+        except (TypeError, ValueError):
+            sequence = 0
+        return period, sequence
+    for play in sorted(plays, key=order):
         if not is_first_made_field_goal(play):
             continue
         participants = play.get("participants") or []
