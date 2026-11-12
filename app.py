@@ -256,8 +256,12 @@ else:
                 prop_lines = load_prop_lines(
                     tuple(predictions["player"].dropna().astype(str).unique())
                 )
-            prediction_rows = predictions[["player", "team", "opponent", "minutes_baseline",
-                                               "points_projection", "rebounds_projection", "assists_projection"]].copy()
+            prediction_columns = ["player", "team", "opponent", "minutes_baseline",
+                                   "points_projection", "rebounds_projection", "assists_projection",
+                                   "pts_last5", "pts_last10", "pts_trend",
+                                   "reb_last5", "reb_last10", "reb_trend",
+                                   "ast_last5", "ast_last10", "ast_trend"]
+            prediction_rows = predictions[[c for c in prediction_columns if c in predictions.columns]].copy()
             prediction_rows["player_key"] = prediction_rows["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
             compare = prop_lines.merge(
                 prediction_rows,
@@ -311,6 +315,9 @@ else:
                     "Best side": best_side,
                     "Estimated confidence": round(best_probability * 100, 1),
                     "Recent avg minutes": row.get("minutes_baseline"),
+                    "Recent L5": row.get({"points": "pts_last5", "rebounds": "reb_last5", "assists": "ast_last5"}.get(market)),
+                    "Recent L10": row.get({"points": "pts_last10", "rebounds": "reb_last10", "assists": "ast_last10"}.get(market)),
+                    "Recent trend": row.get({"points": "pts_trend", "rebounds": "reb_trend", "assists": "ast_trend"}.get(market)),
                     "Source": "Stat Pick",
                 })
             if compare_rows:
@@ -329,8 +336,8 @@ else:
                 st.download_button("Download prop line comparisons", comparisons.to_csv(index=False), "nba_edge_prop_line_comparisons.csv", "text/csv")
 
                 st.divider()
-                st.subheader("🔥 Most confident picks")
-                st.caption("Ranked by the model's estimated chance of the recommended side. These are model estimates, not calibrated guarantees.")
+                st.subheader("🔥 Top model edges")
+                st.caption("Ranked by estimated chance of the recommended side, not by bookmaker price or guaranteed profitability. Expand a pick to see why the model favours it.")
                 confidence_pool = pd.DataFrame(compare_rows)
                 confidence_pool = confidence_pool[confidence_pool["Estimated confidence"] >= 55].copy()
                 confidence_pool = confidence_pool.sort_values("Estimated confidence", ascending=False).head(10)
@@ -347,6 +354,25 @@ else:
                         "Estimated confidence": "Model confidence (%)",
                     })
                     st.dataframe(confidence_view, use_container_width=True, hide_index=True)
+                    for _, pick in confidence_pool.iterrows():
+                        market_key = str(pick["Market"]).lower()
+                        stat_name = {"points": "points", "rebounds": "rebounds", "assists": "assists"}.get(market_key, "stat")
+                        projection_gap = abs(float(pick["Projection gap"]))
+                        direction = "above" if pick["Best side"] == "Over" else "below"
+                        reasons = [
+                            f"The model projects **{pick['Projection']:.1f} {stat_name}**, which is **{projection_gap:.1f} {stat_name} {direction}** the listed line of {pick['Prop line']:.1f}.",
+                        ]
+                        l5, l10 = pick.get("Recent L5"), pick.get("Recent L10")
+                        if pd.notna(l5) and pd.notna(l10):
+                            form_word = "up" if float(l5) > float(l10) else "down" if float(l5) < float(l10) else "level"
+                            reasons.append(f"Recent form: **{float(l5):.1f} over the last 5 games** versus **{float(l10):.1f over the last 10** — the short-term average is {form_word}.")
+                        minutes = pd.to_numeric(pd.Series([pick.get("Recent avg minutes")]), errors="coerce").iloc[0]
+                        if pd.notna(minutes):
+                            reasons.append(f"Recent playing-time baseline: **{float(minutes):.1f} minutes per game**. This is historical context, not a confirmed minutes forecast.")
+                        with st.expander(f"{pick['Player']} · {pick['Market']} {pick['Best side']} {pick['Prop line']:.1f} — why?"):
+                            for reason in reasons:
+                                st.markdown(f"- {reason}")
+                            st.caption("The probability is derived from the model projection and historical residual spread. It is an estimate, not a calibrated guarantee. No bookmaker odds are used or displayed.")
                     st.download_button(
                         "Download most confident picks",
                         confidence_view.to_csv(index=False),
