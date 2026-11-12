@@ -76,9 +76,11 @@ st.subheader("2. Train and validate the winner model")
 st.write("This first model uses only each fighter's historical results before the bout: Elo rating, win/loss record, experience, recent form, streak and time since last fight. Draws are excluded from the binary winner model. Fight statistics recorded after the bout are deliberately not used.")
 if st.button("Train UFC winner model", type="primary", use_container_width=True):
     try:
-        from ufc_model import train_and_evaluate
+        import importlib
+        import ufc_model
+        ufc_model = importlib.reload(ufc_model)
         with st.spinner("Building pre-fight histories and running the chronological holdout…"):
-            model, metrics, snapshot, frame = train_and_evaluate(results)
+            model, metrics, snapshot, frame = ufc_model.train_and_evaluate(results)
         st.session_state["ufc_model"] = model
         st.session_state["ufc_snapshot"] = snapshot
         st.session_state["ufc_metrics"] = metrics
