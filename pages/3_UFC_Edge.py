@@ -139,25 +139,8 @@ if st.session_state.get("ufc_trained"):
     else:
         st.info("The current results feed does not include weight class. A reliable bout-to-division mapping is needed before calculating division accuracy.")
 
-    st.subheader("Method-of-victory validation")
-    method = metrics.get("method", {})
-    if method.get("available"):
-        mc1, mc2, mc3 = st.columns(3)
-        mc1.metric("Method accuracy", f"{method['accuracy']*100:.1f}%",
-                   f"{(method['accuracy']-method['majority_baseline_accuracy'])*100:+.1f} pp vs majority")
-        mc2.metric("Majority baseline", f"{method['majority_baseline_accuracy']*100:.1f}%",
-                   method["majority_class"])
-        mc3.metric("Balanced accuracy", f"{method['balanced_accuracy']*100:.1f}%")
-        st.metric("Macro F1", f"{method['macro_f1']:.3f}")
-        st.write("Holdout class counts:", method["class_counts"])
-        per_class = pd.DataFrame(method["per_class"]).T.reset_index(names="Method")
-        for col in ("precision", "recall", "f1"):
-            per_class[col] = (per_class[col] * 100).round(1)
-        st.dataframe(per_class.rename(columns={
-            "precision": "Precision %", "recall": "Recall %", "f1": "F1 %", "support": "Fights"
-        }), use_container_width=True, hide_index=True)
-    else:
-        st.info(method.get("reason", "Method labels are not sufficient for a fair test."))
+    st.subheader("Method-of-victory model")
+    st.info("Method predictions are switched off. The previous classifier achieved 27.9% accuracy against a 48.7% majority baseline and 17.7% balanced accuracy. We will rebuild it separately after adding verified pre-fight fighter attributes and testing it on a fresh chronological holdout.")
 
     st.subheader("Try a matchup")
     names = sorted(st.session_state["ufc_snapshot"].keys())
