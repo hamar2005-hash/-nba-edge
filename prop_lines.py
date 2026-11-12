@@ -26,7 +26,7 @@ def slugify(value):
     return re.sub(r"[^a-z0-9]+", "-", str(value or "").lower()).strip("-")
 
 def get_json(path):
-    response = requests.get(BASE + path, headers=HEADERS, timeout=(5, 15))
+    response = requests.get(BASE + path, headers=HEADERS, timeout=(3, 6))
     response.raise_for_status()
     payload = response.json()
     if isinstance(payload, dict) and payload.get("success") is False:
@@ -140,9 +140,13 @@ def fetch_current_lines(player_names=None):
     slate_rows = []
     for name, slug, team in candidates:
         slate_rows.extend(extract_rows(slate, name, team, slug))
+    # Return the slate's headline lines immediately when available. Fetch only a
+    # small batch of player indexes for additional markets so a large slate cannot
+    # leave Streamlit spinning while hundreds of requests complete.
     detail_rows, errors = [], []
-    with ThreadPoolExecutor(max_workers=10) as pool:
-        futures = {pool.submit(fetch_one, candidate): candidate[0] for candidate in candidates}
+    detail_candidates = candidates[:16]
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = {pool.submit(fetch_one, candidate): candidate[0] for candidate in detail_candidates}
         for future in as_completed(futures):
             try:
                 detail_rows.extend(future.result())
@@ -150,5 +154,11 @@ def fetch_current_lines(player_names=None):
                 errors.append(f"{futures[future]}: {exc}")
     all_rows = slate_rows + detail_rows
     if not all_rows:
-        raise RuntimeError("Stat Pick returned matching players but no readable PTS/REB/AST lines. Its response fields may have changed or today's markets may not be posted. " + "; ".join(errors[:3]))
-    return pd.DataFrame(all_rows).drop_duplicates(["player_key", "market", "line"])
+        detail = "; ".join(errors[:3])
+        raise RuntimeError(
+            "Stat Pick's slate was reachable, but no PTS/REB/AST line fields could be read. "
+            "The API may have changed its response format or today's lines may not be posted. "
+            + detail
+        )
+    result = pd.DataFrame(all_rows).drop_duplicates(["player_key", "market", "line"])
+    return result
