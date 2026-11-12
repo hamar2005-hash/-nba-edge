@@ -152,39 +152,78 @@ else:
 
 st.divider()
 st.subheader("Historical data and model training")
-st.write("Upload a runner-level historical results CSV. The model builds pre-race form features from earlier runs only, then tests on the latest 20% of races in date order.")
-st.info("The free Racing API feed supplies today's racecards, not the historical results needed for honest training. No picks will be shown until a real results file has been supplied and the backtest passes basic checks.")
+st.write("Pick Lab can fetch the historical database directly from Kaggle. You do not need to download the 1.2 GB ZIP to your iPhone or upload it to ChatGPT.")
 
-with st.expander("Required CSV format"):
-    st.markdown("""
-**Required columns:** `race_date`, `horse`, `finish_position`.
+st.markdown("**One-time Kaggle connection**")
+st.caption("Kaggle requires an API token for dataset downloads. In Streamlit → Settings → Secrets, add your Kaggle username and API key:")
+st.code('KAGGLE_USERNAME = "your_kaggle_username"\nKAGGLE_KEY = "your_kaggle_api_key"', language="toml")
+st.caption("Create a token in your Kaggle account under Settings → API → Create New Token. Keep the key private.")
 
-**Recommended columns:** `race_id`, `course`, `distance`, `going`, `field_size`, `weight`, `age`, `draw`, `trainer`, `jockey`, `class`.
+import os
+import sqlite3
+from pathlib import Path
 
-Column names such as `date`, `horse_name`, `position`, `track`, and `dist` are also recognised. One row must represent one runner. Include all runners, not just winners.
-""")
-    example = pd.DataFrame([
-        {"race_date":"2025-01-01","race_id":"EXAMPLE-1","horse":"Example Horse A","finish_position":1,"course":"Example","distance":"1m","going":"Good","field_size":8,"weight":"9-5","age":4,"draw":2,"trainer":"Trainer A","jockey":"Jockey A","class":"4"},
-        {"race_date":"2025-01-01","race_id":"EXAMPLE-1","horse":"Example Horse B","finish_position":2,"course":"Example","distance":"1m","going":"Good","field_size":8,"weight":"9-2","age":5,"draw":5,"trainer":"Trainer B","jockey":"Jockey B","class":"4"},
-    ])
-    st.download_button("Download CSV format example", example.to_csv(index=False), "horse_racing_history_template.csv", "text/csv")
+@st.cache_resource(show_spinner=False)
+def download_racing_dataset(kaggle_user, kaggle_key):
+    os.environ["KAGGLE_USERNAME"] = kaggle_user
+    os.environ["KAGGLE_KEY"] = kaggle_key
+    import kagglehub
+    folder = Path(kagglehub.dataset_download("deltaromeo/horse-racing-results-ukireland-2015-2025"))
+    dbs = list(folder.rglob("*.db")) + list(folder.rglob("*.sqlite")) + list(folder.rglob("*.sqlite3"))
+    if not dbs:
+        raise FileNotFoundError("Kaggle download completed, but no SQLite database was found in the dataset.")
+    return str(max(dbs, key=lambda f: f.stat().st_size))
 
-history_file = st.file_uploader("Upload historical results CSV", type=["csv"], key="racing_history_upload")
-if history_file is not None:
+kaggle_user = st.secrets.get("KAGGLE_USERNAME", "")
+kaggle_key = st.secrets.get("KAGGLE_KEY", "")
+if st.button("Connect to Kaggle and fetch historical results", type="primary", key="fetch_kaggle_racing"):
+    if not kaggle_user or not kaggle_key:
+        st.error("Add KAGGLE_USERNAME and KAGGLE_KEY to Streamlit Secrets first.")
+    else:
+        try:
+            with st.spinner("Downloading the historical database directly to the Streamlit app. This is a large download and may take some time…"):
+                db_path = download_racing_dataset(kaggle_user, kaggle_key)
+            st.session_state["racing_db_path"] = db_path
+            st.success(f"Historical database downloaded: {Path(db_path).name} ({Path(db_path).stat().st_size / (1024**3):.2f} GB)")
+        except Exception as exc:
+            st.error(f"Kaggle download failed: {exc}")
+
+db_path = st.session_state.get("racing_db_path")
+if db_path and Path(db_path).exists():
     try:
-        history_df = pd.read_csv(history_file)
-        st.caption(f"Loaded {len(history_df):,} runner rows across {history_df.shape[1]} columns.")
-        if st.button("Train and run chronological backtest", type="primary", key="train_racing_model"):
-            from racing_model import train_and_backtest
-            with st.spinner("Building historical form features and testing on unseen later races…"):
-                racing_model, racing_columns, racing_metrics, racing_test = train_and_backtest(history_df)
-            st.session_state["racing_model"] = racing_model
-            st.session_state["racing_model_columns"] = racing_columns
-            st.session_state["racing_model_metrics"] = racing_metrics
-            st.session_state["racing_model_test"] = racing_test
-            st.success("Training and chronological backtest completed.")
+        with sqlite3.connect(db_path) as conn:
+            tables = pd.read_sql_query(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name", conn
+            )["name"].tolist()
+            st.write(f"Database ready. Found {len(tables)} tables.")
+            table_info = []
+            for table in tables:
+                safe_table = table.replace('"', '""')
+                cols = pd.read_sql_query(f'PRAGMA table_info("{safe_table}")', conn)
+                count = pd.read_sql_query(f'SELECT COUNT(*) AS n FROM "{safe_table}"', conn).iloc[0]["n"]
+                table_info.append({"Table": table, "Rows": int(count), "Columns": ", ".join(cols["name"].astype(str))})
+        st.dataframe(pd.DataFrame(table_info), use_container_width=True, hide_index=True)
+        selected_table = st.selectbox("Choose the table containing one row per horse per race", tables)
+        if st.button("Load selected table and train model", type="primary", key="train_from_sqlite"):
+            try:
+                with sqlite3.connect(db_path) as conn:
+                    safe_table = selected_table.replace('"', '""')
+                    history_df = pd.read_sql_query(f'SELECT * FROM "{safe_table}"', conn)
+                st.caption(f"Loaded {len(history_df):,} rows from {selected_table}.")
+                from racing_model import train_and_backtest
+                with st.spinner("Building historical form features and running the chronological holdout…"):
+                    racing_model, racing_columns, racing_metrics, racing_test = train_and_backtest(history_df)
+                st.session_state["racing_model"] = racing_model
+                st.session_state["racing_model_columns"] = racing_columns
+                st.session_state["racing_model_metrics"] = racing_metrics
+                st.session_state["racing_model_test"] = racing_test
+                st.success("Historical model trained and backtested.")
+            except Exception as exc:
+                st.error(f"Could not train from this table. We may need to map its database columns first: {exc}")
     except Exception as exc:
-        st.error(f"Could not read or train from this file: {exc}")
+        st.error(f"Could not inspect the SQLite database: {exc}")
+else:
+    st.info("Connect to Kaggle above to fetch the historical database directly. The database stays on the app host; it is not uploaded through this chat.")
 
 if "racing_model_metrics" in st.session_state:
     metrics = st.session_state["racing_model_metrics"]
@@ -192,13 +231,11 @@ if "racing_model_metrics" in st.session_state:
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Test races", f'{metrics["test_races"]:,}')
     m2.metric("Top-ranked win rate", f'{metrics["top_pick_win_rate"]:.1%}')
-    m3.metric("Brier score", f'{metrics["brier"]:.4f}', help="Lower is better. This is a probability error metric.")
-    m4.metric("Log loss", f'{metrics["log_loss"]:.4f}', help="Lower is better. Penalises confident incorrect predictions.")
-    st.caption(f'Trained on {metrics["train_races"]:,} earlier races and tested on {metrics["test_races"]:,} later races from {metrics["cutoff"]}. Test-set win rate across all runners: {metrics["base_win_rate"]:.2%}.')
+    m3.metric("Brier score", f'{metrics["brier"]:.4f}')
+    m4.metric("Log loss", f'{metrics["log_loss"]:.4f}')
+    st.caption(f'Trained on {metrics["train_races"]:,} earlier races and tested on {metrics["test_races"]:,} later races from {metrics["cutoff"]}.')
     st.dataframe(st.session_state["racing_model_test"].sort_values(["race_date", "race_key", "rank"]), use_container_width=True, hide_index=True)
-    st.warning("This is a first baseline, not proof of betting profitability. It does not yet account for bookmaker odds, commission, non-runner rules or place terms. Live selections remain disabled until historical runner form can be matched safely to the current racecards.")
-else:
-    st.caption("Model status: waiting for a historical results CSV. The model will not invent predictions from racecards alone.")
+    st.warning("Backtest results are research metrics, not proof of profitability. Live selections remain disabled until current runners can be safely matched to historical form.")
 
 
 st.divider()
