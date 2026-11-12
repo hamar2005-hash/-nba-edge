@@ -12,6 +12,7 @@ Automated NBA player projections built with Streamlit and the existing trained m
 - Archives daily slates and compares them with completed ESPN box scores.
 - Tracks mean absolute error by market and by date.
 - Refreshes projections and settles completed games through GitHub Actions.
+- Retrains points, rebounds and assists weekly from updated historical game logs, but only promotes a candidate model when it beats the current model on the same chronological holdout.
 
 ## No bookmaker data
 
