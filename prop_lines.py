@@ -16,8 +16,8 @@ ALIASES = {
     "rebounds": {"rebounds", "rebound", "reb", "playerrebounds", "reboundsprop", "playerreboundsprop"},
     "assists": {"assists", "assist", "ast", "playerassists", "assistsprop", "playerassistsprop"},
 }
-MARKET_FIELDS = ("statSlug", "stat_slug", "marketSlug", "market_slug", "marketName", "market_name", "statName", "stat_name", "market", "stat", "name", "slug")
-LINE_FIELDS = ("currentLine", "current_line", "propLine", "prop_line", "marketLine", "market_line", "line", "lineValue", "line_value", "displayLine", "display_line")
+MARKET_FIELDS = ("statSlug", "stat_slug", "marketSlug", "market_slug", "marketName", "market_name", "statName", "stat_name", "marketType", "market_type", "statType", "stat_type", "market", "stat", "name", "label", "slug")
+LINE_FIELDS = ("currentLine", "current_line", "propLine", "prop_line", "marketLine", "market_line", "line", "lineValue", "line_value", "displayLine", "display_line", "lineNumber", "line_number", "value")
 
 def norm(value):
     return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
@@ -66,17 +66,24 @@ def walk(value, parent_key=""):
 
 def discover_players(slate, wanted_keys=None):
     found = {}
+    name_fields = ("playerName", "fullName", "displayName", "player_name", "name")
+    slug_fields = ("playerSlug", "player_slug", "slug", "playerId", "player_id")
     for item, _ in walk(slate):
-        name = item.get("playerName") or item.get("fullName") or item.get("displayName") or item.get("player_name")
-        slug = item.get("playerSlug") or item.get("player_slug") or item.get("slug")
+        player_obj = item.get("player") if isinstance(item.get("player"), dict) else {}
+        name = next((item.get(k) for k in name_fields if isinstance(item.get(k), str) and item.get(k).strip()), None)
+        name = name or next((player_obj.get(k) for k in name_fields if isinstance(player_obj.get(k), str) and player_obj.get(k).strip()), None)
+        if not name and isinstance(item.get("player"), str):
+            name = item.get("player")
         if not name:
             continue
-        name = str(name)
+        name = str(name).strip()
         key = norm(name)
         if wanted_keys and key not in wanted_keys:
             continue
+        slug = next((item.get(k) for k in slug_fields if item.get(k) not in (None, "")), None)
+        slug = slug or next((player_obj.get(k) for k in slug_fields if player_obj.get(k) not in (None, "")), None)
         slug = str(slug or slugify(name))
-        team = item.get("teamAbbreviation") or item.get("team_abbreviation") or item.get("team") or ""
+        team = item.get("teamAbbreviation") or item.get("team_abbreviation") or item.get("team") or player_obj.get("teamAbbreviation") or player_obj.get("team") or ""
         found[(key, slug)] = (name, slug, str(team))
     return list(found.values())
 
@@ -87,7 +94,7 @@ def extract_rows(payload, player, team, slug):
         for field in MARKET_FIELDS:
             value = item.get(field)
             if isinstance(value, dict):
-                value = value.get("slug") or value.get("name") or value.get("label")
+                value = value.get("slug") or value.get("name") or value.get("label") or value.get("statSlug") or value.get("stat_slug")
             if value:
                 market = market_name(value)
                 if market:
