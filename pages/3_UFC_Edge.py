@@ -101,15 +101,21 @@ if st.session_state.get("ufc_trained"):
     st.write("Compare predicted win probabilities with observed holdout outcomes.")
     if metrics.get("calibration"):
         cal = pd.DataFrame(metrics["calibration"])
-        st.dataframe(cal, use_container_width=True, hide_index=True)
+        cal["predicted"] = (cal["predicted"] * 100).round(1)
+        cal["observed"] = (cal["observed"] * 100).round(1)
+        st.dataframe(cal.rename(columns={"band": "Probability band", "fights": "Fights", "predicted": "Predicted %", "observed": "Observed %"}), use_container_width=True, hide_index=True)
 
     st.subheader("Historical holdout simulation")
     if metrics.get("temporal"):
-        st.dataframe(pd.DataFrame(metrics["temporal"]), use_container_width=True, hide_index=True)
+        temporal = pd.DataFrame(metrics["temporal"])
+        temporal["accuracy"] = (temporal["accuracy"] * 100).round(1)
+        st.dataframe(temporal.rename(columns={"period": "Time block", "fights": "Fights", "accuracy": "Accuracy %", "start": "From", "end": "To"}), use_container_width=True, hide_index=True)
 
     st.subheader("Performance by weight class")
     if metrics.get("division_available"):
-        st.dataframe(pd.DataFrame(metrics["division"]), use_container_width=True, hide_index=True)
+        div = pd.DataFrame(metrics["division"])
+        div["accuracy"] = (div["accuracy"] * 100).round(1)
+        st.dataframe(div.rename(columns={"division": "Division", "fights": "Fights", "accuracy": "Accuracy %"}), use_container_width=True, hide_index=True)
     else:
         st.info("The current results feed does not include weight class. A reliable bout-to-division mapping is needed before calculating division accuracy.")
 
