@@ -160,12 +160,17 @@ jobs:
                   print("NBA Edge parsed prop rows:", len(frame))
                   print("Parsed markets:", sorted(frame["market"].dropna().unique().tolist()))
                   print("Unique parsed players:", frame["player_key"].nunique())
-                  from prop_lines import discover_players, fetch_one
+                  from prop_lines import discover_players, fetch_one, fetch_current_lines
                   candidates = discover_players(data)
                   if candidates:
                       detail_rows = fetch_one(candidates[0])
+                      detail_markets = sorted({row["market"] for row in detail_rows})
                       print("One player-detail response parsed rows:", len(detail_rows))
-                      print("One player-detail markets:", sorted({row["market"] for row in detail_rows}))
+                      print("One player-detail markets:", detail_markets)
+                      sample = fetch_current_lines([candidates[0][0]])
+                      print("Full fetch path sample rows:", len(sample))
+                      print("Full fetch path sample markets:", sorted(sample["market"].unique().tolist()))
+                      assert {"points", "rebounds", "assists"}.issubset(set(sample["market"])), "Detail endpoint failed to supply all three required markets"
               except Exception as parser_exc:
                   print("NBA Edge parser result:", type(parser_exc).__name__, str(parser_exc)[:300])
           except Exception as exc:
