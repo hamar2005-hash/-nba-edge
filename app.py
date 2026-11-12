@@ -365,7 +365,7 @@ else:
                         l5, l10 = pick.get("Recent L5"), pick.get("Recent L10")
                         if pd.notna(l5) and pd.notna(l10):
                             form_word = "up" if float(l5) > float(l10) else "down" if float(l5) < float(l10) else "level"
-                            reasons.append(f"Recent form: **{float(l5):.1f} over the last 5 games** versus **{float(l10):.1f over the last 10** — the short-term average is {form_word}.")
+                            reasons.append(f"Recent form: **{float(l5):.1f} over the last 5 games** versus **{float(l10):.1f} over the last 10** — the short-term average is {form_word}.")
                         minutes = pd.to_numeric(pd.Series([pick.get("Recent avg minutes")]), errors="coerce").iloc[0]
                         if pd.notna(minutes):
                             reasons.append(f"Recent playing-time baseline: **{float(minutes):.1f} minutes per game**. This is historical context, not a confirmed minutes forecast.")
