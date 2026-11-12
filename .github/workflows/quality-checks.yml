@@ -1,0 +1,137 @@
+name: NBA Edge code and bundle checks
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install application dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Compile every Python module
+        run: python -m compileall -q .
+
+      - name: Import application modules and check prop parser
+        run: |
+          python - <<'PY'
+          import importlib
+          modules = [
+              "auto_daily", "collect_nba_data", "first_basket",
+              "predict_props", "prop_lines", "settle_results",
+              "train_models", "weekly_retrain",
+          ]
+          for name in modules:
+              importlib.import_module(name)
+              print("Import OK:", name)
+
+          from prop_lines import discover_players, extract_rows
+          payload = {
+              "games": [{
+                  "players": [{
+                      "playerName": "Test Player",
+                      "playerSlug": "test-player",
+                      "headlineMarket": {"statSlug": "points", "line": 21.5},
+                  }]
+              }]
+          }
+          candidates = discover_players(payload)
+          assert candidates, "Player discovery fixture failed"
+          rows = extract_rows(payload, "Test Player", "", "test-player")
+          assert rows and rows[0]["market"] == "points" and rows[0]["line"] == 21.5, rows
+          price_only = {
+              "headlineMarket": {"marketName": "points", "value": 1.91}
+          }
+          assert not extract_rows(price_only, "Test Player", "", "test-player"), "Generic price-like values must not be treated as prop lines"
+          print("Prop parser fixture OK; generic value fields are ignored.")
+          PY
+
+      - name: Validate trained model bundle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          import zipfile
+          import joblib
+          import pandas as pd
+
+          bundle = Path("NBA_Trained_Models.zip")
+          assert bundle.is_file(), "NBA_Trained_Models.zip is missing"
+          with TemporaryDirectory() as tmp:
+              with zipfile.ZipFile(bundle) as archive:
+                  bad = archive.testzip()
+                  assert bad is None, f"Corrupt ZIP member: {bad}"
+                  names = {name.lstrip("./") for name in archive.namelist()}
+                  required = {
+                      "models/points_model.joblib",
+                      "models/rebounds_model.joblib",
+                      "models/assists_model.joblib",
+                      "models/latest_player_features.csv",
+                  }
+                  missing = required - names
+                  assert not missing, f"Model bundle is missing: {sorted(missing)}"
+                  archive.extractall(tmp)
+
+              model_dir = Path(tmp) / "models"
+              for market in ("points", "rebounds", "assists"):
+                  pack = joblib.load(model_dir / f"{market}_model.joblib")
+                  assert isinstance(pack, dict), f"{market} model package is not a dictionary"
+                  assert "model" in pack and "feature_cols" in pack, f"{market} package keys are incomplete"
+                  assert pack["feature_cols"], f"{market} has no feature columns"
+                  print(f"Model OK: {market} ({len(pack['feature_cols'])} features)")
+
+              features = pd.read_csv(model_dir / "latest_player_features.csv")
+              needed = {"PLAYER_ID", "PLAYER_NAME", "GAME_DATE"}
+              assert needed.issubset(features.columns), f"Feature snapshot is missing {sorted(needed - set(features.columns))}"
+              assert not features.empty, "Feature snapshot is empty"
+              print(f"Feature snapshot OK: {len(features):,} players/rows, {len(features.columns)} columns")
+          print("Trained model bundle validation passed.")
+          PY
+
+      - name: Probe public prop feed without exposing odds or prices
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import requests
+
+          url = "https://api.statpick.ai/api/nba/prop-pages/slate"
+          try:
+              response = requests.get(
+                  url,
+                  headers={"User-Agent": "NBAEdge/1.0 diagnostic", "Accept": "application/json"},
+                  timeout=(4, 8),
+              )
+              print("Stat Pick HTTP status:", response.status_code)
+              print("Content type:", response.headers.get("content-type", "not supplied"))
+              response.raise_for_status()
+              payload = response.json()
+              print("Envelope keys:", sorted(payload.keys()) if isinstance(payload, dict) else type(payload).__name__)
+              print("API success flag:", payload.get("success") if isinstance(payload, dict) else "not an object")
+              data = payload.get("data") if isinstance(payload, dict) else payload
+              print("Data container type:", type(data).__name__)
+              if isinstance(data, dict):
+                  print("Data top-level keys:", sorted(data.keys())[:60])
+              elif isinstance(data, list):
+                  print("Data item count:", len(data))
+                  if data and isinstance(data[0], dict):
+                      print("First item field names only:", sorted(data[0].keys()))
+          except Exception as exc:
+              print("Stat Pick feed probe failed:", type(exc).__name__, str(exc)[:300])
+          PY
