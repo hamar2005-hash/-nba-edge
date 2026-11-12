@@ -151,9 +151,10 @@ def train_and_evaluate(results):
 
     # Chronological walk-forward-style reporting over four consecutive holdout slices.
     temporal = []
-    for idx, chunk in enumerate(np.array_split(test, 4), start=1):
-        if len(chunk):
-            pp = probabilities[test.index.get_indexer(chunk.index)]
+    for idx, positions in enumerate(np.array_split(np.arange(len(test)), 4), start=1):
+        if len(positions):
+            chunk = test.iloc[positions]
+            pp = probabilities[positions]
             temporal.append({"period": idx, "fights": int(len(chunk)),
                              "accuracy": float(accuracy_score(chunk["target"], (pp >= .5).astype(int))),
                              "start": str(chunk["date"].min().date()), "end": str(chunk["date"].max().date())})
