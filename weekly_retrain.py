@@ -80,7 +80,7 @@ def main():
                 incumbent_mae = float(mean_absolute_error(incumbent_test[target], incumbent_pred))
             except Exception as exc:
                 print(f"{market}: incumbent could not be scored on common holdout ({exc}); candidate not auto-accepted.")
-        accept = incumbent_mae is not None and candidate_metrics["mae"] < incumbent_mae
+        accept = (incumbent_mae is None and not incumbent_path.exists()) or (incumbent_mae is not None and candidate_metrics["mae"] < incumbent_mae)
         if accept:
             joblib.dump(candidate, incumbent_path)
             accepted_any = True
