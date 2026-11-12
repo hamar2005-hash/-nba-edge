@@ -1,34 +1,33 @@
-# NBA Edge — NBA Player Props Dashboard
+# NBA Edge — Automated NBA Projections
 
-A Streamlit dashboard for the existing NBA player-stat ML workflow. It includes model training, daily prediction runs, all-bookmaker odds comparison (from uploaded CSV data), and results tracking.
+A Streamlit dashboard for automated player projections. The current models cover points, rebounds and assists.
 
 ## Run locally
 
 ```bash
 pip install -r requirements.txt
+python auto_daily.py
 streamlit run app.py
 ```
 
-## Deploy free
+## Deploy
 
-1. Create a GitHub repository and upload the contents of this project folder.
-2. In [Streamlit Community Cloud](https://share.streamlit.io/), connect the repository and deploy `app.py`.
-3. Upload historical player-game logs in the **Train model** tab and train the three models.
-4. Keep the trained `models/` folder with the deployed app. The app can export the trained models as a ZIP.
-5. Open the Streamlit URL on your phone and add it to your home screen.
+1. Connect this GitHub repository to Streamlit Community Cloud.
+2. Deploy `app.py`.
+3. Ensure `NBA_Trained_Models.zip` contains the three trained model files and `latest_player_features.csv` under `models/`.
+4. The GitHub Actions workflow generates projections three times daily and commits the latest CSV. It can also be run manually from GitHub Actions.
 
-## Daily odds CSV format
+## What is displayed
 
-Required: `game_date,player,team,opponent,home,minutes,market,line`
+- Today's scheduled games and player list
+- Projected points, rebounds and assists
+- Recent historical minutes for context
+- Game and player filters
 
-Optional: `bookmaker,odds,side` (decimal odds; side is `over` or `under`). Add one row per bookmaker/line/side. Repeated player-market rows are expected and retained.
+## No bookmaker data
 
-## Actual results CSV format
+This version does not request, display, compare or calculate bookmaker odds, lines, prices or expected value. No daily CSV upload is required.
 
-Required: `player,market,actual`; optional `game_date,team`.
+## Limitations
 
-## Model scope and limitations
-
-The existing ML package trains points, rebounds and assists regressors using historical rolling features. It does not currently model PRA, team totals, game scores, injuries, lineup news, or calibrated probabilities. It does not scrape bookmaker websites or guarantee a free odds feed. Odds comparison works with all bookmaker rows supplied in the uploaded CSV.
-
-Streamlit Community Cloud local storage can be ephemeral. Export/download results regularly; persistent cloud database integration is a future improvement.
+The saved historical feature snapshot is not retrained each day. Recent historical minutes are not a confirmed minutes forecast. ESPN roster data may not contain complete or timely injury and starting-lineup information. The current models do not cover combo markets or team totals. Projections are estimates, not guarantees.
