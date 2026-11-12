@@ -351,7 +351,13 @@ else:
             ("Points", "points_projection"),
             ("Rebounds", "rebounds_projection"),
             ("Assists", "assists_projection"),
+            ("Three-pointers made", "threes_projection"),
+            ("Steals", "steals_projection"),
+            ("Blocks", "blocks_projection"),
+            ("Turnovers", "turnovers_projection"),
         ]:
+            if market_col not in predictions.columns:
+                continue
             with st.expander(f"Top 10 — {market_label}", expanded=(market_label == "Points")):
                 leaders = predictions.sort_values(market_col, ascending=False).head(10).copy()
                 leaders = leaders.rename(columns={
