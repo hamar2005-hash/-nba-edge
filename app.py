@@ -283,9 +283,13 @@ else:
                 st.warning("No prop lines passed the player-and-team identity check. The app will not force a match.")
             # Use the model's residual spread to estimate over/under probabilities.
             market_to_col = {
-                "points": "points_projection",
-                "rebounds": "rebounds_projection",
-                "assists": "assists_projection",
+                "points": ("points_projection",),
+                "rebounds": ("rebounds_projection",),
+                "assists": ("assists_projection",),
+                "points + rebounds": ("points_projection", "rebounds_projection"),
+                "points + assists": ("points_projection", "assists_projection"),
+                "rebounds + assists": ("rebounds_projection", "assists_projection"),
+                "points + rebounds + assists": ("points_projection", "rebounds_projection", "assists_projection"),
             }
             compare_rows = []
             # Load each trained market model once per render, not once per prop row.
@@ -300,10 +304,13 @@ else:
 
             for _, row in compare.iterrows():
                 market = row["market"]
-                projection_col = market_to_col.get(market)
-                if not projection_col:
+                projection_cols = market_to_col.get(market)
+                if not projection_cols:
                     continue
-                projection = pd.to_numeric(row.get(projection_col), errors="coerce")
+                component_values = [pd.to_numeric(row.get(col), errors="coerce") for col in projection_cols]
+                if any(pd.isna(value) for value in component_values):
+                    continue
+                projection = sum(float(value) for value in component_values)
                 line = pd.to_numeric(row.get("line"), errors="coerce")
                 if pd.isna(projection) or pd.isna(line):
                     continue
@@ -312,14 +319,16 @@ else:
                 # and the player's own model projection. This prevents a bad
                 # feed mapping (e.g. 11.5 assists for a 1.3-assist projection)
                 # from being presented as a high-confidence pick.
-                hard_max = {"points": 60.0, "rebounds": 30.0, "assists": 25.0}
+                hard_max = {"points": 60.0, "rebounds": 30.0, "assists": 25.0,
+                            "points + rebounds": 85.0, "points + assists": 85.0,
+                            "rebounds + assists": 55.0, "points + rebounds + assists": 110.0}
                 # Reject lines that are too far from the projection to be
                 # credible same-market comparisons. The previous relative
                 # limits admitted extreme mismatches (e.g. 20.5 REB vs 11.0).
                 max_gap = {
-                    "points": 10.0,
-                    "rebounds": 4.0,
-                    "assists": 3.5,
+                    "points": 10.0, "rebounds": 4.0, "assists": 3.5,
+                    "points + rebounds": 12.0, "points + assists": 12.0,
+                    "rebounds + assists": 7.5, "points + rebounds + assists": 15.0,
                 }
                 if float(line) < 0.5 or float(line) > hard_max[market]:
                     continue
@@ -330,7 +339,13 @@ else:
                 # missing spread must never turn a projection into 99-100%
                 # certainty. These are conservative minimum error scales.
                 minimum_sd = {"points": 5.0, "rebounds": 2.5, "assists": 2.0}
-                sd = max(residual_spreads.get(market, minimum_sd[market]), minimum_sd[market])
+                if market in minimum_sd:
+                    sd = max(residual_spreads.get(market, minimum_sd[market]), minimum_sd[market])
+                else:
+                    component_markets = [key for key in ("points", "rebounds", "assists")
+                                         if key in market.replace(" + ", "|").split("|")]
+                    sd = math.sqrt(sum(max(residual_spreads.get(key, minimum_sd[key]), minimum_sd[key]) ** 2
+                                         for key in component_markets))
                 z = (float(line) + 0.5 - float(projection)) / sd
                 p_over = 1 - (0.5 * (1 + math.erf(z / math.sqrt(2))))
                 # Keep probabilities away from false certainty; this is an
@@ -352,9 +367,9 @@ else:
                     "Best side": best_side,
                     "Estimated confidence": round(best_probability * 100, 1),
                     "Recent avg minutes": row.get("minutes_baseline"),
-                    "Recent L5": row.get({"points": "pts_last5", "rebounds": "reb_last5", "assists": "ast_last5"}.get(market)),
-                    "Recent L10": row.get({"points": "pts_last10", "rebounds": "reb_last10", "assists": "ast_last10"}.get(market)),
-                    "Recent trend": row.get({"points": "pts_trend", "rebounds": "reb_trend", "assists": "ast_trend"}.get(market)),
+                    "Recent L5": None if len(projection_cols) > 1 else row.get({"points": "pts_last5", "rebounds": "reb_last5", "assists": "ast_last5"}.get(market)),
+                    "Recent L10": None if len(projection_cols) > 1 else row.get({"points": "pts_last10", "rebounds": "reb_last10", "assists": "ast_last10"}.get(market)),
+                    "Recent trend": None if len(projection_cols) > 1 else row.get({"points": "pts_trend", "rebounds": "reb_trend", "assists": "ast_trend"}.get(market)),
                     "Source": "Stat Pick",
                 })
             if compare_rows:
