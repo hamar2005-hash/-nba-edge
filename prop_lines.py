@@ -197,19 +197,33 @@ def fetch_current_lines(player_names=None):
             seen.add(identity)
             candidates.append((name, slug, team))
 
-    # Always keep headline lines as a fast fallback.
+    # Keep headline lines as a fallback only when a player's detail request
+    # fails or returns an unrecognised response. Do not combine a successful
+    # player's headline and detail line for the same market: lines may differ.
     fallback = parse_slate(slate, player_names)
-    detail_rows, errors = [], []
+    detail_rows, errors, failed_keys = [], [], set()
     if candidates:
-        with ThreadPoolExecutor(max_workers=min(12, len(candidates))) as pool:
+        with ThreadPoolExecutor(max_workers=min(8, len(candidates))) as pool:
             futures = {pool.submit(fetch_one, candidate): candidate[0] for candidate in candidates}
             for future in as_completed(futures):
+                player_name = futures[future]
                 try:
-                    detail_rows.extend(future.result())
+                    player_rows = future.result()
+                    if not player_rows:
+                        failed_keys.add(norm(player_name))
+                        errors.append(f"{player_name}: empty detail response")
+                    else:
+                        detail_rows.extend(player_rows)
                 except Exception as exc:
-                    errors.append(f"{futures[future]}: {type(exc).__name__}")
+                    failed_keys.add(norm(player_name))
+                    errors.append(f"{player_name}: {type(exc).__name__}")
 
-    rows = detail_rows + (fallback.to_dict("records") if not fallback.empty else [])
+    fallback_rows = []
+    if not fallback.empty and failed_keys:
+        fallback_rows = fallback[fallback["player_key"].isin(failed_keys)].to_dict("records")
+    rows = detail_rows + fallback_rows
+    if not detail_rows and not fallback_rows and not fallback.empty:
+        rows = fallback.to_dict("records")
     if not rows:
         top_keys = ", ".join(sorted(slate.keys())[:30]) if isinstance(slate, dict) else type(slate).__name__
         detail = "; ".join(errors[:4])
