@@ -91,6 +91,12 @@ def collect(start_date: date, end_date: date, out: Path):
     out.parent.mkdir(parents=True, exist_ok=True)
     existing = pd.read_csv(out) if out.exists() else pd.DataFrame()
     done = set(existing.get("event_id", pd.Series(dtype=str)).astype(str))
+    if not existing.empty and "game_date" in existing:
+        latest = pd.to_datetime(existing["game_date"], errors="coerce").max()
+        if pd.notna(latest):
+            # Recheck a short overlap window for delayed final box scores without
+            # rescanning every date since the initial historical backfill.
+            start_date = max(start_date, (latest.date() - timedelta(days=7)))
     new_rows = []
     day = start_date
     while day <= end_date:
