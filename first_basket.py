@@ -158,10 +158,13 @@ def predict(predictions_path: Path, history_path: Path, out: Path):
     slate["starts"] = pd.to_numeric(slate["starts"], errors="coerce").fillna(0)
     slate["first_baskets"] = pd.to_numeric(slate["first_baskets"], errors="coerce").fillna(0)
     slate["first_basket_rate"] = pd.to_numeric(slate["first_basket_rate"], errors="coerce").fillna(1/13)
-    # Historical starts provide a proxy for expected starting-lineup probability.
-    slate["start_weight"] = np.minimum(1.0, slate["starts"] / 12.0)
+    # Historical starts and recency provide a proxy for expected starting-lineup probability.
+    slate["last_start"] = pd.to_datetime(slate["last_start"], errors="coerce")
+    slate["days_since_start"] = (pd.Timestamp.utcnow().tz_localize(None) - slate["last_start"]).dt.days.clip(lower=0)
+    recency_weight = np.exp(-slate["days_since_start"].fillna(365) / 45.0)
+    slate["start_weight"] = np.minimum(1.0, slate["starts"] / 12.0) * recency_weight
     slate["raw_score"] = slate["start_weight"] * slate["first_basket_rate"]
-    # Keep an explicit low-data prior for players with limited NBA starting history.
+    # Avoid presenting inactive/bench players as realistic first-basket candidates.
     slate.loc[slate["starts"] < 3, "raw_score"] = 0
     slate["model_confidence"] = slate.groupby("game")["raw_score"].transform(
         lambda x: (x / x.sum() * 100) if x.sum() > 0 else x * 0
