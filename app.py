@@ -6,7 +6,16 @@ import streamlit as st
 
 ROOT = Path(__file__).resolve().parent
 DATA, MODELS = ROOT / 'data', ROOT / 'models'
-DATA.mkdir(exist_ok=True); MODELS.mkdir(exist_ok=True)
+DATA.mkdir(exist_ok=True)
+MODELS.mkdir(exist_ok=True)
+
+MODEL_BUNDLE = ROOT / 'NBA_Trained_Models.zip'
+
+if MODEL_BUNDLE.exists():
+    required = [MODELS / f'{m}_model.joblib' for m in ['points', 'rebounds', 'assists']]
+    if not all(p.exists() for p in required):
+        with zipfile.ZipFile(MODEL_BUNDLE, 'r') as z:
+            z.extractall(ROOT)
 PREDICTIONS = DATA / 'predictions.csv'
 RESULTS = DATA / 'settled_results.csv'
 
