@@ -48,6 +48,13 @@ def main():
         raise SystemExit(f"Missing {feature_path}. The trained model bundle must include latest_player_features.csv.")
 
     features = pd.read_csv(feature_path)
+    defense_path = models_dir / "latest_team_defense.csv"
+    if not defense_path.exists():
+        raise SystemExit(f"Missing {defense_path}. Retrain models with opponent-defence features first.")
+    team_defense = pd.read_csv(defense_path)
+    if "TEAM_ABBREVIATION" not in team_defense:
+        raise SystemExit("The opponent defensive snapshot is missing TEAM_ABBREVIATION.")
+    team_defense = team_defense.drop_duplicates("TEAM_ABBREVIATION").set_index("TEAM_ABBREVIATION")
     if "PLAYER_NAME" not in features or "PLAYER_ID" not in features:
         raise SystemExit("The feature snapshot is missing PLAYER_NAME or PLAYER_ID.")
     features["player_key"] = features["PLAYER_NAME"].map(norm)
@@ -107,6 +114,7 @@ def main():
                 base = features.loc[key]
                 if isinstance(base, pd.DataFrame):
                     base = base.iloc[-1]
+                opponent_defense = team_defense.loc[opponent] if opponent in team_defense.index else None
                 record = {
                     "game_date": game_date,
                     "game": event.get("name", ""),
@@ -127,6 +135,8 @@ def main():
                             value = max(0, min(14, (pd.Timestamp(game_date) - last_date).days)) if pd.notna(last_date) else base.get(column, 0)
                         elif column == "GAMES_PLAYED_BEFORE":
                             value = base.get(column, 0)
+                        elif column.startswith("OPP_ALLOW_"):
+                            value = opponent_defense.get(column, 0) if opponent_defense is not None else 0
                         else:
                             value = base.get(column, 0)
                         xrow[column] = value
