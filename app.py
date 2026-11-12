@@ -227,10 +227,6 @@ else:
         st.divider()
         st.subheader("🎯 Player prop line comparison")
         st.caption("Current lines are fetched from Stat Pick. Bookmaker names, odds and prices are not shown or stored.")
-        if st.button("Refresh prop lines", key="refresh_prop_lines"):
-            st.cache_data.clear()
-            st.rerun()
-
         @st.cache_data(ttl=300, show_spinner=False)
         def load_prop_lines(player_names):
             # Streamlit may retain an older imported module across a hot reload.
@@ -248,8 +244,13 @@ else:
                 all_lines["_player_match"] = all_lines["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
                 return all_lines[all_lines["_player_match"].isin(wanted)].drop(columns="_player_match")
 
+        if st.button("Refresh prop lines", key="refresh_prop_lines"):
+            # Clear only this function's cache, not every cached object in the app.
+            load_prop_lines.clear()
+            st.rerun()
+
         try:
-            with st.spinner("Loading the NBA prop slate and a limited set of player markets…"):
+            with st.spinner("Fetching today's posted prop lines…"):
                 prop_lines = load_prop_lines(tuple(predictions["player"].dropna().astype(str).unique()))
             prediction_rows = predictions[["player", "team", "opponent", "minutes_baseline",
                                                "points_projection", "rebounds_projection", "assists_projection"]].copy()
