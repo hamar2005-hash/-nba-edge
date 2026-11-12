@@ -1,5 +1,6 @@
-"""Leakage-safe chronological UFC winner model built from historical results only."""
+"""Leakage-safe chronological UFC winner and method validation."""
 from collections import defaultdict, deque
+import re
 import numpy as np
 import pandas as pd
 from sklearn.dummy import DummyClassifier
@@ -19,16 +20,27 @@ def _state_features(state, day):
     dates = state["dates"]
     days = (day - dates[-1]).days if dates else 730
     return {
-        "elo": state["elo"],
-        "wins": state["wins"],
-        "losses": state["losses"],
+        "elo": state["elo"], "wins": state["wins"], "losses": state["losses"],
         "experience": state["wins"] + state["losses"],
         "win_rate": state["wins"] / max(1, state["wins"] + state["losses"]),
         "recent5": float(np.mean(state["recent5"])) if state["recent5"] else 0.5,
         "recent10": float(np.mean(state["recent10"])) if state["recent10"] else 0.5,
-        "streak": state["streak"],
-        "days_since_fight": min(days, 730),
+        "streak": state["streak"], "days_since_fight": min(days, 730),
     }
+
+def _method_group(value):
+    if pd.isna(value):
+        return None
+    s = str(value).strip().lower()
+    if not s:
+        return None
+    if any(x in s for x in ("ko", "tko", "technical knockout", "doctor stoppage")):
+        return "KO/TKO"
+    if any(x in s for x in ("submission", "choke", "kimura", "armbar", "heel hook", "guillotine")):
+        return "Submission"
+    if any(x in s for x in ("decision", "unanimous", "split", "majority")):
+        return "Decision"
+    return "Other"
 
 def build_chronological_rows(results):
     required = {"Date", "Fighter 1", "Fighter 2", "Result"}
@@ -39,6 +51,10 @@ def build_chronological_rows(results):
     df["result"] = pd.to_numeric(df["Result"], errors="coerce")
     df["fighter1"] = df["Fighter 1"].astype(str).str.strip()
     df["fighter2"] = df["Fighter 2"].astype(str).str.strip()
+    method_col = next((x for x in ("Method", "method") if x in df.columns), None)
+    division_col = next((x for x in ("Weight Class", "weight_class", "Division", "division") if x in df.columns), None)
+    df["method_group"] = df[method_col].map(_method_group) if method_col else None
+    df["division"] = df[division_col].astype(str).str.strip() if division_col else "Not supplied"
     df = df.dropna(subset=["date", "result"])
     df = df[(df["fighter1"] != "") & (df["fighter2"] != "") & (df["fighter1"] != df["fighter2"])]
     df = df[df["result"].isin([1, 2, 3])].sort_values(["date"], kind="stable")
@@ -47,7 +63,6 @@ def build_chronological_rows(results):
         "recent5": deque(maxlen=5), "recent10": deque(maxlen=10), "dates": [],
     })
     rows = []
-    # All bouts on a calendar date use snapshots from before that date.
     for day, group in df.groupby("date", sort=True):
         pending = []
         for _, fight in group.iterrows():
@@ -65,10 +80,11 @@ def build_chronological_rows(results):
                 "streak_diff": sa["streak"] - sb["streak"],
                 "days_since_fight_diff": sa["days_since_fight"] - sb["days_since_fight"],
                 "target": int(fight["result"] == 1),
+                "method_group": fight["method_group"],
+                "division": fight["division"],
                 "fighter1": a, "fighter2": b,
             })
             pending.append((a, b, int(fight["result"])))
-        # Update after every bout on the same date has been featurised.
         for a, b, outcome in pending:
             if outcome == 3:
                 continue
@@ -95,7 +111,7 @@ def train_and_evaluate(results):
     if len(frame) < 250:
         raise ValueError(f"Only {len(frame)} usable decisive fights; at least 250 are required.")
     split = int(len(frame) * 0.8)
-    train, test = frame.iloc[:split], frame.iloc[split:]
+    train, test = frame.iloc[:split].copy(), frame.iloc[split:].copy()
     if train["target"].nunique() < 2 or test["target"].nunique() < 2:
         raise ValueError("Chronological split does not contain both winner classes.")
     model = Pipeline([
@@ -109,17 +125,74 @@ def train_and_evaluate(results):
     baseline = DummyClassifier(strategy="prior").fit(train[FEATURES], train["target"])
     base_probs = baseline.predict_proba(test[FEATURES])[:, 1]
     metrics = {
-        "train_fights": int(len(train)),
-        "test_fights": int(len(test)),
-        "test_start": str(test["date"].min().date()),
-        "test_end": str(test["date"].max().date()),
+        "train_fights": int(len(train)), "test_fights": int(len(test)),
+        "test_start": str(test["date"].min().date()), "test_end": str(test["date"].max().date()),
         "accuracy": float(accuracy_score(test["target"], predictions)),
         "baseline_accuracy": float(accuracy_score(test["target"], (base_probs >= 0.5).astype(int))),
         "log_loss": float(log_loss(test["target"], probabilities, labels=[0, 1])),
         "brier": float(brier_score_loss(test["target"], probabilities)),
         "baseline_brier": float(brier_score_loss(test["target"], base_probs)),
     }
-    # Refit on all available historical data only after the holdout is scored.
+
+    # Reliability table: compare mean predicted probability with observed win rate.
+    calibration = []
+    bins = pd.cut(probabilities, bins=[0, .4, .5, .6, .7, .8, 1.000001],
+                  labels=["<40%", "40-50%", "50-60%", "60-70%", "70-80%", "80%+"])
+    cal_frame = pd.DataFrame({"band": bins.astype(str), "prob": probabilities, "actual": test["target"].to_numpy()})
+    for band, group in cal_frame.groupby("band", observed=False):
+        if len(group):
+            calibration.append({"band": str(band), "fights": int(len(group)),
+                                "predicted": float(group["prob"].mean()),
+                                "observed": float(group["actual"].mean())})
+
+    # Chronological walk-forward-style reporting over four consecutive holdout slices.
+    temporal = []
+    for idx, chunk in enumerate(np.array_split(test, 4), start=1):
+        if len(chunk):
+            pp = probabilities[chunk.index.get_indexer(chunk.index)]
+            temporal.append({"period": idx, "fights": int(len(chunk)),
+                             "accuracy": float(accuracy_score(chunk["target"], (pp >= .5).astype(int))),
+                             "start": str(chunk["date"].min().date()), "end": str(chunk["date"].max().date())})
+
+    # Division breakdown is only reported when the source actually provides a division field.
+    division = []
+    if (test["division"] != "Not supplied").any():
+        temp = test.copy()
+        temp["pred"] = predictions
+        for name, group in temp.groupby("division"):
+            if len(group) >= 30:
+                division.append({"division": str(name), "fights": int(len(group)),
+                                 "accuracy": float(accuracy_score(group["target"], group["pred"]))})
+
+    # Method-of-victory classifier, trained only on the training-era bouts.
+    method_metrics = {"available": False, "reason": "The source has no usable method labels."}
+    method_train = train[train["method_group"].notna()]
+    method_test = test[test["method_group"].notna()]
+    if len(method_train) >= 250 and method_train["method_group"].nunique() >= 2:
+        seen = set(method_train["method_group"].unique())
+        method_test = method_test[method_test["method_group"].isin(seen)]
+        if len(method_test) >= 30:
+            method_model = Pipeline([
+                ("imputer", SimpleImputer(strategy="median")),
+                ("scale", StandardScaler()),
+                ("classifier", LogisticRegression(max_iter=2500, class_weight="balanced")),
+            ])
+            method_model.fit(method_train[FEATURES], method_train["method_group"])
+            mp = method_model.predict(method_test[FEATURES])
+            method_metrics = {
+                "available": True, "train_fights": int(len(method_train)),
+                "test_fights": int(len(method_test)),
+                "accuracy": float(accuracy_score(method_test["method_group"], mp)),
+                "classes": sorted(seen),
+                "class_counts": method_test["method_group"].value_counts().to_dict(),
+            }
+
+    metrics["calibration"] = calibration
+    metrics["temporal"] = temporal
+    metrics["division"] = division
+    metrics["division_available"] = bool(division)
+    metrics["method"] = method_metrics
     model.fit(frame[FEATURES], frame["target"])
-    snapshot = {name: _state_features(state, pd.Timestamp.utcnow().tz_localize(None).normalize()) for name, state in states.items()}
+    today = pd.Timestamp.utcnow().tz_localize(None).normalize()
+    snapshot = {name: _state_features(state, today) for name, state in states.items()}
     return model, metrics, snapshot, frame
