@@ -160,6 +160,12 @@ jobs:
                   print("NBA Edge parsed prop rows:", len(frame))
                   print("Parsed markets:", sorted(frame["market"].dropna().unique().tolist()))
                   print("Unique parsed players:", frame["player_key"].nunique())
+                  from prop_lines import discover_players, fetch_one
+                  candidates = discover_players(data)
+                  if candidates:
+                      detail_rows = fetch_one(candidates[0])
+                      print("One player-detail response parsed rows:", len(detail_rows))
+                      print("One player-detail markets:", sorted({row["market"] for row in detail_rows}))
               except Exception as parser_exc:
                   print("NBA Edge parser result:", type(parser_exc).__name__, str(parser_exc)[:300])
           except Exception as exc:
