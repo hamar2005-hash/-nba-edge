@@ -263,12 +263,24 @@ else:
                                    "ast_last5", "ast_last10", "ast_trend"]
             prediction_rows = predictions[[c for c in prediction_columns if c in predictions.columns]].copy()
             prediction_rows["player_key"] = prediction_rows["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
+            # Team is a second identity check. A player-name-only join can attach
+            # a stale or misidentified feed record to the wrong roster entry.
+            prop_lines["team_key"] = prop_lines["team"].fillna("").astype(str).str.upper().str.replace(r"[^A-Z]", "", regex=True)
+            prediction_rows["team_key"] = prediction_rows["team"].fillna("").astype(str).str.upper().str.replace(r"[^A-Z]", "", regex=True)
             compare = prop_lines.merge(
                 prediction_rows,
                 on="player_key",
                 how="inner",
                 suffixes=("_line", "_projection"),
             )
+            compare = compare[
+                (compare["team_key_line"] == "") |
+                (compare["team_key_projection"] == "") |
+                (compare["team_key_line"] == compare["team_key_projection"])
+            ].copy()
+            compare = compare.drop_duplicates(["player_key", "market", "line"])
+            if compare.empty:
+                st.warning("No prop lines passed the player-and-team identity check. The app will not force a match.")
             # Use the model's residual spread to estimate over/under probabilities.
             market_to_col = {
                 "points": "points_projection",
