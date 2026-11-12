@@ -126,12 +126,20 @@ jobs:
               print("API success flag:", payload.get("success") if isinstance(payload, dict) else "not an object")
               data = payload.get("data") if isinstance(payload, dict) else payload
               print("Data container type:", type(data).__name__)
-              if isinstance(data, dict):
-                  print("Data top-level keys:", sorted(data.keys())[:60])
-              elif isinstance(data, list):
-                  print("Data item count:", len(data))
-                  if data and isinstance(data[0], dict):
-                      print("First item field names only:", sorted(data[0].keys()))
+              def describe_shape(node, path="data", depth=0):
+                  if depth > 4:
+                      return
+                  if isinstance(node, dict):
+                      print("Object fields at", path, ":", sorted(node.keys())[:80])
+                      for key, value in node.items():
+                          if isinstance(value, (dict, list)):
+                              describe_shape(value, path + "." + str(key), depth + 1)
+                  elif isinstance(node, list):
+                      print("Array length at", path, ":", len(node))
+                      for index, value in enumerate(node[:2]):
+                          if isinstance(value, (dict, list)):
+                              describe_shape(value, f"{path}[{index}]", depth + 1)
+              describe_shape(data)
           except Exception as exc:
               print("Stat Pick feed probe failed:", type(exc).__name__, str(exc)[:300])
           PY
