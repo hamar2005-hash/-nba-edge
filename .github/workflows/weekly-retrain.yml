@@ -62,10 +62,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import zipfile
-          required = [
-              "models/points_model.joblib",
-              "models/rebounds_model.joblib",
-              "models/assists_model.joblib",
+          required = sorted(str(p) for p in Path("models").glob("*_model.joblib")) + [
               "models/latest_player_features.csv",
               "models/weekly_retrain_report.json",
           ]
