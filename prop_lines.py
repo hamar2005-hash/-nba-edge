@@ -17,7 +17,7 @@ ALIASES = {
     "assists": {"assists", "assist", "ast", "playerassists", "assistsprop", "playerassistsprop"},
 }
 MARKET_FIELDS = ("statSlug", "stat_slug", "marketSlug", "market_slug", "marketName", "market_name", "statName", "stat_name", "marketType", "market_type", "statType", "stat_type", "market", "stat", "name", "label", "slug")
-LINE_FIELDS = ("currentLine", "current_line", "propLine", "prop_line", "marketLine", "market_line", "line", "lineValue", "line_value", "displayLine", "display_line", "lineNumber", "line_number", "value")
+LINE_FIELDS = ("currentLine", "current_line", "propLine", "prop_line", "marketLine", "market_line", "line", "lineValue", "line_value", "displayLine", "display_line", "lineNumber", "line_number")
 
 def norm(value):
     return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
