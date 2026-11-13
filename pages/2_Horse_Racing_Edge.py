@@ -72,6 +72,8 @@ def unpack_racecards(payload):
                 "Class": race.get("class") or race.get("race_class", ""),
                 "Odds": runner.get("odds_decimal") or runner.get("decimal_odds") or runner.get("odds") or runner.get("price", ""),
                 "Price Movement": runner.get("odds_movement") or runner.get("price_movement") or runner.get("movement", ""),
+                "Trainer win %": runner.get("trainer_win_pct") or runner.get("trainer_win_percentage") or "",
+                "Jockey win %": runner.get("jockey_win_pct") or runner.get("jockey_win_percentage") or "",
             })
         for runner in runners:
             if not isinstance(runner, dict):
