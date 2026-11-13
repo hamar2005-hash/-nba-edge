@@ -122,7 +122,7 @@ def _history_stats(history: list[dict], course: str, going: str) -> dict:
 def _card_form_stats(form: Any) -> dict:
     """Fallback using the racecard's published form string when history is not in plan."""
     text = str(form or "").strip()
-    finishes = [int(x) for x in re.findall(r"(?<![A-Za-z])([1-9])", text)][-5:]
+    finishes = [int(x) for x in re.findall(r"([1-9])", text)][-5:]
     if not finishes:
         return {
             "Runs": 0, "Wins": 0, "Places": 0, "Win rate": np.nan,
