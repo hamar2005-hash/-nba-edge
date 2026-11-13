@@ -59,3 +59,8 @@ The Streamlit sidebar includes a **Retrain points model** action. It dispatches 
 To enable the in-app action, configure an app deployment secret named `NBA_EDGE_GITHUB_TOKEN` with a fine-grained GitHub personal access token scoped to this repository and **Actions: Read and write** permission. The app sends the token only to GitHub's workflow-dispatch API and never displays it. Without this secret, the button explains that setup is required.
 
 The points-only run collects the latest player game logs, trains the points candidate, compares candidate and incumbent on the same chronological holdout, and only replaces the points model when its holdout MAE is lower. Rebounds and assists models are left untouched. The workflow packages the accepted models and report back into `NBA_Trained_Models.zip`.
+
+
+## Same-player NBA Bet Builders
+
+The daily dashboard includes experimental two-leg same-player milestone combinations (for example, 10+ points plus 5+ rebounds). The module estimates the joint probability with a bivariate simulation using model projections and holdout residual spread. It does not multiply standalone leg probabilities. Fair decimal odds are a mathematical conversion of that model estimate, not a sportsbook quote. Correlation assumptions and residual-based distributions are provisional and require backtesting against archived results before use as a betting edge. No bookmaker odds or prices are scraped, stored or displayed.
