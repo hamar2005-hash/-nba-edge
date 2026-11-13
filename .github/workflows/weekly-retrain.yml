@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: "0 8 * * 0"
   workflow_dispatch:
+    inputs:
+      market:
+        description: "Model to retrain"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - points
 
 permissions:
   contents: write
@@ -51,8 +60,13 @@ jobs:
           PY
       - name: Collect latest historical player game logs
         run: python collect_nba_data.py --start-season 2021-22 --end-season 2026-27 --out data/player_game_logs.csv --sleep 1.5 --retries 2
-      - name: Train and validate weekly candidates
-        run: python weekly_retrain.py
+      - name: Train and validate candidates
+        run: |
+          if [ "${{ inputs.market }}" = "points" ]; then
+            python weekly_retrain.py --market points
+          else
+            python weekly_retrain.py --market all
+          fi
       - name: Package current accepted models
         run: |
           python - <<'PY'
