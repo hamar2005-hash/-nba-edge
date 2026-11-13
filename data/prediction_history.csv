@@ -131,3 +131,303 @@ game_date,game,game_time_utc,player,team,opponent,home,player_status,points_proj
 2026-11-12,Charlotte Hornets at Phoenix Suns,2026-11-13T02:00Z,Pat Spencer,PHX,CHA,1,active,5.9,1.8,2.8,16.1,4.8,7.8,-3.0,2.2,2.8,-0.6,3.0,3.8,-0.8
 2026-11-12,Charlotte Hornets at Phoenix Suns,2026-11-13T02:00Z,Rasheer Fleming,PHX,CHA,1,active,4.1,2.2,0.6,16.8,5.0,6.8,-1.8,1.8,3.1,-1.3,0.8,0.6,0.2
 2026-11-12,Charlotte Hornets at Phoenix Suns,2026-11-13T02:00Z,Ryan Dunn,PHX,CHA,1,active,4.8,3.6,0.9,15.4,5.6,5.2,0.4,4.0,4.1,-0.1,1.4,1.5,-0.1
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,AJ Green,MIL,ORL,0,active,7.6,1.8,1.3,22.4,7.8,8.9,-1.1,2.0,2.3,-0.3,2.0,1.5,0.5
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Bogoljub Markovic,MIL,ORL,0,active,7.4,3.3,1.5,,,,,,,,,,
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Brayden Burries,MIL,ORL,0,active,10.8,5.3,2.0,24.8,12.6,10.2,2.4,6.8,5.2,1.6,2.4,2.0,0.4
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Caris LeVert,MIL,ORL,0,active,7.6,2.4,2.6,17.4,7.8,7.4,0.4,2.0,2.6,-0.6,2.4,2.9,-0.5
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Cormac Ryan,MIL,ORL,0,active,10.3,2.0,1.5,30.6,18.0,13.5,4.5,3.0,1.8,1.2,2.0,1.5,0.5
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Gary Trent Jr.,MIL,ORL,0,active,10.5,1.3,1.1,18.6,11.8,11.2,0.6,1.0,0.9,0.1,1.2,1.0,0.2
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Jaime Jaquez Jr.,MIL,ORL,0,active,15.3,4.6,3.5,27.4,15.6,17.4,-1.8,4.8,5.7,-0.9,2.8,3.0,-0.2
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Jericho Sims,MIL,ORL,0,active,2.9,2.8,1.4,6.3,0.0,6.1,-6.1,0.6,4.3,-3.7,0.2,2.6,-2.4
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Kam Jones,MIL,ORL,0,active,4.6,1.7,3.1,21.4,4.4,3.9,0.5,3.0,2.1,0.9,5.6,4.7,0.9
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Kasparas Jakucionis,MIL,ORL,0,active,5.4,1.9,3.3,16.7,4.4,7.1,-2.7,2.2,2.6,-0.4,3.8,3.9,-0.1
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Kel'el Ware,MIL,ORL,0,active,9.2,7.1,0.9,17.2,6.6,10.2,-3.6,7.0,7.6,-0.6,0.8,0.7,0.1
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Kyle Kuzma,MIL,ORL,0,active,11.4,5.5,3.0,24.3,7.8,9.7,-1.9,4.0,5.5,-1.5,2.8,3.2,-0.4
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Myles Turner,MIL,ORL,0,active,11.0,5.9,1.9,27.3,7.8,8.1,-0.3,6.0,5.7,0.3,2.4,2.4,0.0
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Nate Ament,MIL,ORL,0,active,6.4,2.0,0.5,15.9,8.4,7.1,1.3,1.8,2.1,-0.3,0.4,0.3,0.1
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Ousmane Dieng,MIL,ORL,0,active,4.1,1.8,1.6,7.9,1.4,6.2,-4.8,0.4,3.1,-2.7,0.6,3.3,-2.7
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Pete Nance,MIL,ORL,0,active,6.9,3.3,1.7,27.6,12.2,9.3,2.9,5.0,4.8,0.2,2.8,2.5,0.3
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Ryan Rollins,MIL,ORL,0,active,11.3,3.3,3.7,19.7,9.2,12.3,-3.1,4.0,4.1,-0.1,4.0,4.3,-0.3
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Tyler Herro,MIL,ORL,0,active,20.7,5.0,4.6,30.6,21.4,20.6,0.8,4.4,5.5,-1.1,3.6,4.9,-1.3
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Alex Morales,ORL,MIL,1,active,2.4,1.1,0.6,7.8,1.0,1.4,-0.4,1.2,1.0,0.2,0.2,0.6,-0.4
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Anthony Black,ORL,MIL,1,active,11.8,3.6,3.3,28.5,15.2,11.8,3.4,5.2,3.9,1.3,5.0,3.2,1.8
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Colin Castleton,ORL,MIL,1,active,3.3,2.6,0.5,4.3,2.4,4.6,-2.2,1.6,4.2,-2.6,0.2,0.7,-0.5
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Desmond Bane,ORL,MIL,1,active,17.9,4.1,3.8,36.7,20.4,15.3,5.1,3.6,3.2,0.4,3.2,2.9,0.3
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Franz Wagner,ORL,MIL,1,active,20.8,4.8,6.3,37.7,18.8,20.2,-1.4,5.2,5.7,-0.5,9.8,7.3,2.5
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Goga Bitadze,ORL,MIL,1,active,4.3,3.6,0.8,8.6,3.2,6.5,-3.3,2.6,5.6,-3.0,0.2,1.0,-0.8
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Jalen Suggs,ORL,MIL,1,active,11.3,3.3,4.2,29.8,13.2,13.5,-0.3,3.2,4.3,-1.1,4.4,6.7,-2.3
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Jamal Cain,ORL,MIL,1,active,6.1,2.0,0.8,19.9,8.4,6.9,1.5,2.0,2.6,-0.6,0.4,0.4,0.0
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Jase Richardson,ORL,MIL,1,active,6.2,2.0,1.7,25.7,7.4,5.9,1.5,2.2,1.5,0.7,2.8,2.0,0.8
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Jevon Carter,ORL,MIL,1,active,4.5,1.0,1.4,14.0,2.8,4.8,-2.0,0.8,1.5,-0.7,1.6,2.0,-0.4
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Jonathan Isaac,ORL,MIL,1,active,2.9,2.5,0.5,11.6,2.2,1.5,0.7,2.4,2.3,0.1,0.8,0.7,0.1
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Nikola Vucevic,ORL,MIL,1,active,6.0,3.8,1.4,9.4,3.4,4.6,-1.2,3.0,3.0,0.0,1.0,1.6,-0.6
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Noah Penda,ORL,MIL,1,active,2.4,1.5,0.8,5.9,0.6,1.3,-0.7,1.2,1.4,-0.2,1.0,1.1,-0.1
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Paolo Banchero,ORL,MIL,1,active,21.0,7.2,5.2,34.3,24.6,19.5,5.1,7.8,8.4,-0.6,7.4,6.2,1.2
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Tristan da Silva,ORL,MIL,1,active,12.0,3.5,1.9,30.3,15.8,12.7,3.1,3.8,3.5,0.3,1.4,2.1,-0.7
+2026-11-13,Milwaukee Bucks at Orlando Magic,2026-11-14T00:00Z,Wendell Carter Jr.,ORL,MIL,1,active,12.6,8.6,1.8,33.9,12.6,12.8,-0.2,9.8,8.9,0.9,1.2,1.1,0.1
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Aaron Nesmith,IND,NY,1,active,13.1,3.0,1.6,25.9,13.4,14.8,-1.4,1.8,2.6,-0.8,2.0,1.8,0.2
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Andrew Nembhard,IND,NY,1,active,16.2,2.5,7.5,33.5,19.8,17.5,2.3,2.2,2.1,0.1,6.8,8.7,-1.9
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Ben Sheppard,IND,NY,1,active,5.8,2.0,1.2,20.9,8.0,7.6,0.4,2.4,2.7,-0.3,2.0,1.4,0.6
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Braden Smith,IND,NY,1,active,4.9,1.6,2.5,16.7,6.0,5.0,1.0,1.0,0.8,0.2,3.4,2.8,0.6
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Ivica Zubac,IND,NY,1,active,10.6,8.3,1.6,21.3,9.2,9.4,-0.2,7.8,7.6,0.2,1.8,1.7,0.1
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Jalen Slawson,IND,NY,1,active,4.5,3.2,1.4,18.9,4.6,3.4,1.2,3.8,3.4,0.4,1.2,1.5,-0.3
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Jarace Walker,IND,NY,1,active,8.6,5.2,2.0,26.1,8.8,8.2,0.6,7.0,6.1,0.9,2.4,2.0,0.4
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Jay Huff,IND,NY,1,active,7.1,3.5,1.1,21.1,8.8,8.5,0.3,4.2,4.4,-0.2,1.0,1.4,-0.4
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Johnny Furphy,IND,NY,1,active,4.3,3.8,1.5,21.5,4.0,4.8,-0.8,5.6,5.9,-0.3,2.6,2.0,0.6
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Kelly Oubre Jr.,IND,NY,1,active,12.5,3.8,1.3,23.0,11.8,10.8,1.0,2.8,3.4,-0.6,1.2,1.4,-0.2
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Kobe Brown,IND,NY,1,active,5.3,2.6,1.2,14.9,5.6,8.0,-2.4,2.6,4.4,-1.8,1.2,2.1,-0.9
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Larry Nance Jr.,IND,NY,1,active,5.5,4.1,1.1,20.0,4.2,5.1,-0.9,4.0,3.6,0.4,0.8,0.9,-0.1
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Obi Toppin,IND,NY,1,active,11.6,4.0,1.4,21.7,13.4,15.5,-2.1,5.6,5.2,0.4,1.2,1.6,-0.4
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Pascal Siakam,IND,NY,1,active,21.7,6.7,4.2,33.0,19.2,22.5,-3.3,7.8,6.8,1.0,4.0,3.7,0.3
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Quenton Jackson,IND,NY,1,active,10.5,2.9,2.7,23.8,14.2,11.5,2.7,4.6,3.1,1.5,2.8,3.2,-0.4
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,T.J. McConnell,IND,NY,1,active,7.1,2.0,5.1,16.3,10.2,9.3,0.9,1.8,2.6,-0.8,5.8,6.9,-1.1
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Tyrese Haliburton,IND,NY,1,active,17.1,3.6,8.8,32.7,22.0,19.4,2.6,4.2,3.7,0.5,9.0,9.4,-0.4
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Andre Drummond,NY,IND,0,active,6.1,7.6,0.8,13.4,5.4,6.7,-1.3,8.6,9.0,-0.4,0.6,1.3,-0.7
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Dalton Knecht,NY,IND,0,active,4.9,1.8,0.6,10.9,7.4,4.2,3.2,2.8,1.6,1.2,1.0,0.7,0.3
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Jaden Akins,NY,IND,0,active,7.4,3.3,1.5,,,,,,,,,,
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Jalen Brunson,NY,IND,0,active,26.4,2.9,6.0,33.8,27.4,25.9,1.5,2.2,2.5,-0.3,6.0,5.3,0.7
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,James Wiseman,NY,IND,0,active,4.2,3.0,0.5,6.8,0.6,5.0,-4.4,0.8,3.9,-3.1,0.6,0.6,0.0
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Jordan Clarkson,NY,IND,0,active,7.4,1.6,1.0,11.5,7.8,6.3,1.5,1.6,1.5,0.1,0.4,0.9,-0.5
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Jose Alvarado,NY,IND,0,active,6.9,1.9,2.7,17.5,7.6,7.5,0.1,3.0,2.4,0.6,2.8,2.8,0.0
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Josh Hart,NY,IND,0,active,10.2,7.0,3.6,32.9,7.6,9.0,-1.4,7.6,6.6,1.0,3.4,3.2,0.2
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Karl-Anthony Towns,NY,IND,0,active,21.3,11.9,3.5,31.2,19.2,19.7,-0.5,14.6,13.1,1.5,3.4,3.4,0.0
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Landry Shamet,NY,IND,0,active,8.3,1.8,1.5,26.4,11.2,8.6,2.6,1.2,1.4,-0.2,2.2,1.8,0.4
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Mikal Bridges,NY,IND,0,active,9.4,2.9,2.2,22.5,8.0,6.3,1.7,2.8,2.4,0.4,2.0,1.9,0.1
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Miles McBride,NY,IND,0,active,6.2,1.6,1.3,16.7,6.2,8.0,-1.8,2.2,1.9,0.3,1.0,1.1,-0.1
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Mohamed Diawara,NY,IND,0,active,3.5,1.6,1.0,14.5,3.2,3.1,0.1,2.4,1.4,1.0,2.2,1.4,0.8
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,OG Anunoby,NY,IND,0,active,16.6,4.9,2.4,32.6,16.2,14.8,1.4,5.2,5.3,-0.1,2.0,2.4,-0.4
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Pacome Dadiet,NY,IND,0,active,3.5,1.4,0.5,8.5,3.8,3.5,0.3,1.6,1.4,0.2,0.4,0.3,0.1
+2026-11-13,New York Knicks at Indiana Pacers,2026-11-14T00:00Z,Tyler Kolek,NY,IND,0,active,3.4,1.2,3.3,11.7,3.0,3.2,-0.2,1.0,1.3,-0.3,4.4,4.1,0.3
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Aaron Wiggins,ATL,CHI,0,active,11.3,3.2,2.0,25.7,12.2,12.7,-0.5,3.4,3.2,0.2,2.2,2.2,0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Asa Newell,ATL,CHI,0,active,5.0,2.6,0.8,16.8,6.6,4.4,2.2,4.2,2.6,1.6,0.8,0.8,0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,CJ McCollum,ATL,CHI,0,active,16.0,3.6,4.0,24.9,11.8,15.7,-3.9,4.2,3.1,1.1,4.8,3.7,1.1
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Corey Kispert,ATL,CHI,0,active,6.9,1.2,0.7,8.3,7.8,8.5,-0.7,0.4,0.8,-0.4,0.6,0.7,-0.1
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Dorian Finney-Smith,ATL,CHI,0,active,4.1,1.7,1.0,9.1,3.8,3.1,0.7,1.4,1.8,-0.4,0.6,1.2,-0.6
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Dyson Daniels,ATL,CHI,0,active,10.8,6.4,5.2,30.8,8.4,10.8,-2.4,8.4,7.3,1.1,6.8,6.0,0.8
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Jalen Johnson,ATL,CHI,0,active,18.1,8.6,5.9,33.3,18.2,18.0,0.2,8.2,9.7,-1.5,8.4,6.6,1.8
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Jalen Wilson,ATL,CHI,0,active,7.6,3.0,1.5,25.0,10.8,10.9,-0.1,3.8,3.9,-0.1,3.0,2.0,1.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Jock Landale,ATL,CHI,0,active,6.5,3.7,1.6,18.0,7.6,8.8,-1.2,4.8,5.3,-0.5,2.6,2.3,0.3
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Keshon Gilbert,ATL,CHI,0,active,2.3,1.5,0.7,15.9,2.0,2.0,0.0,1.7,1.7,0.0,1.0,1.0,0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Kingston Flemings,ATL,CHI,0,active,8.8,2.7,4.7,23.9,13.2,9.1,4.1,2.4,2.9,-0.5,5.0,4.8,0.2
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Luguentz Dort,ATL,CHI,0,active,11.7,3.7,1.6,29.3,12.8,10.5,2.3,3.6,3.2,0.4,2.0,1.7,0.3
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Mouhamed Gueye,ATL,CHI,0,active,3.6,2.9,0.8,12.6,2.0,4.2,-2.2,3.2,3.8,-0.6,1.0,1.2,-0.2
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Nickeil Alexander-Walker,ATL,CHI,0,active,19.2,2.9,2.9,31.6,24.6,21.6,3.0,3.0,3.0,0.0,2.0,2.6,-0.6
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Onyeka Okongwu,ATL,CHI,0,active,12.1,7.7,2.0,31.4,13.2,10.5,2.7,10.0,7.9,2.1,2.6,2.5,0.1
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,RayJ Dennis,ATL,CHI,0,active,3.1,1.1,1.2,8.5,2.0,2.5,-0.5,1.4,1.1,0.3,1.6,1.0,0.6
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Zuby Ejiofor,ATL,CHI,0,active,4.5,2.5,1.5,11.2,5.4,5.4,0.0,3.0,3.0,0.0,1.8,1.8,0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Buddy Hield,CHI,ATL,1,active,5.9,1.7,1.4,13.3,5.0,7.2,-2.2,1.8,1.8,0.0,1.6,1.6,0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Caleb Wilson,CHI,ATL,1,active,19.1,5.9,2.6,31.3,17.8,19.5,-1.7,5.6,6.5,-0.9,3.0,2.4,0.6
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Dailyn Swain,CHI,ATL,1,active,8.6,3.6,1.6,,,,,,,,,,
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Isaac Okoro,CHI,ATL,1,active,5.8,1.7,1.2,16.8,4.8,6.1,-1.3,1.2,1.8,-0.6,1.4,1.6,-0.2
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Jalen Smith,CHI,ATL,1,active,9.9,6.4,1.3,22.5,9.0,10.3,-1.3,7.6,6.9,0.7,2.2,1.6,0.6
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Jaylin Sellers,CHI,ATL,1,active,3.2,0.9,0.8,8.0,2.2,2.2,0.0,0.2,0.2,0.0,1.0,1.0,0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Jordan Hawkins,CHI,ATL,1,active,6.6,1.7,0.8,10.9,4.2,8.9,-4.7,1.4,2.1,-0.7,0.6,1.2,-0.6
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Josh Giddey,CHI,ATL,1,active,12.5,5.4,6.6,27.7,11.4,8.9,2.5,3.6,4.9,-1.3,7.2,7.6,-0.4
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Leonard Miller,CHI,ATL,1,active,6.6,3.2,0.8,14.4,6.0,11.1,-5.1,3.6,5.2,-1.6,0.4,1.4,-1.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Matas Buzelis,CHI,ATL,1,active,12.5,4.5,1.9,24.9,11.6,12.8,-1.2,3.8,4.9,-1.1,2.2,1.9,0.3
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Nic Claxton,CHI,ATL,1,active,10.7,6.4,2.1,22.5,10.8,9.6,1.2,5.4,5.9,-0.5,2.6,1.9,0.7
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Noa Essengue,CHI,ATL,1,active,4.2,2.6,0.5,14.3,5.4,3.6,1.8,3.4,2.3,1.1,0.2,0.2,-0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Norman Powell,CHI,ATL,1,active,17.2,2.8,2.0,30.6,20.4,18.8,1.6,2.0,2.4,-0.4,2.0,1.4,0.6
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Patrick Williams,CHI,ATL,1,active,10.9,3.9,2.1,30.5,12.0,7.8,4.2,4.6,3.5,1.1,3.4,2.4,1.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Tobe Awaka,CHI,ATL,1,active,3.0,4.4,0.7,12.8,2.7,2.7,0.0,6.7,6.7,0.0,1.0,1.0,0.0
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Tre Jones,CHI,ATL,1,active,9.6,2.4,3.4,18.0,10.6,11.6,-1.0,3.0,3.0,0.0,2.8,3.1,-0.3
+2026-11-13,Atlanta Hawks at Chicago Bulls,2026-11-14T01:00Z,Zach Collins,CHI,ATL,1,active,4.5,3.4,1.0,7.6,1.2,6.4,-5.2,2.6,4.5,-1.9,0.2,1.0,-0.8
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Craig Porter Jr.,CLE,MIA,0,active,3.0,2.2,1.7,9.1,1.0,3.4,-2.4,1.6,3.5,-1.9,1.4,2.1,-0.7
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Donovan Mitchell,CLE,MIA,0,active,23.8,4.4,5.6,31.7,20.2,25.0,-4.8,4.8,5.7,-0.9,7.0,5.9,1.1
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Evan Mobley,CLE,MIA,0,active,17.8,8.9,2.9,30.8,21.0,19.3,1.7,8.0,9.3,-1.3,3.2,2.9,0.3
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,James Harden,CLE,MIA,0,active,19.0,5.2,6.4,31.5,15.8,16.7,-0.9,5.4,4.8,0.6,5.6,5.8,-0.2
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Jarrett Allen,CLE,MIA,0,active,15.2,9.8,1.6,27.4,15.6,15.5,0.1,9.2,8.7,0.5,1.8,1.2,0.6
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Jaylon Tyson,CLE,MIA,0,active,8.1,3.4,2.1,22.9,12.4,10.5,1.9,4.2,3.7,0.5,3.4,2.8,0.6
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Mario Hezonja,CLE,MIA,0,active,8.9,6.2,1.9,22.6,10.4,9.2,1.2,8.0,6.4,1.6,2.2,1.9,0.3
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Meleek Thomas,CLE,MIA,0,active,11.4,2.2,1.2,22.9,12.2,12.8,-0.6,2.4,2.3,0.1,1.4,1.2,0.2
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Norchad Omier,CLE,MIA,0,active,2.7,1.4,0.5,4.0,3.4,2.8,0.6,1.2,1.2,0.0,0.4,0.3,0.1
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Peyton Watson,CLE,MIA,0,active,11.8,4.4,2.3,29.4,13.2,11.8,1.4,5.6,4.7,0.9,3.0,2.9,0.1
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Riley Minix,CLE,MIA,0,active,3.5,1.2,0.6,8.8,4.4,3.5,0.9,0.8,0.9,-0.1,0.4,0.5,-0.1
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Sam Merrill,CLE,MIA,0,active,8.3,2.6,1.7,24.6,8.2,8.3,-0.1,3.8,3.0,0.8,1.8,2.4,-0.6
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Thomas Bryant,CLE,MIA,0,active,6.2,3.7,0.5,14.1,10.0,8.4,1.6,3.6,4.3,-0.7,0.4,0.2,0.2
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Tyrese Proctor,CLE,MIA,0,active,6.1,2.2,1.9,16.8,7.0,8.7,-1.7,3.2,3.2,0.0,2.2,2.7,-0.5
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Andrew Wiggins,MIA,CLE,1,active,11.1,3.3,1.8,25.5,8.4,8.1,0.3,2.8,3.0,-0.2,2.0,1.7,0.3
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Bam Adebayo,MIA,CLE,1,active,19.4,9.4,3.7,34.2,24.0,19.2,4.8,9.4,8.6,0.8,2.8,3.1,-0.3
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Davion Mitchell,MIA,CLE,1,active,13.4,2.0,6.9,35.9,14.6,15.7,-1.1,2.2,1.6,0.6,9.2,7.5,1.7
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Dru Smith,MIA,CLE,1,active,3.4,1.3,1.5,9.8,3.0,2.6,0.4,1.2,0.9,0.3,1.6,1.6,0.0
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Giannis Antetokounmpo,MIA,CLE,1,active,28.8,12.4,6.5,33.5,26.4,27.7,-1.3,15.2,12.8,2.4,6.0,5.8,0.2
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Keshad Johnson,MIA,CLE,1,active,3.6,1.5,0.5,9.4,4.8,5.8,-1.0,1.6,1.9,-0.3,0.2,0.3,-0.1
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Klay Thompson,MIA,CLE,1,active,14.0,2.2,1.9,25.7,17.6,13.6,4.0,1.4,1.4,0.0,2.4,1.6,0.8
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Myron Gardner,MIA,CLE,1,active,2.1,1.3,0.6,3.0,1.2,1.3,-0.1,1.0,0.9,0.1,0.8,0.6,0.2
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Nick Richards,MIA,CLE,1,active,4.2,3.7,0.4,3.5,1.8,5.5,-3.7,1.4,4.3,-2.9,0.2,0.3,-0.1
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Nikola Jovic,MIA,CLE,1,active,3.9,2.2,1.0,9.8,2.4,3.0,-0.6,2.8,2.0,0.8,0.8,0.9,-0.1
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Pelle Larsson,MIA,CLE,1,active,11.0,2.8,3.7,29.7,12.8,12.4,0.4,3.2,2.8,0.4,4.2,4.0,0.2
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Ryan Conwell,MIA,CLE,1,active,3.8,1.2,0.9,13.2,5.0,3.9,1.1,1.0,0.7,0.3,1.0,1.0,0.0
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Simone Fontecchio,MIA,CLE,1,active,5.1,1.6,0.8,10.5,7.0,5.6,1.4,1.4,1.7,-0.3,1.2,0.8,0.4
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Tim Hardaway Jr.,MIA,CLE,1,active,6.0,1.5,0.9,12.7,5.0,5.9,-0.9,0.6,1.4,-0.8,0.6,0.9,-0.3
+2026-11-13,Cleveland Cavaliers at Miami Heat,2026-11-14T01:00Z,Vladislav Goldin,MIA,CLE,1,active,2.0,1.2,0.4,2.0,0.0,0.5,-0.5,0.8,0.9,-0.1,0.2,0.4,-0.2
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Cam Spencer,MEM,NO,0,active,7.9,2.8,5.3,21.7,9.2,9.2,0.0,4.6,3.2,1.4,8.4,6.3,2.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Cameron Boozer,MEM,NO,0,active,15.9,9.2,5.2,31.1,17.2,16.5,0.7,8.6,9.8,-1.2,5.6,5.4,0.2
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Cedric Coward,MEM,NO,0,active,14.3,6.6,2.5,29.0,15.2,15.4,-0.2,8.6,7.4,1.2,3.2,2.5,0.7
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,GG Jackson,MEM,NO,0,active,10.1,3.2,1.1,16.7,8.8,11.9,-3.1,2.8,3.9,-1.1,1.4,1.6,-0.2
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Isaiah Stewart,MEM,NO,0,active,9.6,5.1,0.9,20.4,14.6,11.6,3.0,4.2,3.6,0.6,0.8,0.5,0.3
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Jahmai Mashack,MEM,NO,0,active,7.7,3.0,4.0,24.6,7.0,7.8,-0.8,3.8,3.5,0.3,6.6,4.0,2.6
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Javon Small,MEM,NO,0,active,9.8,2.8,3.2,22.2,11.6,11.8,-0.2,2.4,3.4,-1.0,3.6,3.5,0.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Jaylen Wells,MEM,NO,0,active,9.5,2.9,1.4,26.6,8.8,10.2,-1.4,2.2,2.9,-0.7,1.2,1.5,-0.3
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Jerami Grant,MEM,NO,0,active,13.6,3.0,1.8,24.4,10.2,11.4,-1.2,2.2,2.5,-0.3,1.6,1.7,-0.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Karim Lopez,MEM,NO,0,active,2.2,1.3,0.4,3.4,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Kris Murray,MEM,NO,0,active,3.3,2.3,0.8,14.2,1.4,3.2,-1.8,2.0,2.5,-0.5,0.8,1.2,-0.4
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Olivier-Maxence Prosper,MEM,NO,0,active,7.1,2.4,0.7,9.5,9.4,13.2,-3.8,2.0,3.3,-1.3,0.8,0.9,-0.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Quinten Post,MEM,NO,0,active,6.1,2.7,0.9,13.5,6.6,7.6,-1.0,2.6,2.7,-0.1,0.6,1.0,-0.4
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Scotty Pippen Jr.,MEM,NO,0,active,6.7,2.3,3.6,17.9,8.2,9.4,-1.2,2.8,2.7,0.1,2.8,3.9,-1.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Taylor Hendricks,MEM,NO,0,active,4.6,3.1,0.6,9.5,6.6,6.3,0.3,2.6,3.7,-1.1,0.2,0.3,-0.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Ty Jerome,MEM,NO,0,active,19.7,2.8,5.0,30.4,23.8,24.6,-0.8,3.2,3.6,-0.4,5.2,5.7,-0.5
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Zach Edey,MEM,NO,0,active,8.5,8.1,1.0,20.2,7.6,9.3,-1.7,7.6,9.0,-1.4,0.8,1.2,-0.4
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,AJ Johnson,NO,MEM,1,active,6.1,1.4,1.3,14.0,7.6,5.1,2.5,1.0,0.9,0.1,1.2,1.3,-0.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Bennedict Mathurin,NO,MEM,1,active,8.4,2.5,1.5,14.7,5.0,7.4,-2.4,1.8,2.8,-1.0,1.0,2.1,-1.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Bryce McGowens,NO,MEM,1,active,3.9,1.3,0.9,10.5,2.2,5.7,-3.5,0.6,1.7,-1.1,1.2,1.3,-0.1
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,DeAndre Jordan,NO,MEM,1,active,3.8,4.6,0.9,17.6,5.2,4.7,0.5,6.0,6.0,0.0,1.6,1.3,0.3
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Dejounte Murray,NO,MEM,1,active,17.2,5.8,6.1,34.9,15.0,14.5,0.5,6.0,5.7,0.3,5.0,5.9,-0.9
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Derik Queen,NO,MEM,1,active,13.0,8.3,3.4,21.4,12.6,14.3,-1.7,6.0,8.9,-2.9,3.8,2.9,0.9
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Herbert Jones,NO,MEM,1,active,8.2,3.6,1.6,27.1,7.6,5.7,1.9,4.0,3.1,0.9,1.4,0.9,0.5
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Jeremiah Fears,NO,MEM,1,active,17.5,4.3,5.1,33.7,19.4,16.9,2.5,5.6,5.1,0.5,6.8,4.6,2.2
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Jordan Poole,NO,MEM,1,active,11.9,2.0,3.3,23.3,13.4,9.9,3.5,2.4,1.8,0.6,3.8,3.1,0.7
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Julian Reese,NO,MEM,1,active,12.4,10.3,1.8,26.6,11.8,12.2,-0.4,7.2,9.7,-2.5,1.6,1.6,0.0
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Karlo Matkovic,NO,MEM,1,active,8.2,4.6,1.1,22.6,13.6,8.9,4.7,5.4,4.3,1.1,1.2,0.8,0.4
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Saddiq Bey,NO,MEM,1,active,16.8,4.6,2.2,29.3,18.4,18.0,0.4,4.8,4.2,0.6,2.4,2.0,0.4
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Trendon Watford,NO,MEM,1,active,5.8,3.1,1.5,17.9,7.6,6.5,1.1,3.6,2.8,0.8,1.2,1.4,-0.2
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Trey Murphy III,NO,MEM,1,active,14.7,4.2,3.2,33.0,13.6,14.6,-1.0,4.0,4.8,-0.8,4.2,3.5,0.7
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Yves Missi,NO,MEM,1,active,7.2,7.2,1.6,28.0,10.2,7.9,2.3,9.2,7.7,1.5,2.2,2.2,0.0
+2026-11-13,Memphis Grizzlies at New Orleans Pelicans,2026-11-14T01:00Z,Zion Williamson,NO,MEM,1,active,20.7,6.0,3.7,33.9,19.6,20.2,-0.6,7.0,5.6,1.4,3.2,2.7,0.5
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Alperen Sengun,HOU,UTAH,1,active,18.9,9.5,6.4,35.9,21.0,19.9,1.1,9.4,9.6,-0.2,9.0,7.5,1.5
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Amen Thompson,HOU,UTAH,1,active,15.6,7.4,3.7,31.5,14.2,18.0,-3.8,4.2,6.6,-2.4,2.8,3.7,-0.9
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Bogdan Bogdanovic,HOU,UTAH,1,active,6.2,1.6,1.1,11.1,5.2,6.4,-1.2,1.0,1.2,-0.2,1.2,1.0,0.2
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Bruce Thornton,HOU,UTAH,1,active,2.4,0.9,0.4,3.4,2.0,2.0,0.0,0.2,0.2,0.0,0.0,0.0,0.0
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Clint Capela,HOU,UTAH,1,active,5.2,5.5,0.8,15.0,3.8,4.9,-1.1,5.4,4.8,0.6,1.6,1.1,0.5
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Fred VanVleet,HOU,UTAH,1,active,14.2,3.5,5.7,29.7,14.2,12.2,2.0,4.0,2.6,1.4,5.6,5.6,0.0
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Isaiah Crawford,HOU,UTAH,1,active,2.8,1.0,0.4,5.6,2.8,3.2,-0.4,0.2,1.1,-0.9,0.0,0.2,-0.2
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Jabari Smith Jr.,HOU,UTAH,1,active,16.2,6.7,1.8,33.9,18.2,17.4,0.8,5.6,6.1,-0.5,2.2,2.3,-0.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Jae'Sean Tate,HOU,UTAH,1,active,3.2,1.9,0.8,2.8,0.0,2.4,-2.4,0.8,2.4,-1.6,0.2,0.9,-0.7
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Julian Phillips,HOU,UTAH,1,active,2.6,0.8,0.4,7.3,1.6,1.9,-0.3,0.4,0.4,0.0,0.2,0.2,0.0
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Kevin Durant,HOU,UTAH,1,active,23.5,5.6,3.9,32.5,18.6,22.0,-3.4,4.2,5.4,-1.2,2.8,3.5,-0.7
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Marcus Smart,HOU,UTAH,1,active,9.1,2.5,3.7,22.3,9.8,8.5,1.3,3.0,2.7,0.3,2.6,3.7,-1.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Oscar Tshiebwe,HOU,UTAH,1,active,5.6,4.9,0.7,7.8,3.0,9.1,-6.1,2.4,7.2,-4.8,0.6,1.2,-0.6
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Reed Sheppard,HOU,UTAH,1,active,10.5,2.2,2.5,22.9,12.2,11.3,0.9,2.4,2.6,-0.2,3.6,3.0,0.6
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Steven Adams,HOU,UTAH,1,active,4.9,7.8,1.5,25.3,4.6,5.9,-1.3,8.6,8.7,-0.1,1.4,1.6,-0.2
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Tari Eason,HOU,UTAH,1,active,10.6,6.1,1.4,25.3,9.2,11.2,-2.0,7.0,6.1,0.9,1.8,1.4,0.4
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Ace Bailey,UTAH,HOU,0,active,13.8,5.6,1.8,33.0,12.0,12.7,-0.7,6.0,6.7,-0.7,0.8,1.7,-0.9
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Brice Sensabaugh,UTAH,HOU,0,active,8.0,2.3,1.3,14.7,8.2,8.6,-0.4,2.4,2.7,-0.3,1.2,1.1,0.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Darryn Peterson,UTAH,HOU,0,active,14.1,3.8,4.2,30.9,15.2,13.6,1.6,3.4,3.8,-0.4,5.0,3.9,1.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Harrison Ingram,UTAH,HOU,0,active,2.0,1.0,0.4,3.2,1.6,1.5,0.1,0.4,1.1,-0.7,0.2,0.4,-0.2
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Isaiah Collier,UTAH,HOU,0,active,5.8,2.4,4.5,14.4,5.2,7.0,-1.8,2.8,3.3,-0.5,3.0,4.5,-1.5
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Jaren Jackson Jr.,UTAH,HOU,0,active,20.0,5.4,2.0,28.2,20.8,21.5,-0.7,5.2,5.6,-0.4,2.2,2.3,-0.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Jaxson Hayes,UTAH,HOU,0,active,7.9,5.0,1.5,25.8,5.6,9.4,-3.8,7.2,5.6,1.6,2.0,1.9,0.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Josh Green,UTAH,HOU,0,active,4.1,1.5,0.7,17.6,3.0,2.7,0.3,1.4,1.5,-0.1,0.6,0.5,0.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Josh Okogie,UTAH,HOU,0,active,5.1,2.9,1.1,22.1,5.8,3.6,2.2,4.6,3.3,1.3,1.2,1.2,0.0
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Jusuf Nurkic,UTAH,HOU,0,active,11.9,9.3,3.8,26.8,10.4,13.1,-2.7,11.6,12.8,-1.2,5.0,6.1,-1.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Keyonte George,UTAH,HOU,0,active,19.8,3.4,5.3,32.8,20.2,20.6,-0.4,4.4,4.0,0.4,5.0,6.1,-1.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Kobe Bufkin,UTAH,HOU,0,active,3.0,1.0,0.7,5.3,2.6,2.5,0.1,0.8,0.6,0.2,0.8,0.6,0.2
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Kyle Filipowski,UTAH,HOU,0,active,6.6,3.4,1.5,6.3,1.2,8.0,-6.8,0.8,4.3,-3.5,0.4,1.8,-1.4
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Lauri Markkanen,UTAH,HOU,0,active,19.7,6.6,1.9,28.4,17.2,18.5,-1.3,6.2,6.4,-0.2,1.8,2.1,-0.3
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Mo Bamba,UTAH,HOU,0,active,5.7,5.3,0.7,17.5,8.6,5.3,3.3,6.6,5.9,0.7,0.6,0.5,0.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Svi Mykhailiuk,UTAH,HOU,0,active,5.4,1.5,0.9,15.6,3.6,5.0,-1.4,1.6,2.1,-0.5,1.0,0.9,0.1
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Tony Bradley,UTAH,HOU,0,active,3.3,2.8,0.5,8.8,3.0,4.0,-1.0,2.4,3.6,-1.2,0.4,0.6,-0.2
+2026-11-13,Utah Jazz at Houston Rockets,2026-11-14T01:30Z,Trey Alexander,UTAH,HOU,0,active,3.0,1.1,0.7,8.1,3.4,3.3,0.1,1.2,1.1,0.1,0.8,0.8,0.0
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Al Horford,GS,SA,0,active,6.6,4.4,1.3,18.8,7.0,5.6,1.4,4.0,3.4,0.6,1.0,1.1,-0.1
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Brandin Podziemski,GS,SA,0,active,14.4,5.1,3.8,33.4,15.0,16.8,-1.8,5.4,4.4,1.0,5.0,3.7,1.3
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Brandon Williams,GS,SA,0,active,10.0,2.3,2.9,18.1,10.6,12.7,-2.1,2.4,2.5,-0.1,2.4,3.1,-0.7
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Charles Bassey,GS,SA,0,active,5.9,4.6,0.7,13.5,7.8,8.3,-0.5,5.8,5.7,0.1,0.8,0.8,0.0
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,De'Anthony Melton,GS,SA,0,active,9.5,4.3,2.4,22.8,10.4,9.4,1.0,6.0,4.5,1.5,2.0,2.2,-0.2
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Draymond Green,GS,SA,0,active,5.4,5.1,6.1,26.9,2.8,3.1,-0.3,5.2,5.0,0.2,7.0,6.8,0.2
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Gary Payton II,GS,SA,0,active,4.7,1.9,0.8,12.6,4.0,4.8,-0.8,2.0,1.8,0.2,0.8,0.5,0.3
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Georges Niang,GS,SA,0,active,8.3,2.4,1.4,21.3,9.4,8.7,0.7,3.4,3.1,0.3,2.2,1.5,0.7
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Graham Ike,GS,SA,0,active,4.6,2.3,0.7,10.9,5.4,5.8,-0.4,2.8,2.7,0.1,0.8,0.8,-0.0
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Gui Santos,GS,SA,0,active,7.1,3.2,1.5,19.2,6.2,9.7,-3.5,3.8,4.2,-0.4,1.6,2.1,-0.5
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Jimmy Butler III,GS,SA,0,active,19.5,5.5,4.8,29.1,22.8,21.2,1.6,6.4,5.7,0.7,4.8,4.9,-0.1
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Kristaps Porzingis,GS,SA,0,active,17.7,6.4,2.2,26.5,17.4,17.2,0.2,6.6,5.8,0.8,2.2,2.4,-0.2
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,LJ Cryer,GS,SA,0,active,3.9,1.0,0.8,3.9,1.8,5.5,-3.7,0.2,0.5,-0.3,0.8,1.4,-0.6
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Malevy Leons,GS,SA,0,active,2.8,1.3,0.7,6.6,2.0,3.8,-1.8,0.8,1.9,-1.1,0.4,1.3,-0.9
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Moses Moody,GS,SA,0,active,9.8,3.0,1.8,30.2,16.6,15.7,0.9,4.0,4.0,0.0,3.0,2.5,0.5
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Stephen Curry,GS,SA,0,active,24.9,4.1,4.9,30.0,32.4,26.1,6.3,4.4,4.0,0.4,5.2,4.1,1.1
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Will Richard,GS,SA,0,active,5.2,1.9,1.0,20.5,5.6,4.7,0.9,2.2,1.8,0.4,1.4,1.0,0.4
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Yaxel Lendeborg,GS,SA,0,active,19.4,6.9,4.3,30.5,20.4,21.0,-0.6,5.4,7.1,-1.7,3.6,4.1,-0.5
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Carter Bryant,SA,GS,1,active,3.8,1.5,0.6,10.1,2.6,4.2,-1.6,0.2,1.1,-0.9,0.4,1.0,-0.6
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,David Jones Garcia,SA,GS,1,active,2.8,1.1,1.2,3.4,2.2,2.7,-0.5,0.4,1.2,-0.8,1.0,1.6,-0.6
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,De'Aaron Fox,SA,GS,1,active,17.6,3.8,5.5,31.0,13.4,15.4,-2.0,3.6,4.2,-0.6,4.4,5.8,-1.4
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Devin Vassell,SA,GS,1,active,13.7,4.0,2.5,31.8,12.4,12.3,0.1,4.2,4.0,0.2,2.2,3.0,-0.8
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Dylan Harper,SA,GS,1,active,16.0,4.1,4.4,33.4,19.0,17.7,1.3,5.2,5.0,0.2,5.0,4.1,0.9
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Harrison Barnes,SA,GS,1,active,6.8,1.5,0.8,13.9,6.6,7.4,-0.8,0.6,0.9,-0.3,0.0,0.4,-0.4
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Ja'Kobi Gillespie,SA,GS,1,active,7.5,3.3,1.5,,,,,,,,,,
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Jordan McLaughlin,SA,GS,1,active,2.6,1.0,1.1,5.6,0.8,1.5,-0.7,1.0,1.0,0.0,1.4,0.9,0.5
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Julian Champagnie,SA,GS,1,active,8.6,3.9,1.3,24.7,6.8,9.3,-2.5,5.2,4.1,1.1,1.2,1.4,-0.2
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Keldon Johnson,SA,GS,1,active,11.2,4.9,1.7,24.1,6.6,9.0,-2.4,6.0,5.6,0.4,2.2,1.7,0.5
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Luke Kornet,SA,GS,1,active,3.7,3.8,0.8,15.5,3.0,2.8,0.2,5.2,4.5,0.7,1.2,0.9,0.3
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Maliq Brown,SA,GS,1,active,7.5,3.3,1.5,,,,,,,,,,
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Stephon Castle,SA,GS,1,active,15.4,5.2,5.2,29.9,13.2,14.9,-1.7,5.8,6.3,-0.5,5.2,5.4,-0.2
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Tarris Reed Jr.,SA,GS,1,active,2.4,3.0,0.4,4.6,2.0,2.0,0.0,3.2,3.2,0.0,0.0,0.0,0.0
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Tobias Harris,SA,GS,1,active,12.3,5.0,2.4,22.5,10.2,13.0,-2.8,4.0,4.9,-0.9,2.4,3.6,-1.2
+2026-11-13,Golden State Warriors at San Antonio Spurs,2026-11-14T02:30Z,Victor Wembanyama,SA,GS,1,active,27.9,12.2,3.4,31.4,34.6,30.2,4.4,14.0,12.6,1.4,3.6,3.2,0.4
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Branden Carlson,POR,SAC,0,active,6.6,3.7,0.9,19.6,10.6,7.6,3.0,5.2,3.6,1.6,1.6,1.0,0.6
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Chris Youngblood,POR,SAC,0,active,3.2,1.2,0.5,7.7,3.4,3.5,-0.1,0.6,0.7,-0.1,0.4,0.7,-0.3
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Damian Lillard,POR,SAC,0,active,21.3,3.8,5.2,31.4,19.6,19.8,-0.2,3.2,3.3,-0.1,4.2,3.9,0.3
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Deni Avdija,POR,SAC,0,active,21.3,5.8,6.1,34.2,23.8,24.6,-0.8,6.6,6.4,0.2,7.4,7.1,0.3
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Donovan Clingan,POR,SAC,0,active,11.1,10.4,1.7,26.6,14.6,13.2,1.4,11.4,10.7,0.7,1.2,1.5,-0.3
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Ja Morant,POR,SAC,0,active,21.3,3.5,6.7,27.6,19.2,20.2,-1.0,3.0,2.7,0.3,8.8,7.9,0.9
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Jayson Kent,POR,SAC,0,active,2.4,1.2,0.4,5.1,1.6,1.7,-0.1,1.0,1.0,0.0,0.0,0.0,0.0
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,John Tonje,POR,SAC,0,active,2.9,1.2,0.5,7.4,3.0,2.5,0.5,1.2,1.0,0.2,0.4,0.3,0.1
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Jrue Holiday,POR,SAC,0,active,13.0,4.2,4.5,27.3,12.8,13.8,-1.0,4.6,4.2,0.4,4.8,4.3,0.5
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Micah Potter,POR,SAC,0,active,6.3,4.0,0.7,12.1,5.2,9.3,-4.1,3.6,5.9,-2.3,0.4,1.0,-0.6
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Robert Williams III,POR,SAC,0,active,6.2,6.7,1.0,16.9,8.2,7.2,1.0,6.6,7.6,-1.0,1.0,1.1,-0.1
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Scoot Henderson,POR,SAC,0,active,10.0,2.2,2.4,24.1,8.4,8.7,-0.3,2.6,2.1,0.5,0.8,1.7,-0.9
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Shaedon Sharpe,POR,SAC,0,active,15.1,3.5,2.2,23.8,15.0,19.0,-4.0,2.4,4.2,-1.8,2.2,2.3,-0.1
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Sidy Cissoko,POR,SAC,0,active,4.9,2.7,1.4,20.8,5.4,5.3,0.1,3.6,3.1,0.5,2.0,1.9,0.1
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Toumani Camara,POR,SAC,0,active,11.4,4.2,1.8,29.9,13.0,13.4,-0.4,4.2,3.2,1.0,1.0,1.5,-0.5
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Vit Krejci,POR,SAC,0,active,3.5,1.3,1.1,8.9,2.6,3.0,-0.4,1.2,1.5,-0.3,0.6,1.2,-0.6
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Alex Karaban,SAC,POR,1,active,2.6,1.1,0.6,9.5,1.8,1.8,0.0,0.8,0.8,0.0,0.5,0.5,0.0
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Ben Simmons,SAC,POR,1,active,2.8,3.5,2.2,14.3,1.2,1.6,-0.4,3.0,3.7,-0.7,2.8,2.3,0.5
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Daeqwon Plowden,SAC,POR,1,active,4.9,1.6,0.7,12.0,2.2,6.9,-4.7,1.2,2.1,-0.9,0.2,1.1,-0.9
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Darius Acuff Jr.,SAC,POR,1,active,23.8,3.7,7.8,38.1,28.2,25.2,3.0,4.4,3.7,0.7,9.0,7.1,1.9
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,De'Andre Hunter,SAC,POR,1,active,15.0,4.0,1.6,35.1,17.4,11.9,5.5,4.6,4.1,0.5,1.4,1.1,0.3
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Domantas Sabonis,SAC,POR,1,active,16.2,12.5,5.9,36.3,13.0,15.9,-2.9,13.4,14.1,-0.7,5.6,5.5,0.1
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Dylan Cardwell,SAC,POR,1,active,5.7,6.5,1.3,19.5,6.8,6.4,0.4,6.4,6.4,0.0,1.2,1.7,-0.5
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Emanuel Sharp,SAC,POR,1,active,4.9,1.7,0.9,20.5,4.6,4.9,-0.3,2.2,1.4,0.8,0.8,0.8,0.0
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Jonathan Mogbo,SAC,POR,1,active,3.6,2.2,1.0,14.9,3.4,2.3,1.1,2.4,1.9,0.5,1.2,0.8,0.4
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Keegan Murray,SAC,POR,1,active,12.8,4.6,1.5,26.4,8.6,11.1,-2.5,2.8,4.2,-1.4,1.6,1.7,-0.1
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Leaky Black,SAC,POR,1,active,4.8,2.7,1.1,19.0,5.8,6.2,-0.4,2.6,3.5,-0.9,1.6,1.3,0.3
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Malik Monk,SAC,POR,1,active,10.2,1.7,3.7,18.8,11.8,8.3,3.5,0.8,1.1,-0.3,4.2,3.2,1.0
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Mason Plumlee,SAC,POR,1,active,2.6,3.1,1.0,6.0,0.6,1.6,-1.0,2.0,2.7,-0.7,0.6,1.0,-0.4
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Maxime Raynaud,SAC,POR,1,active,11.6,7.5,1.6,30.1,17.0,16.4,0.6,9.6,9.0,0.6,2.2,1.8,0.4
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Precious Achiuwa,SAC,POR,1,active,11.5,6.1,1.3,26.4,10.4,12.4,-2.0,6.2,6.4,-0.2,1.4,1.4,0.0
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Sean Pedulla,SAC,POR,1,active,2.5,0.9,0.6,4.4,1.4,2.2,-0.8,0.4,0.5,-0.1,0.4,0.8,-0.4
+2026-11-13,Portland Trail Blazers at Sacramento Kings,2026-11-14T03:00Z,Zach LaVine,SAC,POR,1,active,21.3,3.7,3.6,31.5,18.0,20.5,-2.5,3.0,3.1,-0.1,2.2,2.8,-0.6
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Baba Miller,LAC,OKC,1,active,2.7,2.0,0.6,9.4,2.4,2.3,0.1,2.2,2.1,0.1,0.8,0.7,0.1
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Blake Wesley,LAC,OKC,1,active,2.6,1.1,1.0,2.7,0.6,3.2,-2.6,1.2,1.4,-0.2,0.0,0.9,-0.9
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Bradley Beal,LAC,OKC,1,active,10.9,2.2,2.8,20.2,7.4,10.7,-3.3,1.0,1.8,-0.8,1.4,2.8,-1.4
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Brandon Ingram,LAC,OKC,1,active,19.9,4.9,4.0,32.0,21.8,18.7,3.1,5.4,4.9,0.5,5.0,3.4,1.6
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Brook Lopez,LAC,OKC,1,active,12.4,4.8,1.2,23.7,10.8,13.6,-2.8,5.0,5.5,-0.5,1.0,0.9,0.1
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Cam Christie,LAC,OKC,1,active,2.7,0.9,0.4,5.8,1.4,1.1,0.3,0.4,0.6,-0.2,0.2,0.2,0.0
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Darius Garland,LAC,OKC,1,active,20.3,2.2,7.5,33.1,19.0,19.8,-0.8,1.6,1.9,-0.3,6.4,6.6,-0.2
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Derrick Jones Jr.,LAC,OKC,1,active,9.9,4.2,1.2,29.7,11.4,10.2,1.2,5.4,4.8,0.6,0.8,1.2,-0.4
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Gradey Dick,LAC,OKC,1,active,5.4,1.9,0.8,14.0,4.8,5.8,-1.0,2.4,2.3,0.1,1.0,0.6,0.4
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Isaiah Jackson,LAC,OKC,1,active,7.6,4.7,1.6,22.4,9.6,8.9,0.7,6.8,5.9,0.9,2.6,2.0,0.6
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Jalen Pickett,LAC,OKC,1,active,4.7,1.3,1.7,14.9,6.2,4.0,2.2,2.0,1.1,0.9,2.8,1.6,1.2
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Jordan Miller,LAC,OKC,1,active,7.2,1.8,1.8,25.3,12.0,10.6,1.4,2.4,2.6,-0.2,2.6,2.6,0.0
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Keaton Wagler,LAC,OKC,1,active,11.9,3.9,3.1,22.4,11.4,12.0,-0.6,4.0,4.1,-0.1,2.8,3.2,-0.5
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Kobe Sanders,LAC,OKC,1,active,9.4,2.5,1.8,27.4,12.4,9.6,2.8,3.4,2.7,0.7,1.2,1.9,-0.7
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Kris Dunn,LAC,OKC,1,active,7.9,3.4,3.7,29.9,7.8,7.7,0.1,3.8,3.9,-0.1,3.6,4.0,-0.4
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Max Strus,LAC,OKC,1,active,10.6,3.6,2.4,21.7,8.0,11.9,-3.9,4.0,4.6,-0.6,3.0,2.7,0.3
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Nick Martinelli,LAC,OKC,1,active,3.2,1.4,0.5,4.9,3.8,3.8,0.0,1.8,1.8,0.0,0.5,0.5,0.0
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Rui Hachimura,LAC,OKC,1,active,15.4,4.8,1.6,31.1,15.6,15.0,0.6,6.2,5.8,0.4,1.6,1.6,0.0
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Yanic Konan Niederhauser,LAC,OKC,1,active,4.5,3.6,0.7,19.0,8.2,6.5,1.7,6.0,4.7,1.3,0.2,0.4,-0.2
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Aday Mara,OKC,LAC,0,active,6.1,5.8,1.0,21.0,7.4,6.6,0.8,6.6,5.4,1.2,1.2,1.0,0.2
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Ajay Mitchell,OKC,LAC,0,active,14.6,3.1,3.3,30.4,20.4,14.1,6.3,4.4,3.2,1.2,3.8,3.8,0.0
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Alex Caruso,OKC,LAC,0,active,6.0,3.6,2.2,21.3,8.0,6.2,1.8,5.4,3.9,1.5,3.4,2.5,0.9
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Bennett Stirtz,OKC,LAC,0,active,5.8,1.5,0.9,19.2,10.0,7.1,2.9,1.2,0.9,0.3,1.2,0.9,0.3
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Brooks Barnhizer,OKC,LAC,0,active,2.8,1.4,0.5,7.8,2.0,2.6,-0.6,0.8,2.0,-1.2,0.4,0.5,-0.1
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Cason Wallace,OKC,LAC,0,active,6.6,2.4,1.5,21.6,7.8,8.9,-1.1,2.6,2.8,-0.2,1.6,1.4,0.2
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Chet Holmgren,OKC,LAC,0,active,14.0,8.5,1.8,26.7,18.4,15.5,2.9,11.0,9.1,1.9,2.0,1.7,0.3
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Isaiah Hartenstein,OKC,LAC,0,active,7.1,8.1,2.5,26.2,6.4,6.2,0.2,10.2,8.0,2.2,3.2,2.7,0.5
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Jalen Williams,OKC,LAC,0,active,15.9,4.0,4.0,28.8,15.2,16.9,-1.7,5.8,4.7,1.1,5.2,5.0,0.2
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Jared McCain,OKC,LAC,0,active,10.9,2.4,1.5,25.8,10.0,10.2,-0.2,4.0,2.7,1.3,0.8,1.1,-0.3
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Jaylin Williams,OKC,LAC,0,active,4.0,3.5,1.5,15.3,3.2,3.5,-0.3,3.8,4.7,-0.9,1.2,1.9,-0.7
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Josh Dix,OKC,LAC,0,active,2.9,1.4,0.5,8.9,3.0,3.0,0.0,0.8,0.8,0.0,0.2,0.2,0.0
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Kenrich Williams,OKC,LAC,0,active,6.9,3.4,1.5,21.6,8.6,7.7,0.9,4.2,4.5,-0.3,1.8,1.9,-0.1
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Micah Peavy,OKC,LAC,0,active,6.1,3.2,1.2,23.0,8.0,7.3,0.7,4.6,3.9,0.7,0.8,1.4,-0.6
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Nikola Topic,OKC,LAC,0,active,3.5,1.4,3.1,16.6,3.6,3.8,-0.2,1.8,1.7,0.1,4.8,3.3,1.5
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Nique Clifford,OKC,LAC,0,active,4.1,1.8,1.6,5.2,0.4,6.4,-6.0,0.8,2.4,-1.6,0.6,1.9,-1.3
+2026-11-13,Oklahoma City Thunder at LA Clippers,2026-11-14T03:30Z,Shai Gilgeous-Alexander,OKC,LAC,0,active,31.6,4.3,6.1,34.0,34.6,28.7,5.9,4.0,3.4,0.6,5.6,6.1,-0.5
