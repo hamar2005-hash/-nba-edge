@@ -179,26 +179,33 @@ else:
 
             predicted = st.session_state.get("horse_edge_predictions")
             if isinstance(predicted, pd.DataFrame) and not predicted.empty:
-                p1, p2, p3 = st.columns(3)
-                p1.metric("Runners scored", len(predicted))
-                p2.metric("Races scored", predicted[["Course", "Time", "Race ID"]].drop_duplicates().shape[0])
-                p3.metric("Runners with history", int((predicted["Runs"] > 0).sum()))
-                top_picks = predicted.sort_values("Win estimate", ascending=False).groupby(
-                    ["Course", "Time", "Race ID"], dropna=False
-                ).head(1)
-                st.markdown("**Top-ranked runner in each race**")
-                pick_columns = [c for c in ["Course", "Time", "Runner", "Recent form", "Runs", "Win rate", "Model estimate %", "Odds", "Price Movement", "Model vs market (pp)"] if c in top_picks.columns]
-                picks_view = top_picks[pick_columns].copy()
-                if "Win rate" in picks_view:
-                    picks_view["Win rate"] = (picks_view["Win rate"] * 100).round(1).astype(str) + "%"
-                if "Model estimate %" in picks_view:
-                    picks_view["Model estimate %"] = picks_view["Model estimate %"].round(1).astype(str) + "%"
-                if "Model vs market (pp)" in picks_view:
-                    picks_view["Model vs market (pp)"] = picks_view["Model vs market (pp)"].round(1)
-                st.dataframe(picks_view, use_container_width=True, hide_index=True)
-                st.markdown("**Full runner rankings**")
-                st.dataframe(predicted, use_container_width=True, hide_index=True)
-                st.download_button("Download horse predictions", predicted.to_csv(index=False), "horse_racing_edge_predictions.csv", "text/csv")
+                race_keys = ["Course", "Time", "Race ID"]
+                if all(key in predicted.columns for key in race_keys):
+                    usable = predicted.groupby(race_keys, dropna=False)["Form score"].transform("nunique") > 1
+                    predicted = predicted[usable].copy()
+                if predicted.empty:
+                    st.warning("The feed did not provide enough distinct recent-form information to rank these runners. No picks have been forced.")
+                else:
+                    p1, p2, p3 = st.columns(3)
+                    p1.metric("Runners scored", len(predicted))
+                    p2.metric("Races scored", predicted[["Course", "Time", "Race ID"]].drop_duplicates().shape[0])
+                    p3.metric("Runners with history", int((predicted["Runs"] > 0).sum()))
+                    top_picks = predicted.sort_values("Win estimate", ascending=False).groupby(
+                        ["Course", "Time", "Race ID"], dropna=False
+                    ).head(1)
+                    st.markdown("**Top-ranked runner in each race**")
+                    pick_columns = [c for c in ["Course", "Time", "Runner", "Recent form", "Runs", "Win rate", "Model estimate %", "Odds", "Price Movement", "Model vs market (pp)"] if c in top_picks.columns]
+                    picks_view = top_picks[pick_columns].copy()
+                    if "Win rate" in picks_view:
+                        picks_view["Win rate"] = (picks_view["Win rate"] * 100).round(1).astype(str) + "%"
+                    if "Model estimate %" in picks_view:
+                        picks_view["Model estimate %"] = picks_view["Model estimate %"].round(1).astype(str) + "%"
+                    if "Model vs market (pp)" in picks_view:
+                        picks_view["Model vs market (pp)"] = picks_view["Model vs market (pp)"].round(1)
+                    st.dataframe(picks_view, use_container_width=True, hide_index=True)
+                    st.markdown("**Full runner rankings**")
+                    st.dataframe(predicted, use_container_width=True, hide_index=True)
+                    st.download_button("Download horse predictions", predicted.to_csv(index=False), "horse_racing_edge_predictions.csv", "text/csv")
                 st.warning("These are experimental form scores, not proven betting edges. We need to record predictions before each race and compare them with results before promoting this as a validated model.")
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "unknown"
