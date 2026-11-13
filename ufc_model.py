@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 def _fighter_key(value):
     """Normalize Unicode, case and punctuation; never fuzzy-merge identities."""
     value = unicodedata.normalize("NFKC", str(value)).casefold().strip()
-    value = "".join(ch if ch.isalnum() else " " for ch in value)
+    value = "".join(ch for ch in value if ch.isalnum() or ch.isspace())
     return " ".join(value.split())
 
 
