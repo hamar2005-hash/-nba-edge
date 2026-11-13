@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 
 BASE_URL = "https://api.theracingapi.com/v1"
+_HISTORY_CACHE: dict[str, tuple[float, list[dict]]] = {}
 
 
 def _records(payload: Any) -> list[dict]:
@@ -184,7 +185,10 @@ def fetch_form_predictions(cards: pd.DataFrame, username: str, password: str) ->
             continue
         if horse_id not in seen:
             seen.add(horse_id)
-            if history_access:
+            cached = _HISTORY_CACHE.get(horse_id)
+            if cached and time.time() - cached[0] < 21600:
+                histories[horse_id] = cached[1]
+            elif history_access:
                 response = session.get(
                     f"{BASE_URL}/racecards/{horse_id}/results",
                     params={"region": ["gb", "ire"], "limit": 50},
@@ -195,9 +199,11 @@ def fetch_form_predictions(cards: pd.DataFrame, username: str, password: str) ->
                     histories[horse_id] = []
                 elif response.status_code == 404:
                     histories[horse_id] = []
+                    _HISTORY_CACHE[horse_id] = (time.time(), [])
                 else:
                     response.raise_for_status()
                     histories[horse_id] = _records(response.json())
+                    _HISTORY_CACHE[horse_id] = (time.time(), histories[horse_id])
                     time.sleep(0.22)
             else:
                 histories[horse_id] = []
