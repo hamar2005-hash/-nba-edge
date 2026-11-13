@@ -50,3 +50,12 @@ streamlit run app.py
 ## First basket scorer
 
 NBA Edge includes a separate first made-field-goal scorer ranking. A weekly GitHub Actions job collects ESPN completed-game play-by-play and starting-lineup records, then builds smoothed player/team history. The daily workflow ranks players on the slate using historical starting frequency and first-basket rates. These are experimental model estimates, not calibrated probabilities; the section stays unavailable until the historical sample has been collected successfully. First basket means the first made field goal (2- or 3-point shot), not a free throw.
+
+
+## Retrain points from the app
+
+The Streamlit sidebar includes a **Retrain points model** action. It dispatches the existing weekly GitHub Actions workflow in points-only mode; the scheduled weekly run still trains all three core markets.
+
+To enable the in-app action, configure an app deployment secret named `NBA_EDGE_GITHUB_TOKEN` with a fine-grained GitHub personal access token scoped to this repository and **Actions: Read and write** permission. The app sends the token only to GitHub's workflow-dispatch API and never displays it. Without this secret, the button explains that setup is required.
+
+The points-only run collects the latest player game logs, trains the points candidate, compares candidate and incumbent on the same chronological holdout, and only replaces the points model when its holdout MAE is lower. Rebounds and assists models are left untouched. The workflow packages the accepted models and report back into `NBA_Trained_Models.zip`.
