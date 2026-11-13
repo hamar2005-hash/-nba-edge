@@ -119,6 +119,31 @@ def _history_stats(history: list[dict], course: str, going: str) -> dict:
     }
 
 
+def _card_form_stats(form: Any) -> dict:
+    """Fallback using the racecard's published form string when history is not in plan."""
+    text = str(form or "").strip()
+    finishes = [int(x) for x in re.findall(r"(?<![A-Za-z])([1-9])", text)][-5:]
+    if not finishes:
+        return {
+            "Runs": 0, "Wins": 0, "Places": 0, "Win rate": np.nan,
+            "Place rate": np.nan, "Recent form": text or "No form supplied",
+            "Last run": "Unknown", "Form score": 0.0,
+            "History source": "No historical access",
+        }
+    # Recent form is a lightweight fallback, not a substitute for full runner history.
+    weights = np.arange(1, len(finishes) + 1, dtype=float)
+    performance = np.average([1 / x for x in finishes], weights=weights)
+    return {
+        "Runs": len(finishes), "Wins": sum(x == 1 for x in finishes),
+        "Places": sum(x <= 3 for x in finishes),
+        "Win rate": sum(x == 1 for x in finishes) / len(finishes),
+        "Place rate": sum(x <= 3 for x in finishes) / len(finishes),
+        "Recent form": text, "Last run": "Racecard form only",
+        "Form score": float(performance),
+        "History source": "Racecard form only",
+    }
+
+
 def _market_decimal(value):
     if value is None:
         return np.nan
@@ -149,30 +174,37 @@ def fetch_form_predictions(cards: pd.DataFrame, username: str, password: str) ->
     output = []
     histories = {}
     seen = set()
+    history_access = True
     for row in cards.to_dict("records"):
-        horse_id = str(row.get("Horse ID") or "").strip()
-        if not horse_id:
-            output.append({**row, **_history_stats([], row.get("Course"), row.get("Going"))})
+        raw_id = row.get("Horse ID")
+        horse_id = "" if pd.isna(raw_id) else str(raw_id).strip()
+        if horse_id.casefold() in {"", "nan", "none"}:
+            stats = _card_form_stats(row.get("Form"))
+            output.append({**row, **stats})
             continue
         if horse_id not in seen:
             seen.add(horse_id)
-            response = session.get(
-                f"{BASE_URL}/racecards/{horse_id}/results",
-                params={"region": ["gb", "ire"], "limit": 50},
-                timeout=25,
-            )
-            if response.status_code in (401, 403):
-                raise PermissionError(
-                    "Your Racing API plan does not include runner history. The /racecards/{horse_id}/results endpoint requires the Basic plan or above."
+            if history_access:
+                response = session.get(
+                    f"{BASE_URL}/racecards/{horse_id}/results",
+                    params={"region": ["gb", "ire"], "limit": 50},
+                    timeout=25,
                 )
-            response.raise_for_status()
-            history = _records(response.json())
-            # Store only this process's result; repeated card rows are not expected,
-            # but the local dictionary avoids duplicate calls if they occur.
-            histories[horse_id] = history
-            time.sleep(0.22)
+                if response.status_code in (401, 403):
+                    history_access = False
+                    histories[horse_id] = []
+                else:
+                    response.raise_for_status()
+                    histories[horse_id] = _records(response.json())
+                    time.sleep(0.22)
+            else:
+                histories[horse_id] = []
         history = histories.get(horse_id, [])
-        stats = _history_stats(history, row.get("Course"), row.get("Going"))
+        if history:
+            stats = _history_stats(history, row.get("Course"), row.get("Going"))
+            stats["History source"] = "Historical runner results"
+        else:
+            stats = _card_form_stats(row.get("Form"))
         output.append({**row, **stats})
     result = pd.DataFrame(output)
     result["Model score"] = pd.to_numeric(result["Form score"], errors="coerce").fillna(0.0)
