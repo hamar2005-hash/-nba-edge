@@ -72,6 +72,8 @@ def load_upcoming_ufc_cards():
                     names.append(str(name))
             if len(names) >= 2:
                 bouts.append({
+                    "Fighter 1": names[0],
+                    "Fighter 2": names[1],
                     "Bout": f"{names[0]} vs {names[1]}",
                     "Weight class": (competition.get("type") or {}).get("text")
                         or ((competition.get("notes") or [{}])[0].get("text", "")),
@@ -174,6 +176,20 @@ except Exception as exc:
     st.error("The public dataset could not be loaded. No predictions have been generated.")
     st.caption(str(exc))
     st.button("Retry data connection", on_click=load_dataset.clear)
+
+# Automatically prepare the model after the historical feed loads.
+if "results" in locals() and not st.session_state.get("ufc_trained"):
+    try:
+        import ufc_model
+        with st.spinner("Preparing the UFC model for the upcoming card…"):
+            _model, _metrics, _snapshot, _frame = ufc_model.train_and_evaluate(results)
+        st.session_state["ufc_model"] = _model
+        st.session_state["ufc_snapshot"] = _snapshot
+        st.session_state["ufc_metrics"] = _metrics
+        st.session_state["ufc_trained"] = True
+    except Exception as _train_exc:
+        st.session_state["ufc_trained"] = False
+        st.warning(f"Automatic card predictions are waiting for a trainable historical dataset: {_train_exc}")
 
 st.divider()
 st.subheader("3. Train and validate the winner model")
@@ -284,8 +300,30 @@ if st.session_state.get("ufc_trained"):
 else:
     st.info("The model has not been trained in this app yet. Tap the button above once the historical data has loaded.")
 
+
 st.divider()
-st.subheader("4. Model build plan")
+st.subheader("4. Full-card winner predictions")
+st.caption("Every bout exposed by the live schedule feed is included, including close calls. Win probabilities are separate from confidence. These are model estimates, not betting recommendations.")
+if upcoming_cards and st.session_state.get("ufc_trained"):
+    _card = upcoming_cards[0]
+    if _card.get("bouts"):
+        from ufc_model import predict_matchups
+        _predictions = predict_matchups(st.session_state["ufc_model"], st.session_state["ufc_snapshot"], _card["bouts"])
+        if not _predictions.empty:
+            st.markdown("**" + _card["name"] + " · " + _card["date"].tz_convert("Europe/London").strftime("%d %B %Y") + "**")
+            st.dataframe(_predictions, use_container_width=True, hide_index=True)
+            st.caption("Confidence is the probability assigned to the selected winner. A 51/49 pick is shown as 51% confidence. Missing-history warnings identify fighters not found in the historical database.")
+        else:
+            st.info("The schedule feed has not supplied usable fighter names for this card yet.")
+    else:
+        st.info("Predictions appear when the schedule feed publishes matchups. No fights are invented.")
+elif upcoming_cards:
+    st.warning("The card is available, but predictions are paused because the historical model could not be trained.")
+else:
+    st.info("The full-card board will populate when an upcoming event and its bout list are available.")
+
+st.divider()
+st.subheader("5. Model build plan")
 steps = [
     ("Historical data audit", "Check dates, duplicates, outcomes, missing values and fighter-name consistency.", True),
     ("Pre-fight feature engineering", "Build each fighter's record, recent form, streaks and opponent strength using past fights only.", False),
@@ -299,7 +337,7 @@ for title, detail, complete in steps:
     st.markdown(f"**{icon} {title}**  \n{detail}")
 
 st.divider()
-st.subheader("5. Model standards")
+st.subheader("6. Model standards")
 left, right = st.columns(2)
 with left:
     st.markdown("**What we will measure**")
