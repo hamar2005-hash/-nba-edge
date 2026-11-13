@@ -186,6 +186,8 @@ else:
                 if predicted.empty:
                     st.warning("The feed did not provide enough distinct recent-form information to rank these runners. No picks have been forced.")
                 else:
+                    if "History source" in predicted.columns and (predicted["History source"] == "Racecard form only").any():
+                        st.info("The current API plan is not returning full runner history for every horse. These runners are scored from the racecard form figures only.")
                     p1, p2, p3 = st.columns(3)
                     p1.metric("Runners scored", len(predicted))
                     p2.metric("Races scored", predicted[["Course", "Time", "Race ID"]].drop_duplicates().shape[0])
