@@ -61,6 +61,22 @@ try:
             f"to {parsed_dates.max().date() if parsed_dates.notna().any() else 'unknown'}"
         )
         st.success("Historical results feed loaded. Data structure is ready for chronological feature engineering.")
+        try:
+            from ufc_model import audit_results
+            audit = audit_results(results)
+            with st.expander("Historical data quality audit", expanded=False):
+                audit_cols = st.columns(4)
+                audit_cols[0].metric("Usable rows", f"{audit['usable_rows']:,}")
+                audit_cols[1].metric("Invalid dates", f"{audit['invalid_dates']:,}")
+                audit_cols[2].metric("Invalid results", f"{audit['invalid_results']:,}")
+                audit_cols[3].metric("Duplicate bouts", f"{audit['duplicate_bout_rows']:,}")
+                st.caption(
+                    f"Blank fighter names: {audit['blank_names']:,} · Self-matchups: {audit['self_matchups']:,} · "
+                    f"Fighters appearing more than once on the same date: {audit['same_day_repeat_fighters']:,}. "
+                    "These are audit flags, not automatic corrections."
+                )
+        except Exception as audit_exc:
+            st.warning(f"Data audit unavailable: {audit_exc}")
         with st.expander("Preview historical results"):
             st.dataframe(results.head(12), use_container_width=True, hide_index=True)
     else:
@@ -101,6 +117,24 @@ if st.session_state.get("ufc_trained"):
     m3.metric("Brier score", f"{metrics['brier']:.3f}", f"{metrics['brier']-metrics['baseline_brier']:+.3f} vs baseline")
     m4.metric("Test fights", f"{metrics['test_fights']:,}")
     st.caption(f"Training: {metrics['train_fights']:,} fights ({metrics['train_start']} to {metrics['train_end']}) · Calibration: {metrics['calibration_fights']:,} ({metrics['calibration_start']} to {metrics['calibration_end']}) · Untouched test: {metrics['test_fights']:,} ({metrics['test_start']} to {metrics['test_end']}). Splits use whole event dates. Lower log loss and Brier score are better.")
+    st.subheader("Benchmark comparison")
+    st.caption("All rows are evaluated on the same untouched test events. Elo-only converts the pre-fight Elo difference directly into a probability; the prior baseline predicts the training-set class rate.")
+    benchmark = pd.DataFrame([
+        {"Model": "Full calibrated model", "Accuracy %": metrics["accuracy"] * 100,
+         "Balanced accuracy %": metrics["balanced_accuracy"] * 100,
+         "Log loss": metrics["log_loss"], "Brier": metrics["brier"]},
+        {"Model": "Elo-only benchmark", "Accuracy %": metrics["elo_accuracy"] * 100,
+         "Balanced accuracy %": metrics["elo_balanced_accuracy"] * 100,
+         "Log loss": metrics["elo_log_loss"], "Brier": metrics["elo_brier"]},
+        {"Model": "Training prior baseline", "Accuracy %": metrics["baseline_accuracy"] * 100,
+         "Balanced accuracy %": metrics["baseline_balanced_accuracy"] * 100,
+         "Log loss": metrics["baseline_log_loss"], "Brier": metrics["baseline_brier"]},
+    ])
+    benchmark["Accuracy %"] = benchmark["Accuracy %"].round(1)
+    benchmark["Balanced accuracy %"] = benchmark["Balanced accuracy %"].round(1)
+    benchmark["Log loss"] = benchmark["Log loss"].round(3)
+    benchmark["Brier"] = benchmark["Brier"].round(3)
+    st.dataframe(benchmark, use_container_width=True, hide_index=True)
     with st.expander("Raw vs calibrated probability comparison"):
         raw_a, raw_b, raw_c = st.columns(3)
         raw_a.metric("Raw Brier", f"{metrics['raw_brier']:.3f}")
