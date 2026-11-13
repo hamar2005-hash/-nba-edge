@@ -1,6 +1,6 @@
 """Weekly candidate retraining; promote a model only when holdout MAE improves."""
 from pathlib import Path
-import json, joblib
+import argparse, json, joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor, ExtraTreesRegressor, VotingRegressor
@@ -30,6 +30,9 @@ def fit_candidate(train,test,features,market,target):
     return pack,score,te
 
 def main():
+    parser=argparse.ArgumentParser(description='Retrain and validate NBA Edge models.')
+    parser.add_argument('--market', choices=['all','points','rebounds','assists'], default='all')
+    args=parser.parse_args()
     source=DATA/'player_game_logs.csv'
     if not source.exists(): raise SystemExit('Historical player game logs are missing.')
     df=prepare(source); dates=np.sort(df.GAME_DATE.dropna().unique())
@@ -41,7 +44,8 @@ def main():
     MODELS.mkdir(exist_ok=True)
     report={'trained_at_utc':pd.Timestamp.utcnow().isoformat(),'holdout_start':str(pd.Timestamp(cutoff).date()),'markets':{}}
     accepted_any=False
-    for market,target in TARGETS.items():
+    selected_targets = TARGETS if args.market == 'all' else {args.market: TARGETS[args.market]}
+    for market,target in selected_targets.items():
         features=points if market=='points' else base
         candidate,score,holdout=fit_candidate(train,test,features,market,target)
         incumbent_path=MODELS/f'{market}_model.joblib'; incumbent_mae=None
