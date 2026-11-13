@@ -193,6 +193,8 @@ def fetch_form_predictions(cards: pd.DataFrame, username: str, password: str) ->
                 if response.status_code in (401, 403):
                     history_access = False
                     histories[horse_id] = []
+                elif response.status_code == 404:
+                    histories[horse_id] = []
                 else:
                     response.raise_for_status()
                     histories[horse_id] = _records(response.json())
@@ -205,6 +207,14 @@ def fetch_form_predictions(cards: pd.DataFrame, username: str, password: str) ->
             stats["History source"] = "Historical runner results"
         else:
             stats = _card_form_stats(row.get("Form"))
+        trainer_rate = _number(row.get("Trainer win %"))
+        jockey_rate = _number(row.get("Jockey win %"))
+        trainer_rate = trainer_rate / 100 if pd.notna(trainer_rate) and trainer_rate > 1 else trainer_rate
+        jockey_rate = jockey_rate / 100 if pd.notna(jockey_rate) and jockey_rate > 1 else jockey_rate
+        if pd.notna(trainer_rate):
+            stats["Form score"] += 0.06 * float(trainer_rate)
+        if pd.notna(jockey_rate):
+            stats["Form score"] += 0.06 * float(jockey_rate)
         output.append({**row, **stats})
     result = pd.DataFrame(output)
     result["Model score"] = pd.to_numeric(result["Form score"], errors="coerce").fillna(0.0)
