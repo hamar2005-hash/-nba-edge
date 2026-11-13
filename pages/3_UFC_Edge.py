@@ -100,7 +100,7 @@ if st.session_state.get("ufc_trained"):
     m2.metric("Log loss", f"{metrics['log_loss']:.3f}")
     m3.metric("Brier score", f"{metrics['brier']:.3f}", f"{metrics['brier']-metrics['baseline_brier']:+.3f} vs baseline")
     m4.metric("Test fights", f"{metrics['test_fights']:,}")
-    st.caption(f"Training fights: {metrics['train_fights']:,} · Calibration fights: {metrics['calibration_fights']:,} ({metrics['calibration_start']} to {metrics['calibration_end']}) · Untouched test: {metrics['test_start']} to {metrics['test_end']}. Lower log loss and Brier score are better.")
+    st.caption(f"Training: {metrics['train_fights']:,} fights ({metrics['train_start']} to {metrics['train_end']}) · Calibration: {metrics['calibration_fights']:,} ({metrics['calibration_start']} to {metrics['calibration_end']}) · Untouched test: {metrics['test_fights']:,} ({metrics['test_start']} to {metrics['test_end']}). Splits use whole event dates. Lower log loss and Brier score are better.")
     with st.expander("Raw vs calibrated probability comparison"):
         raw_a, raw_b, raw_c = st.columns(3)
         raw_a.metric("Raw Brier", f"{metrics['raw_brier']:.3f}")
