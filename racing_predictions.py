@@ -147,6 +147,7 @@ def fetch_form_predictions(cards: pd.DataFrame, username: str, password: str) ->
     session.auth = (username, password)
     session.headers.update({"Accept": "application/json"})
     output = []
+    histories = {}
     seen = set()
     for row in cards.to_dict("records"):
         horse_id = str(row.get("Horse ID") or "").strip()
@@ -166,7 +167,6 @@ def fetch_form_predictions(cards: pd.DataFrame, username: str, password: str) ->
                 )
             response.raise_for_status()
             history = _records(response.json())
-            session.headers["X-Edge-Horse-ID"] = horse_id
             # Store only this process's result; repeated card rows are not expected,
             # but the local dictionary avoids duplicate calls if they occur.
             histories[horse_id] = history
