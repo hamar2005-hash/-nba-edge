@@ -33,6 +33,8 @@ jobs:
         run: |
           python - <<'PY'
           import importlib
+          from pathlib import Path
+          import pandas as pd
           modules = [
               "auto_daily", "collect_nba_data", "first_basket", "racing_model", "racing_predictions",
               "predict_props", "prop_lines", "same_player_builders", "settle_results",
