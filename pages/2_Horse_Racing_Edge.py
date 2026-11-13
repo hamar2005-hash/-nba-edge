@@ -66,6 +66,7 @@ def unpack_racecards(payload):
                 "Draw": "",
                 "Race ID": race.get("race_id") or race.get("id", ""),
                 "Horse ID": runner.get("horse_id") or runner.get("horseId") or runner.get("id", ""),
+                "Form": runner.get("form") or runner.get("form_string") or runner.get("recent_form", ""),
                 "Going": race.get("going") or meeting.get("going", ""),
                 "Distance": race.get("distance") or race.get("dist", ""),
                 "Class": race.get("class") or race.get("race_class", ""),
