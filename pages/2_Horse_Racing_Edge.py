@@ -189,7 +189,7 @@ else:
                     p1, p2, p3 = st.columns(3)
                     p1.metric("Runners scored", len(predicted))
                     p2.metric("Races scored", predicted[["Course", "Time", "Race ID"]].drop_duplicates().shape[0])
-                    p3.metric("Runners with history", int((predicted["Runs"] > 0).sum()))
+                    p3.metric("Runners with form data", int((predicted["Form score"] > 0).sum()))
                     top_picks = predicted.sort_values("Win estimate", ascending=False).groupby(
                         ["Course", "Time", "Race ID"], dropna=False
                     ).head(1)
