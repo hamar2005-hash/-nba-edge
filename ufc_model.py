@@ -297,3 +297,23 @@ def train_and_evaluate(results):
     today = pd.Timestamp.utcnow().tz_localize(None).normalize()
     snapshot = {name: _state_features(state, today) for name, state in states.items()}
     return model, metrics, snapshot, frame
+
+
+def predict_matchups(model, snapshot, matchups):
+    """Predict every supplied matchup, including low-confidence and debutant bouts."""
+    rows = []
+    names = ["elo", "wins", "losses", "experience", "win_rate", "recent5", "recent10", "streak", "days_since_fight"]
+    neutral = {"elo": 1500.0, "wins": 0, "losses": 0, "experience": 0, "win_rate": 0.5, "recent5": 0.5, "recent10": 0.5, "streak": 0, "days_since_fight": 730}
+    for bout in matchups:
+        fighter1, fighter2 = str(bout.get("Fighter 1", "")).strip(), str(bout.get("Fighter 2", "")).strip()
+        if not fighter1 or not fighter2:
+            continue
+        key1, key2 = _fighter_key(fighter1), _fighter_key(fighter2)
+        a, b = snapshot.get(key1, neutral), snapshot.get(key2, neutral)
+        values = {name + "_diff": float(a[name]) - float(b[name]) for name in names}
+        probability1 = float(model.predict_proba(pd.DataFrame([values], columns=FEATURES))[0, 1])
+        probability1 = min(1.0, max(0.0, probability1))
+        confidence = max(probability1, 1.0 - probability1)
+        missing = [fighter for fighter, key in ((fighter1, key1), (fighter2, key2)) if key not in snapshot]
+        rows.append({"Bout": fighter1 + " vs " + fighter2, "Predicted winner": fighter1 if probability1 >= 0.5 else fighter2, fighter1 + " win %": round(probability1 * 100, 1), fighter2 + " win %": round((1.0 - probability1) * 100, 1), "Confidence": round(confidence * 100, 1), "Data warning": ("No historical profile: " + ", ".join(missing)) if missing else "Both fighters have historical profiles"})
+    return pd.DataFrame(rows)
