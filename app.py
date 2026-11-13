@@ -550,6 +550,31 @@ else:
             st.dataframe(pd.DataFrame(daily_rows).sort_values(["Date", "Market"], ascending=[False, True]), use_container_width=True, hide_index=True)
     st.download_button("Download accuracy history", settled.to_csv(index=False), "nba_edge_accuracy_history.csv", "text/csv")
 
+if "predictions" in locals() and isinstance(predictions, pd.DataFrame) and not predictions.empty:
+    st.divider()
+    st.subheader("🧩 Same-player Bet Builders")
+    st.caption("Two-leg milestones for the same player, such as 10+ points + 5+ rebounds. The joint chance is estimated together using a bivariate simulation, not by multiplying two separate prop probabilities.")
+    try:
+        from same_player_builders import generate_same_player_builders
+        builders = generate_same_player_builders(predictions, MODELS)
+        if builders.empty:
+            st.info("No same-player combinations currently fall inside the model's target probability range. No forced picks.")
+        else:
+            builder_games = ["All games"] + sorted(builders["game"].dropna().unique().tolist())
+            selected_builder_game = st.selectbox("Bet Builder game", builder_games, key="same_player_builder_game")
+            builder_view = builders if selected_builder_game == "All games" else builders[builders["game"] == selected_builder_game]
+            for _, builder in builder_view.sort_values("joint_probability_pct", ascending=False).iterrows():
+                with st.container(border=True):
+                    st.markdown(f"**{builder['player']} · {builder['team']} vs {builder['opponent']}**")
+                    st.markdown(f"- {builder['leg_1'].title()}")
+                    st.markdown(f"- {builder['leg_2'].title()}")
+                    st.metric("Estimated chance both land", f"{builder['joint_probability_pct']:.1f}%")
+                    st.caption(f"Model-only fair odds estimate: {builder['estimated_fair_decimal_odds']:.2f} · Not bookmaker odds")
+            st.download_button("Download same-player Bet Builders", builder_view.to_csv(index=False), "nba_edge_same_player_bet_builders.csv", "text/csv")
+    except Exception as exc:
+        st.warning("Same-player Bet Builders could not be generated.")
+        st.caption(str(exc))
+
 with st.expander("About the model and its limitations"):
     st.markdown("""
 - The current trained models predict **points, rebounds and assists** only.
