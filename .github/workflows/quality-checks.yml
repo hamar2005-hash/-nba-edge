@@ -76,7 +76,7 @@ jobs:
           assert not extract_rows(price_only, "Test Player", "", "test-player"), "Generic price-like values must not be treated as prop lines"
           print("Prop parser attribution fixture OK; odds/prices are excluded.")
 
-          from racing_predictions import _history_stats, _records
+          from racing_predictions import _card_form_stats, _history_stats, _records
           history = [
               {"position": 2, "runners": 10, "course": "Ascot", "going": "Good", "date": "2026-10-01"},
               {"position": 1, "runners": 8, "course": "Ascot", "going": "Good", "date": "2026-09-01"},
@@ -86,6 +86,8 @@ jobs:
           assert stats["Runs"] == 3 and stats["Wins"] == 1 and stats["Places"] == 2
           assert 0 < stats["Form score"] <= 1
           assert len(_records({"results": history})) == 3
+          fallback = _card_form_stats("1-23P4")
+          assert fallback["Runs"] >= 3 and fallback["Form score"] > 0
           print("Horse form feature smoke test OK.")
           PY
 
