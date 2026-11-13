@@ -114,13 +114,21 @@ def train_and_evaluate(results):
     frame, states = build_chronological_rows(results)
     if len(frame) < 250:
         raise ValueError(f"Only {len(frame)} usable decisive fights; at least 250 are required.")
-    # Three chronological partitions: fit, calibrate, then final untouched test.
-    n = len(frame)
-    train_end = int(n * 0.70)
-    calibration_end = int(n * 0.80)
-    train = frame.iloc[:train_end].copy()
-    calibration = frame.iloc[train_end:calibration_end].copy()
-    test = frame.iloc[calibration_end:].copy()
+    # Split on whole event dates, never individual fight rows. This prevents
+    # bouts from the same card leaking across fit/calibration/test partitions.
+    event_dates = pd.Index(frame["date"].drop_duplicates().sort_values())
+    if len(event_dates) < 10:
+        raise ValueError("Not enough distinct event dates for a reliable chronological split.")
+    train_date_end = max(1, int(len(event_dates) * 0.70))
+    calibration_date_end = max(train_date_end + 1, int(len(event_dates) * 0.80))
+    calibration_date_end = min(calibration_date_end, len(event_dates) - 1)
+    train_cutoff = event_dates[train_date_end - 1]
+    calibration_cutoff = event_dates[calibration_date_end - 1]
+    train = frame[frame["date"] <= train_cutoff].copy()
+    calibration = frame[(frame["date"] > train_cutoff) & (frame["date"] <= calibration_cutoff)].copy()
+    test = frame[frame["date"] > calibration_cutoff].copy()
+    if train.empty or calibration.empty or test.empty:
+        raise ValueError("The event-date split produced an empty partition.")
     if any(part["target"].nunique() < 2 for part in (train, calibration, test)):
         raise ValueError("Chronological train/calibration/test split does not contain both winner classes.")
 
