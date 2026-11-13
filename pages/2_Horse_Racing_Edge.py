@@ -65,6 +65,12 @@ def unpack_racecards(payload):
                 "Weight": "",
                 "Draw": "",
                 "Race ID": race.get("race_id") or race.get("id", ""),
+                "Horse ID": runner.get("horse_id") or runner.get("horseId") or runner.get("id", ""),
+                "Going": race.get("going") or meeting.get("going", ""),
+                "Distance": race.get("distance") or race.get("dist", ""),
+                "Class": race.get("class") or race.get("race_class", ""),
+                "Odds": runner.get("odds_decimal") or runner.get("decimal_odds") or runner.get("odds") or runner.get("price", ""),
+                "Price Movement": runner.get("odds_movement") or runner.get("price_movement") or runner.get("movement", ""),
             })
         for runner in runners:
             if not isinstance(runner, dict):
@@ -141,7 +147,56 @@ else:
             c.metric("Declared runners", view["Runner"].replace("", pd.NA).notna().sum())
             st.dataframe(view, use_container_width=True, hide_index=True)
             st.download_button("Download racecards", view.to_csv(index=False), "horse_racing_edge_racecards.csv", "text/csv")
-            st.success("Racecards loaded. Runner predictions will appear here after the historical-data model has been built and backtested.")
+            st.success("Racecards loaded.")
+
+            st.divider()
+            st.subheader("Live form-based predictions")
+            st.caption("The first live version uses each declared horse's previous UK/Irish runs, recent finishing positions, course and going record. The estimates are race-relative and provisional, not yet calibrated. Odds and price movement are shown only when supplied by your data plan.")
+            from racing_predictions import fetch_form_predictions
+
+            @st.cache_data(ttl=1800, show_spinner=False)
+            def cached_form_predictions(card_frame, api_user, api_password):
+                return fetch_form_predictions(card_frame, api_user, api_password)
+
+            if st.button("Generate horse predictions", type="primary", key="generate_horse_predictions"):
+                try:
+                    with st.spinner("Checking recent form for each declared runner…"):
+                        predicted = cached_form_predictions(view, username, password)
+                    st.session_state["horse_edge_predictions"] = predicted
+                    from pathlib import Path
+                    output_dir = Path(__file__).resolve().parents[1] / "data"
+                    output_dir.mkdir(exist_ok=True)
+                    predicted.to_csv(output_dir / "horse_predictions.csv", index=False)
+                except PermissionError as exc:
+                    st.error(str(exc))
+                except requests.RequestException as exc:
+                    st.error(f"Could not retrieve horse form: {exc}")
+                except Exception as exc:
+                    st.error(f"Could not generate predictions: {exc}")
+
+            predicted = st.session_state.get("horse_edge_predictions")
+            if isinstance(predicted, pd.DataFrame) and not predicted.empty:
+                p1, p2, p3 = st.columns(3)
+                p1.metric("Runners scored", len(predicted))
+                p2.metric("Races scored", predicted[["Course", "Time", "Race ID"]].drop_duplicates().shape[0])
+                p3.metric("Runners with history", int((predicted["Runs"] > 0).sum()))
+                top_picks = predicted.sort_values("Win estimate", ascending=False).groupby(
+                    ["Course", "Time", "Race ID"], dropna=False
+                ).head(1)
+                st.markdown("**Top-ranked runner in each race**")
+                pick_columns = [c for c in ["Course", "Time", "Runner", "Recent form", "Runs", "Win rate", "Model estimate %", "Odds", "Price Movement", "Model vs market (pp)"] if c in top_picks.columns]
+                picks_view = top_picks[pick_columns].copy()
+                if "Win rate" in picks_view:
+                    picks_view["Win rate"] = (picks_view["Win rate"] * 100).round(1).astype(str) + "%"
+                if "Model estimate %" in picks_view:
+                    picks_view["Model estimate %"] = picks_view["Model estimate %"].round(1).astype(str) + "%"
+                if "Model vs market (pp)" in picks_view:
+                    picks_view["Model vs market (pp)"] = picks_view["Model vs market (pp)"].round(1)
+                st.dataframe(picks_view, use_container_width=True, hide_index=True)
+                st.markdown("**Full runner rankings**")
+                st.dataframe(predicted, use_container_width=True, hide_index=True)
+                st.download_button("Download horse predictions", predicted.to_csv(index=False), "horse_racing_edge_predictions.csv", "text/csv")
+                st.warning("These are experimental form scores, not proven betting edges. We need to record predictions before each race and compare them with results before promoting this as a validated model.")
     except requests.HTTPError as exc:
         status = exc.response.status_code if exc.response is not None else "unknown"
         st.error(f"Racing API request failed (HTTP {status}). Check your account credentials and plan access.")
