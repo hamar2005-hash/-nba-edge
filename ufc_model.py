@@ -165,6 +165,8 @@ def train_and_evaluate(results):
     metrics = {
         "train_fights": int(len(train)), "calibration_fights": int(len(calibration)),
         "test_fights": int(len(test)),
+        "train_start": str(train["date"].min().date()),
+        "train_end": str(train["date"].max().date()),
         "calibration_start": str(calibration["date"].min().date()),
         "calibration_end": str(calibration["date"].max().date()),
         "test_start": str(test["date"].min().date()), "test_end": str(test["date"].max().date()),
