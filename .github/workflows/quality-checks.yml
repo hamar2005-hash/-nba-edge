@@ -34,7 +34,7 @@ jobs:
           python - <<'PY'
           import importlib
           modules = [
-              "auto_daily", "collect_nba_data", "first_basket",
+              "auto_daily", "collect_nba_data", "first_basket", "racing_model", "racing_predictions",
               "predict_props", "prop_lines", "settle_results",
               "train_models", "weekly_retrain",
           ]
@@ -75,6 +75,18 @@ jobs:
           price_only = {"headline": {"displayName": "Points", "statSlug": "points", "value": 1.91}}
           assert not extract_rows(price_only, "Test Player", "", "test-player"), "Generic price-like values must not be treated as prop lines"
           print("Prop parser attribution fixture OK; odds/prices are excluded.")
+
+          from racing_predictions import _history_stats, _records
+          history = [
+              {"position": 2, "runners": 10, "course": "Ascot", "going": "Good", "date": "2026-10-01"},
+              {"position": 1, "runners": 8, "course": "Ascot", "going": "Good", "date": "2026-09-01"},
+              {"position": 5, "runners": 12, "course": "York", "going": "Soft", "date": "2026-08-01"},
+          ]
+          stats = _history_stats(history, "Ascot", "Good")
+          assert stats["Runs"] == 3 and stats["Wins"] == 1 and stats["Places"] == 2
+          assert 0 < stats["Form score"] <= 1
+          assert len(_records({"results": history})) == 3
+          print("Horse form feature smoke test OK.")
           PY
 
       - name: Validate trained model bundle
