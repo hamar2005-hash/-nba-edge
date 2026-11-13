@@ -1,5 +1,6 @@
 from pathlib import Path
-import math, subprocess, sys, zipfile
+import math, os, subprocess, sys, zipfile
+import requests
 import joblib
 import pandas as pd
 import streamlit as st
@@ -71,6 +72,35 @@ with st.sidebar:
         st.error("Model bundle incomplete")
         st.caption("The repository needs the three trained model files and latest_player_features.csv inside NBA_Trained_Models.zip.")
     st.caption("Projections refresh automatically through the scheduled GitHub workflow. You can also request a refresh below.")
+    st.divider()
+    st.markdown("**Model training**")
+    st.caption("Retrain the points model using the latest historical game logs. The workflow validates it against the current model and only promotes it if holdout MAE improves.")
+    if st.button("Retrain points model", use_container_width=True):
+        github_token = st.secrets.get("NBA_EDGE_GITHUB_TOKEN", os.getenv("NBA_EDGE_GITHUB_TOKEN", ""))
+        if not github_token:
+            st.warning("Training from this button needs the NBA_EDGE_GITHUB_TOKEN secret configured in the app deployment. See the setup note in the repository README.")
+        else:
+            dispatch_url = "https://api.github.com/repos/hamar2005-hash/-nba-edge/actions/workflows/weekly-retrain.yml/dispatches"
+            headers = {
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {github_token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+            }
+            try:
+                response = requests.post(
+                    dispatch_url,
+                    headers=headers,
+                    json={"ref": "main", "inputs": {"market": "points"}},
+                    timeout=20,
+                )
+                if response.status_code == 204:
+                    st.success("Points-model retraining has been queued. It will collect fresh game logs, validate the candidate and keep the current model if the candidate is worse.")
+                    st.link_button("View training progress", "https://github.com/hamar2005-hash/-nba-edge/actions/workflows/weekly-retrain.yml")
+                else:
+                    st.error(f"GitHub could not start training (HTTP {response.status_code}). Check that the app token has Actions: write permission.")
+                    st.caption(response.text[:1000])
+            except requests.RequestException as exc:
+                st.error(f"Could not contact GitHub to start training: {exc}")
     if st.button("Refresh today's projections", type="primary", disabled=not models_ready, use_container_width=True):
         with st.spinner("Fetching today's NBA schedule and rosters, then generating projections…"):
             run = subprocess.run(
