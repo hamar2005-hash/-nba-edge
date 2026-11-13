@@ -40,7 +40,96 @@ def load_dataset(url):
     response.raise_for_status()
     return pd.read_csv(BytesIO(response.content))
 
-st.subheader("1. Historical data")
+ESPN_UFC_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
+
+
+@st.cache_data(ttl=30 * 60, show_spinner=False)
+def load_upcoming_ufc_cards():
+    """Fetch the live UFC schedule and any bout details ESPN exposes on the scoreboard."""
+    response = requests.get(
+        ESPN_UFC_SCOREBOARD,
+        headers={"User-Agent": "Mozilla/5.0 UFC-Edge/1.0"},
+        timeout=25,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    now = pd.Timestamp.now(tz="UTC")
+    upcoming = []
+    for event in payload.get("events", []):
+        event_date = pd.to_datetime(event.get("date"), utc=True, errors="coerce")
+        if pd.isna(event_date) or event_date < now:
+            continue
+        bouts = []
+        competitions = event.get("competitions") or []
+        for competition in competitions:
+            competitors = competition.get("competitors") or []
+            names = []
+            for competitor in competitors:
+                athlete = competitor.get("athlete") or {}
+                name = (athlete.get("displayName") or athlete.get("fullName")
+                        or competitor.get("displayName") or competitor.get("name"))
+                if name:
+                    names.append(str(name))
+            if len(names) >= 2:
+                bouts.append({
+                    "Bout": f"{names[0]} vs {names[1]}",
+                    "Weight class": competition.get("type", {}).get("text")
+                        or competition.get("notes", [{}])[0].get("text", "")
+                        if competition.get("notes") else "",
+                    "Status": (competition.get("status") or {}).get("type", {}).get("detail", "Scheduled"),
+                })
+        venue = event.get("competitions", [{}])[0].get("venue", {}) if event.get("competitions") else {}
+        venue_name = venue.get("fullName") or venue.get("address", {}).get("city") or ""
+        upcoming.append({
+            "id": str(event.get("id", "")),
+            "name": event.get("name") or event.get("shortName") or "Upcoming UFC event",
+            "date": event_date,
+            "venue": venue_name,
+            "bouts": bouts,
+            "link": next((item.get("href") for item in event.get("links", [])
+                          if item.get("rel") and "summary" in item.get("rel")), ""),
+        })
+    return sorted(upcoming, key=lambda item: item["date"])
+
+
+st.subheader("1. Next UFC card")
+st.caption("The schedule refreshes automatically every 30 minutes. The next announced event is shown first, with bout listings whenever ESPN includes them in its feed.")
+if st.button("Refresh upcoming UFC card", key="refresh_ufc_schedule"):
+    load_upcoming_ufc_cards.clear()
+try:
+    upcoming_cards = load_upcoming_ufc_cards()
+    if not upcoming_cards:
+        st.info("No future UFC event is currently listed in the schedule feed. The section will populate automatically when an event is announced.")
+    else:
+        next_card = upcoming_cards[0]
+        local_date = next_card["date"].tz_convert("Europe/London")
+        days_to_go = max(0, (local_date.date() - pd.Timestamp.now(tz="Europe/London").date()).days)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Next event", next_card["name"])
+        c2.metric("Date", local_date.strftime("%a %d %b %Y"))
+        c3.metric("Countdown", f"{days_to_go} days")
+        if next_card["venue"]:
+            st.caption(f"Venue: {next_card['venue']}")
+        if next_card["bouts"]:
+            st.markdown("**Confirmed bouts currently listed**")
+            st.dataframe(pd.DataFrame(next_card["bouts"]), use_container_width=True, hide_index=True)
+        else:
+            st.info("The event is listed, but the feed has not exposed its individual matchups yet. The card will refresh automatically as bouts are added.")
+        if len(upcoming_cards) > 1:
+            with st.expander("Other announced UFC events"):
+                other_events = pd.DataFrame([{
+                    "Event": item["name"],
+                    "Date (UK)": item["date"].tz_convert("Europe/London").strftime("%d %b %Y"),
+                    "Bouts listed": len(item["bouts"]),
+                } for item in upcoming_cards[1:]])
+                st.dataframe(other_events, use_container_width=True, hide_index=True)
+except Exception as schedule_exc:
+    st.warning("The live UFC schedule could not be reached just now. Historical model tools remain available.")
+    st.caption(f"Schedule feed error: {schedule_exc}")
+
+st.divider()
+
+st.subheader("2. Historical data")
 st.write("The first build uses public historical UFC data. The initial winner model will be based on pre-fight records and form calculated chronologically from previous results. Post-fight statistics will not be fed into historical predictions.")
 
 try:
@@ -88,7 +177,7 @@ except Exception as exc:
     st.button("Retry data connection", on_click=load_dataset.clear)
 
 st.divider()
-st.subheader("2. Train and validate the winner model")
+st.subheader("3. Train and validate the winner model")
 st.write("This first model uses only each fighter's historical results before the bout: Elo rating, win/loss record, experience, recent form, streak and time since last fight. Draws are excluded from the binary winner model. Fight statistics recorded after the bout are deliberately not used.")
 if st.button("Train UFC winner model", type="primary", use_container_width=True):
     try:
@@ -197,7 +286,7 @@ else:
     st.info("The model has not been trained in this app yet. Tap the button above once the historical data has loaded.")
 
 st.divider()
-st.subheader("3. Model build plan")
+st.subheader("4. Model build plan")
 steps = [
     ("Historical data audit", "Check dates, duplicates, outcomes, missing values and fighter-name consistency.", True),
     ("Pre-fight feature engineering", "Build each fighter's record, recent form, streaks and opponent strength using past fights only.", False),
@@ -211,7 +300,7 @@ for title, detail, complete in steps:
     st.markdown(f"**{icon} {title}**  \n{detail}")
 
 st.divider()
-st.subheader("3. Model standards")
+st.subheader("5. Model standards")
 left, right = st.columns(2)
 with left:
     st.markdown("**What we will measure**")
