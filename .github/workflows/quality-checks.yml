@@ -35,7 +35,7 @@ jobs:
           import importlib
           modules = [
               "auto_daily", "collect_nba_data", "first_basket", "racing_model", "racing_predictions",
-              "predict_props", "prop_lines", "settle_results",
+              "predict_props", "prop_lines", "same_player_builders", "settle_results",
               "train_models", "weekly_retrain",
           ]
           for name in modules:
@@ -89,6 +89,19 @@ jobs:
           fallback = _card_form_stats("1-23P4")
           assert fallback["Runs"] >= 3 and fallback["Form score"] > 0
           print("Horse form feature smoke test OK.")
+          from same_player_builders import generate_same_player_builders
+          fixture = pd.DataFrame([{
+              "game_date": "2026-11-13", "game": "AAA @ BBB",
+              "player": "Test Player", "team": "AAA", "opponent": "BBB",
+              "points_projection": 16.0, "rebounds_projection": 6.5,
+              "assists_projection": 3.0,
+          }])
+          builders = generate_same_player_builders(fixture, Path("models"), simulations=5000)
+          assert not builders.empty, "Same-player Bet Builder smoke test returned no candidates"
+          assert builders["player"].eq("Test Player").all()
+          assert builders["leg_1"].str.contains("points|rebounds|assists").all()
+          assert builders["joint_probability_pct"].between(50, 82).all()
+          print("Same-player Bet Builder smoke test OK.")
           PY
 
       - name: Validate trained model bundle
