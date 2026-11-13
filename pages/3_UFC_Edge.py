@@ -73,9 +73,8 @@ def load_upcoming_ufc_cards():
             if len(names) >= 2:
                 bouts.append({
                     "Bout": f"{names[0]} vs {names[1]}",
-                    "Weight class": competition.get("type", {}).get("text")
-                        or competition.get("notes", [{}])[0].get("text", "")
-                        if competition.get("notes") else "",
+                    "Weight class": (competition.get("type") or {}).get("text")
+                        or ((competition.get("notes") or [{}])[0].get("text", "")),
                     "Status": (competition.get("status") or {}).get("type", {}).get("detail", "Scheduled"),
                 })
         venue = event.get("competitions", [{}])[0].get("venue", {}) if event.get("competitions") else {}
