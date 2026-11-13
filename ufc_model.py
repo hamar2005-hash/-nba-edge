@@ -1,14 +1,52 @@
 """Leakage-safe chronological UFC winner and method validation."""
 from collections import defaultdict, deque
 import re
+import unicodedata
 import numpy as np
 import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, brier_score_loss, log_loss
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, brier_score_loss, log_loss
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+
+def _fighter_key(value):
+    """Normalize Unicode, case and punctuation; never fuzzy-merge identities."""
+    value = unicodedata.normalize("NFKC", str(value)).casefold().strip()
+    value = "".join(ch if ch.isalnum() else " " for ch in value)
+    return " ".join(value.split())
+
+
+def audit_results(results):
+    """Source-quality counts. Invalid records are reported, not silently repaired."""
+    required = {"Date", "Fighter 1", "Fighter 2", "Result"}
+    missing = sorted(required - set(results.columns))
+    if missing:
+        return {"missing_columns": missing}
+    dates = pd.to_datetime(results["Date"], dayfirst=True, errors="coerce")
+    outcomes = pd.to_numeric(results["Result"], errors="coerce")
+    a = results["Fighter 1"].fillna("").astype(str).str.strip().map(_fighter_key)
+    b = results["Fighter 2"].fillna("").astype(str).str.strip().map(_fighter_key)
+    pairs = pd.DataFrame({"date": dates, "pair": [tuple(sorted(x)) for x in zip(a, b)]})
+    appearances = pd.concat([
+        pd.DataFrame({"date": dates, "fighter": a}),
+        pd.DataFrame({"date": dates, "fighter": b}),
+    ])
+    appearances = appearances[(appearances["date"].notna()) & (appearances["fighter"] != "")]
+    repeats = appearances.groupby(["date", "fighter"]).size()
+    usable = dates.notna() & outcomes.isin([1, 2, 3]) & a.ne("") & b.ne("") & a.ne(b)
+    return {
+        "rows": int(len(results)),
+        "invalid_dates": int(dates.isna().sum()),
+        "invalid_results": int((~outcomes.isin([1, 2, 3])).sum()),
+        "blank_names": int((a.eq("") | b.eq("")).sum()),
+        "self_matchups": int((a == b).sum()),
+        "duplicate_bout_rows": int(pairs.duplicated().sum()),
+        "same_day_repeat_fighters": int((repeats > 1).sum()),
+        "usable_rows": int(usable.sum()),
+    }
+
 
 FEATURES = [
     "elo_diff", "wins_diff", "losses_diff", "experience_diff",
@@ -51,12 +89,14 @@ def build_chronological_rows(results):
     df["result"] = pd.to_numeric(df["Result"], errors="coerce")
     df["fighter1"] = df["Fighter 1"].astype(str).str.strip()
     df["fighter2"] = df["Fighter 2"].astype(str).str.strip()
+    df["fighter1_key"] = df["fighter1"].map(_fighter_key)
+    df["fighter2_key"] = df["fighter2"].map(_fighter_key)
     method_col = next((x for x in ("Method", "method") if x in df.columns), None)
     division_col = next((x for x in ("Weight Class", "weight_class", "Division", "division") if x in df.columns), None)
     df["method_group"] = df[method_col].map(_method_group) if method_col else None
     df["division"] = df[division_col].astype(str).str.strip() if division_col else "Not supplied"
     df = df.dropna(subset=["date", "result"])
-    df = df[(df["fighter1"] != "") & (df["fighter2"] != "") & (df["fighter1"] != df["fighter2"])]
+    df = df[(df["fighter1_key"] != "") & (df["fighter2_key"] != "") & (df["fighter1_key"] != df["fighter2_key"])]
     df = df[df["result"].isin([1, 2, 3])].sort_values(["date"], kind="stable")
     states = defaultdict(lambda: {
         "elo": 1500.0, "wins": 0, "losses": 0, "streak": 0,
@@ -66,7 +106,7 @@ def build_chronological_rows(results):
     for day, group in df.groupby("date", sort=True):
         pending = []
         for _, fight in group.iterrows():
-            a, b = fight["fighter1"], fight["fighter2"]
+            a, b = fight["fighter1_key"], fight["fighter2_key"]
             sa, sb = _state_features(states[a], day), _state_features(states[b], day)
             rows.append({
                 "date": day,
@@ -83,9 +123,11 @@ def build_chronological_rows(results):
                 "outcome": int(fight["result"]),
                 "method_group": fight["method_group"],
                 "division": fight["division"],
-                "fighter1": a, "fighter2": b,
+                "fighter1": fight["fighter1"], "fighter2": fight["fighter2"],
             })
             pending.append((a, b, int(fight["result"])))
+        # All Elo changes use the same pre-event ratings, then apply together.
+        elo_deltas = defaultdict(float)
         for a, b, outcome in pending:
             if outcome == 3:
                 continue
@@ -93,8 +135,8 @@ def build_chronological_rows(results):
             ya = 1 if outcome == 1 else 0
             expected_a = 1 / (1 + 10 ** ((sb["elo"] - sa["elo"]) / 400))
             change = 32 * (ya - expected_a)
-            sa["elo"] += change
-            sb["elo"] -= change
+            elo_deltas[a] += change
+            elo_deltas[b] -= change
             for state, won in ((sa, ya), (sb, 1 - ya)):
                 if won:
                     state["wins"] += 1
@@ -105,6 +147,8 @@ def build_chronological_rows(results):
                 state["recent5"].append(won)
                 state["recent10"].append(won)
                 state["dates"].append(day)
+        for fighter, delta in elo_deltas.items():
+            states[fighter]["elo"] += delta
     frame = pd.DataFrame(rows)
     # Draws are not wins for either side and must be excluded from binary training.
     frame = frame[frame["outcome"].isin([1, 2])].drop(columns=["outcome"]).reset_index(drop=True)
@@ -162,7 +206,17 @@ def train_and_evaluate(results):
     predictions = (probabilities >= 0.5).astype(int)
     baseline = DummyClassifier(strategy="prior").fit(train[FEATURES], train["target"])
     base_probs = baseline.predict_proba(test[FEATURES])[:, 1]
+    elo_probs = 1 / (1 + np.power(10.0, -test["elo_diff"].to_numpy() / 400.0))
+    elo_predictions = (elo_probs >= 0.5).astype(int)
+    base_predictions = (base_probs >= 0.5).astype(int)
     metrics = {
+        "elo_accuracy": float(accuracy_score(test["target"], elo_predictions)),
+        "elo_balanced_accuracy": float(balanced_accuracy_score(test["target"], elo_predictions)),
+        "elo_log_loss": float(log_loss(test["target"], elo_probs, labels=[0, 1])),
+        "elo_brier": float(brier_score_loss(test["target"], elo_probs)),
+        "balanced_accuracy": float(balanced_accuracy_score(test["target"], predictions)),
+        "baseline_balanced_accuracy": float(balanced_accuracy_score(test["target"], base_predictions)),
+        "baseline_log_loss": float(log_loss(test["target"], base_probs, labels=[0, 1])),
         "train_fights": int(len(train)), "calibration_fights": int(len(calibration)),
         "test_fights": int(len(test)),
         "train_start": str(train["date"].min().date()),
