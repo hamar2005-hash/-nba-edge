@@ -45,8 +45,10 @@ ESPN_UFC_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/sco
 
 
 @st.cache_data(ttl=30 * 60, show_spinner=False)
-def load_upcoming_ufc_cards():
-    """Fetch the live UFC schedule and any bout details ESPN exposes on the scoreboard."""
+def load_upcoming_ufc_cards(week_key):
+    """Fetch the live UFC schedule and keep one selected card for each Monday-Sunday week."""
+    # week_key is deliberately part of the cache key so the card rolls over on Monday,
+    # even if the previous week's 30-minute schedule cache has not expired yet.
     now = pd.Timestamp.now(tz="UTC")
     now_local = now.tz_convert("Europe/London")
     week_start = now_local.normalize() - pd.Timedelta(days=now_local.weekday())
@@ -153,7 +155,9 @@ st.caption("The selected UFC card stays in place from Monday through Sunday, inc
 if st.button("Refresh upcoming UFC card", key="refresh_ufc_schedule"):
     load_upcoming_ufc_cards.clear()
 try:
-    upcoming_cards = load_upcoming_ufc_cards()
+    _uk_now = pd.Timestamp.now(tz="Europe/London")
+    _week_key = (_uk_now.normalize() - pd.Timedelta(days=_uk_now.weekday())).strftime("%Y-%m-%d")
+    upcoming_cards = load_upcoming_ufc_cards(_week_key)
     if not upcoming_cards:
         st.info("No UFC event is currently listed for this week or a future date. The section will populate automatically when ESPN announces the next card.")
     else:
