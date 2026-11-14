@@ -149,13 +149,13 @@ except Exception as _early_train_exc:
     st.caption(f"Automatic predictions are waiting for the historical model: {_early_train_exc}")
 
 st.subheader("1. Next UFC card")
-st.caption("The schedule refreshes automatically every 30 minutes. The next announced event is shown first, with bout listings whenever ESPN includes them in its feed.")
+st.caption("The selected UFC card stays in place from Monday through Sunday, including after fight time begins. It rolls forward to the next announced card every Monday. The schedule feed refreshes every 30 minutes.")
 if st.button("Refresh upcoming UFC card", key="refresh_ufc_schedule"):
     load_upcoming_ufc_cards.clear()
 try:
     upcoming_cards = load_upcoming_ufc_cards()
     if not upcoming_cards:
-        st.info("No future UFC event is currently listed in the schedule feed. The section will populate automatically when an event is announced.")
+        st.info("No UFC event is currently listed for this week or a future date. The section will populate automatically when ESPN announces the next card.")
     else:
         next_card = upcoming_cards[0]
         local_date = next_card["date"].tz_convert("Europe/London")
