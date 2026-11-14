@@ -47,18 +47,46 @@ ESPN_UFC_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/sco
 @st.cache_data(ttl=30 * 60, show_spinner=False)
 def load_upcoming_ufc_cards():
     """Fetch the live UFC schedule and any bout details ESPN exposes on the scoreboard."""
-    response = requests.get(
+    now = pd.Timestamp.now(tz="UTC")
+    now_local = now.tz_convert("Europe/London")
+    week_start = now_local.normalize() - pd.Timedelta(days=now_local.weekday())
+    week_end = week_start + pd.Timedelta(days=6)
+
+    # Fetch both the current Monday-Sunday window and the normal future schedule.
+    # The dated request keeps a card visible after its start time until Sunday;
+    # the weekly selection then rolls forward on Monday.
+    headers = {"User-Agent": "Mozilla/5.0 UFC-Edge/1.0"}
+    week_response = requests.get(
         ESPN_UFC_SCOREBOARD,
-        headers={"User-Agent": "Mozilla/5.0 UFC-Edge/1.0"},
+        params={"dates": f"{week_start:%Y%m%d}-{week_end:%Y%m%d}"},
+        headers=headers,
         timeout=25,
     )
-    response.raise_for_status()
-    payload = response.json()
-    now = pd.Timestamp.now(tz="UTC")
+    week_response.raise_for_status()
+    future_response = requests.get(
+        ESPN_UFC_SCOREBOARD,
+        headers=headers,
+        timeout=25,
+    )
+    future_response.raise_for_status()
+
+    events_by_id = {}
+    for payload in (week_response.json(), future_response.json()):
+        for event in payload.get("events", []):
+            event_id = str(event.get("id", ""))
+            if event_id:
+                events_by_id[event_id] = event
+
     upcoming = []
-    for event in payload.get("events", []):
+    for event in events_by_id.values():
         event_date = pd.to_datetime(event.get("date"), utc=True, errors="coerce")
-        if pd.isna(event_date) or event_date < now:
+        if pd.isna(event_date):
+            continue
+        event_local_date = event_date.tz_convert("Europe/London").date()
+        is_this_week = week_start.date() <= event_local_date <= week_end.date()
+        # Keep this week's event visible even once its scheduled start has passed.
+        # Outside the current week, only show genuinely future events.
+        if not is_this_week and event_date < now:
             continue
         bouts = []
         competitions = event.get("competitions") or []
@@ -91,7 +119,17 @@ def load_upcoming_ufc_cards():
             "link": next((item.get("href") for item in event.get("links", [])
                           if item.get("rel") and "summary" in item.get("rel")), ""),
         })
-    return sorted(upcoming, key=lambda item: item["date"])
+    def weekly_card_order(item):
+        event_date = item["date"]
+        local_date = event_date.tz_convert("Europe/London").date()
+        in_this_week = week_start.date() <= local_date <= week_end.date()
+        if in_this_week and event_date >= now:
+            return (0, 0, event_date.value)       # upcoming card in this week
+        if in_this_week:
+            return (0, 1, -event_date.value)      # retain this week's card through Sunday
+        return (1, 0, event_date.value)           # otherwise, next future card
+
+    return sorted(upcoming, key=weekly_card_order)
 
 
 
