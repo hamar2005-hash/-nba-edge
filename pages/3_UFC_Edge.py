@@ -26,7 +26,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-st.caption("Separate from NBA Edge and Horse Racing Edge. No picks will be published until the model passes chronological testing.")
+st.caption("Separate from NBA Edge and Horse Racing Edge. Full-card winner picks and value bets are shown together near the top.")
 
 DATA_BASE = "https://raw.githubusercontent.com/Sam-Armstrong/UFC-Almanac/main/data"
 DATA_FILES = {
@@ -94,6 +94,22 @@ def load_upcoming_ufc_cards():
     return sorted(upcoming, key=lambda item: item["date"])
 
 
+
+# Prepare the model before rendering the top-of-page card and betting sections.
+try:
+    results = load_dataset(DATA_FILES["Fight results"])
+    if not st.session_state.get("ufc_trained"):
+        import ufc_model
+        with st.spinner("Preparing predictions for the upcoming UFC card…"):
+            _early_model, _early_metrics, _early_snapshot, _early_frame = ufc_model.train_and_evaluate(results)
+        st.session_state["ufc_model"] = _early_model
+        st.session_state["ufc_snapshot"] = _early_snapshot
+        st.session_state["ufc_metrics"] = _early_metrics
+        st.session_state["ufc_trained"] = True
+except Exception as _early_train_exc:
+    st.session_state["ufc_trained"] = False
+    st.caption(f"Automatic predictions are waiting for the historical model: {_early_train_exc}")
+
 st.subheader("1. Next UFC card")
 st.caption("The schedule refreshes automatically every 30 minutes. The next announced event is shown first, with bout listings whenever ESPN includes them in its feed.")
 if st.button("Refresh upcoming UFC card", key="refresh_ufc_schedule"):
@@ -113,8 +129,21 @@ try:
         if next_card["venue"]:
             st.caption(f"Venue: {next_card['venue']}")
         if next_card["bouts"]:
-            st.markdown("**Confirmed bouts currently listed**")
-            st.dataframe(pd.DataFrame(next_card["bouts"]), width="stretch", hide_index=True)
+            st.markdown("**Confirmed bouts and predicted winners**")
+            _bout_table = pd.DataFrame(next_card["bouts"])
+            if st.session_state.get("ufc_trained"):
+                from ufc_model import predict_matchups
+                _bout_predictions = predict_matchups(
+                    st.session_state["ufc_model"],
+                    st.session_state["ufc_snapshot"],
+                    next_card["bouts"],
+                )
+                if not _bout_predictions.empty:
+                    _bout_table = _bout_table.merge(
+                        _bout_predictions[["Bout", "Predicted winner", "Confidence", "Data warning"]],
+                        on="Bout", how="left",
+                    )
+            st.dataframe(_bout_table, width="stretch", hide_index=True)
         else:
             st.info("The event is listed, but the feed has not exposed its individual matchups yet. The card will refresh automatically as bouts are added.")
         if len(upcoming_cards) > 1:
@@ -130,6 +159,177 @@ except Exception as schedule_exc:
     st.caption(f"Schedule feed error: {schedule_exc}")
 
 st.divider()
+
+# Best-bets layer: compare validated model probabilities with UK bookmaker prices.
+@st.cache_data(ttl=15 * 60, show_spinner=False)
+def load_uk_ufc_odds(api_key):
+    endpoint = "https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds/"
+    response = requests.get(endpoint, params={
+        "apiKey": api_key, "regions": "uk", "markets": "h2h",
+        "oddsFormat": "decimal",
+    }, timeout=25)
+    response.raise_for_status()
+    return response.json()
+
+
+st.divider()
+st.subheader("5. Best bets")
+st.caption("Ranks upcoming-card moneyline opportunities by model edge, expected value and the best available UK price. A predicted winner is not automatically a bet.")
+try:
+    _odds_key = st.secrets.get("ODDS_API_KEY", os.getenv("ODDS_API_KEY", ""))
+except Exception:
+    _odds_key = os.getenv("ODDS_API_KEY", "")
+
+if not _odds_key:
+    st.info("Live bookmaker odds are not connected. Add ODDS_API_KEY to Streamlit secrets to compare UK prices.")
+elif not upcoming_cards or not upcoming_cards[0].get("bouts") or not st.session_state.get("ufc_trained"):
+    st.info("Best bets will appear when the next card has published bouts and the winner model is trained.")
+else:
+    _metrics = st.session_state.get("ufc_metrics", {})
+    _beats_benchmarks = (
+        _metrics
+        and _metrics.get("brier") is not None
+        and _metrics.get("log_loss") is not None
+        and _metrics.get("elo_brier") is not None
+        and _metrics.get("elo_log_loss") is not None
+        and _metrics.get("baseline_brier") is not None
+        and _metrics.get("baseline_log_loss") is not None
+        and _metrics["brier"] < min(_metrics["elo_brier"], _metrics["baseline_brier"])
+        and _metrics["log_loss"] < min(_metrics["elo_log_loss"], _metrics["baseline_log_loss"])
+    )
+    if not _beats_benchmarks:
+        st.warning("Best bets are paused: the calibrated model must beat both the Elo-only and training-prior benchmarks on the untouched test set for Brier score and log loss before its prices are treated as betting signals.")
+    else:
+        try:
+            with st.spinner("Comparing the upcoming card with current UK bookmaker prices…"):
+                _odds_events = load_uk_ufc_odds(_odds_key)
+            from ufc_model import _fighter_key, predict_matchups
+
+            _card = upcoming_cards[0]
+            _card_predictions = predict_matchups(
+                st.session_state["ufc_model"],
+                st.session_state["ufc_snapshot"],
+                _card["bouts"],
+            )
+            _prediction_lookup = {}
+            for _, _row in _card_predictions.iterrows():
+                _parts = str(_row.get("Bout", "")).split(" vs ", 1)
+                if len(_parts) == 2:
+                    _pair = tuple(sorted((_fighter_key(_parts[0]), _fighter_key(_parts[1]))))
+                    _prediction_lookup[_pair] = _row
+
+            _value_rows = []
+            for _event in _odds_events:
+                _home = str(_event.get("home_team", "")).strip()
+                _away = str(_event.get("away_team", "")).strip()
+                if not _home or not _away:
+                    continue
+                _pair_key = tuple(sorted((_fighter_key(_home), _fighter_key(_away))))
+                _model_row = _prediction_lookup.get(_pair_key)
+                if _model_row is None:
+                    continue
+
+                # Avoid betting recommendations where either fighter has no historical profile.
+                if "No historical profile" in str(_model_row.get("Data warning", "")):
+                    continue
+
+                _home_col = next(
+                    (col for col in _model_row.index
+                     if str(col).endswith(" win %")
+                     and _fighter_key(str(col)[:-6]) == _fighter_key(_home)),
+                    None,
+                )
+                _away_col = next(
+                    (col for col in _model_row.index
+                     if str(col).endswith(" win %")
+                     and _fighter_key(str(col)[:-6]) == _fighter_key(_away)),
+                    None,
+                )
+                if not _home_col or not _away_col:
+                    continue
+                _model_probs = {
+                    _fighter_key(_home): float(_model_row[_home_col]) / 100.0,
+                    _fighter_key(_away): float(_model_row[_away_col]) / 100.0,
+                }
+
+                _best_prices, _book_names, _book_probs = {}, {}, []
+                for _book in _event.get("bookmakers", []):
+                    _outcomes = {}
+                    for _market in _book.get("markets", []):
+                        if _market.get("key") != "h2h":
+                            continue
+                        for _outcome in _market.get("outcomes", []):
+                            try:
+                                _price = float(_outcome.get("price", 0))
+                            except (TypeError, ValueError):
+                                continue
+                            if _price > 1:
+                                _outcomes[_fighter_key(_outcome.get("name", ""))] = _price
+
+                    _p_home = _outcomes.get(_fighter_key(_home))
+                    _p_away = _outcomes.get(_fighter_key(_away))
+                    if not _p_home or not _p_away:
+                        continue
+                    _implied_home, _implied_away = 1 / _p_home, 1 / _p_away
+                    _overround = _implied_home + _implied_away
+                    if _overround <= 0:
+                        continue
+                    _book_probs.append((_implied_home / _overround, _implied_away / _overround))
+
+                    for _fighter, _price in ((_home, _p_home), (_away, _p_away)):
+                        _key = _fighter_key(_fighter)
+                        if _key not in _best_prices or _price > _best_prices[_key]:
+                            _best_prices[_key] = _price
+                            _book_names[_key] = _book.get("title", _book.get("key", "UK bookmaker"))
+
+                if not _book_probs:
+                    continue
+                _market_probs = {
+                    _fighter_key(_home): sum(pair[0] for pair in _book_probs) / len(_book_probs),
+                    _fighter_key(_away): sum(pair[1] for pair in _book_probs) / len(_book_probs),
+                }
+
+                for _fighter in (_home, _away):
+                    _key = _fighter_key(_fighter)
+                    _price = _best_prices.get(_key)
+                    if not _price:
+                        continue
+                    _model_probability = _model_probs[_key]
+                    _market_probability = _market_probs[_key]
+                    _edge = _model_probability - _market_probability
+                    _ev = (_model_probability * (_price - 1)) - (1 - _model_probability)
+
+                    # Require a meaningful edge as well as positive expected value at the best price.
+                    if _edge >= 0.05 and _ev > 0:
+                        _value_rows.append({
+                            "Fight": f"{_home} vs {_away}",
+                            "Pick": _fighter,
+                            "Model win %": round(_model_probability * 100, 1),
+                            "Market win %": round(_market_probability * 100, 1),
+                            "Edge": round(_edge * 100, 1),
+                            "Best odds": round(_price, 2),
+                            "Bookmaker": _book_names[_key],
+                            "Expected value / £1": round(_ev, 3),
+                        })
+
+            if _value_rows:
+                _best_bets = (
+                    pd.DataFrame(_value_rows)
+                    .sort_values(["Expected value / £1", "Edge"], ascending=False)
+                    .drop_duplicates(subset=["Fight", "Pick"])
+                    .head(10)
+                )
+                st.dataframe(_best_bets, width="stretch", hide_index=True)
+                st.caption("Top 10 qualifying moneyline bets. Market probability is the average no-vig UK bookmaker consensus; best odds are selected separately. Each pick needs at least a 5 percentage-point edge and positive expected value. No stake sizing is implied.")
+            else:
+                st.info("No UFC moneyline bets currently meet the rules. The full-card winner predictions remain available above; no bet is better than forcing one.")
+            if st.button("Refresh bookmaker odds", key="refresh_ufc_odds"):
+                load_uk_ufc_odds.clear()
+                st.rerun()
+        except Exception as _odds_exc:
+            st.warning(f"Live UK odds could not be loaded: {_odds_exc}")
+            st.caption("Check the Odds API key and confirm that the account includes MMA odds.")
+
 
 st.subheader("2. Historical data")
 st.write("The first build uses public historical UFC data. The initial winner model will be based on pre-fight records and form calculated chronologically from previous results. Post-fight statistics will not be fed into historical predictions.")
@@ -301,198 +501,6 @@ if st.session_state.get("ufc_trained"):
 else:
     st.info("The model has not been trained in this app yet. Tap the button above once the historical data has loaded.")
 
-
-st.divider()
-st.subheader("4. Full-card winner predictions")
-st.caption("Every bout exposed by the live schedule feed is included, including close calls. Win probabilities are separate from confidence. These are model estimates, not betting recommendations.")
-if upcoming_cards and st.session_state.get("ufc_trained"):
-    _card = upcoming_cards[0]
-    if _card.get("bouts"):
-        from ufc_model import predict_matchups
-        _predictions = predict_matchups(st.session_state["ufc_model"], st.session_state["ufc_snapshot"], _card["bouts"])
-        if not _predictions.empty:
-            st.markdown("**" + _card["name"] + " · " + _card["date"].tz_convert("Europe/London").strftime("%d %B %Y") + "**")
-            st.dataframe(_predictions, width="stretch", hide_index=True)
-            st.caption("Confidence is the probability assigned to the selected winner. A 51/49 pick is shown as 51% confidence. Missing-history warnings identify fighters not found in the historical database.")
-        else:
-            st.info("The schedule feed has not supplied usable fighter names for this card yet.")
-    else:
-        st.info("Predictions appear when the schedule feed publishes matchups. No fights are invented.")
-elif upcoming_cards:
-    st.warning("The card is available, but predictions are paused because the historical model could not be trained.")
-else:
-    st.info("The full-card board will populate when an upcoming event and its bout list are available.")
-
-
-# Best-bets layer: compare validated model probabilities with UK bookmaker prices.
-@st.cache_data(ttl=15 * 60, show_spinner=False)
-def load_uk_ufc_odds(api_key):
-    endpoint = "https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds/"
-    response = requests.get(endpoint, params={
-        "apiKey": api_key, "regions": "uk", "markets": "h2h",
-        "oddsFormat": "decimal",
-    }, timeout=25)
-    response.raise_for_status()
-    return response.json()
-
-
-st.divider()
-st.subheader("5. Best bets")
-st.caption("Ranks upcoming-card moneyline opportunities by model edge, expected value and the best available UK price. A predicted winner is not automatically a bet.")
-try:
-    _odds_key = st.secrets.get("ODDS_API_KEY", os.getenv("ODDS_API_KEY", ""))
-except Exception:
-    _odds_key = os.getenv("ODDS_API_KEY", "")
-
-if not _odds_key:
-    st.info("Live bookmaker odds are not connected. Add ODDS_API_KEY to Streamlit secrets to compare UK prices.")
-elif not upcoming_cards or not upcoming_cards[0].get("bouts") or not st.session_state.get("ufc_trained"):
-    st.info("Best bets will appear when the next card has published bouts and the winner model is trained.")
-else:
-    _metrics = st.session_state.get("ufc_metrics", {})
-    _beats_benchmarks = (
-        _metrics
-        and _metrics.get("brier") is not None
-        and _metrics.get("log_loss") is not None
-        and _metrics.get("elo_brier") is not None
-        and _metrics.get("elo_log_loss") is not None
-        and _metrics.get("baseline_brier") is not None
-        and _metrics.get("baseline_log_loss") is not None
-        and _metrics["brier"] < min(_metrics["elo_brier"], _metrics["baseline_brier"])
-        and _metrics["log_loss"] < min(_metrics["elo_log_loss"], _metrics["baseline_log_loss"])
-    )
-    if not _beats_benchmarks:
-        st.warning("Best bets are paused: the calibrated model must beat both the Elo-only and training-prior benchmarks on the untouched test set for Brier score and log loss before its prices are treated as betting signals.")
-    else:
-        try:
-            with st.spinner("Comparing the upcoming card with current UK bookmaker prices…"):
-                _odds_events = load_uk_ufc_odds(_odds_key)
-            from ufc_model import _fighter_key, predict_matchups
-
-            _card = upcoming_cards[0]
-            _card_predictions = predict_matchups(
-                st.session_state["ufc_model"],
-                st.session_state["ufc_snapshot"],
-                _card["bouts"],
-            )
-            _prediction_lookup = {}
-            for _, _row in _card_predictions.iterrows():
-                _parts = str(_row.get("Bout", "")).split(" vs ", 1)
-                if len(_parts) == 2:
-                    _pair = tuple(sorted((_fighter_key(_parts[0]), _fighter_key(_parts[1]))))
-                    _prediction_lookup[_pair] = _row
-
-            _value_rows = []
-            for _event in _odds_events:
-                _home = str(_event.get("home_team", "")).strip()
-                _away = str(_event.get("away_team", "")).strip()
-                if not _home or not _away:
-                    continue
-                _pair_key = tuple(sorted((_fighter_key(_home), _fighter_key(_away))))
-                _model_row = _prediction_lookup.get(_pair_key)
-                if _model_row is None:
-                    continue
-
-                # Avoid betting recommendations where either fighter has no historical profile.
-                if "No historical profile" in str(_model_row.get("Data warning", "")):
-                    continue
-
-                _home_col = next(
-                    (col for col in _model_row.index
-                     if str(col).endswith(" win %")
-                     and _fighter_key(str(col)[:-6]) == _fighter_key(_home)),
-                    None,
-                )
-                _away_col = next(
-                    (col for col in _model_row.index
-                     if str(col).endswith(" win %")
-                     and _fighter_key(str(col)[:-6]) == _fighter_key(_away)),
-                    None,
-                )
-                if not _home_col or not _away_col:
-                    continue
-                _model_probs = {
-                    _fighter_key(_home): float(_model_row[_home_col]) / 100.0,
-                    _fighter_key(_away): float(_model_row[_away_col]) / 100.0,
-                }
-
-                _best_prices, _book_names, _book_probs = {}, {}, []
-                for _book in _event.get("bookmakers", []):
-                    _outcomes = {}
-                    for _market in _book.get("markets", []):
-                        if _market.get("key") != "h2h":
-                            continue
-                        for _outcome in _market.get("outcomes", []):
-                            try:
-                                _price = float(_outcome.get("price", 0))
-                            except (TypeError, ValueError):
-                                continue
-                            if _price > 1:
-                                _outcomes[_fighter_key(_outcome.get("name", ""))] = _price
-
-                    _p_home = _outcomes.get(_fighter_key(_home))
-                    _p_away = _outcomes.get(_fighter_key(_away))
-                    if not _p_home or not _p_away:
-                        continue
-                    _implied_home, _implied_away = 1 / _p_home, 1 / _p_away
-                    _overround = _implied_home + _implied_away
-                    if _overround <= 0:
-                        continue
-                    _book_probs.append((_implied_home / _overround, _implied_away / _overround))
-
-                    for _fighter, _price in ((_home, _p_home), (_away, _p_away)):
-                        _key = _fighter_key(_fighter)
-                        if _key not in _best_prices or _price > _best_prices[_key]:
-                            _best_prices[_key] = _price
-                            _book_names[_key] = _book.get("title", _book.get("key", "UK bookmaker"))
-
-                if not _book_probs:
-                    continue
-                _market_probs = {
-                    _fighter_key(_home): sum(pair[0] for pair in _book_probs) / len(_book_probs),
-                    _fighter_key(_away): sum(pair[1] for pair in _book_probs) / len(_book_probs),
-                }
-
-                for _fighter in (_home, _away):
-                    _key = _fighter_key(_fighter)
-                    _price = _best_prices.get(_key)
-                    if not _price:
-                        continue
-                    _model_probability = _model_probs[_key]
-                    _market_probability = _market_probs[_key]
-                    _edge = _model_probability - _market_probability
-                    _ev = (_model_probability * (_price - 1)) - (1 - _model_probability)
-
-                    # Require a meaningful edge as well as positive expected value at the best price.
-                    if _edge >= 0.05 and _ev > 0:
-                        _value_rows.append({
-                            "Fight": f"{_home} vs {_away}",
-                            "Pick": _fighter,
-                            "Model win %": round(_model_probability * 100, 1),
-                            "Market win %": round(_market_probability * 100, 1),
-                            "Edge": round(_edge * 100, 1),
-                            "Best odds": round(_price, 2),
-                            "Bookmaker": _book_names[_key],
-                            "Expected value / £1": round(_ev, 3),
-                        })
-
-            if _value_rows:
-                _best_bets = (
-                    pd.DataFrame(_value_rows)
-                    .sort_values(["Expected value / £1", "Edge"], ascending=False)
-                    .drop_duplicates(subset=["Fight", "Pick"])
-                    .head(10)
-                )
-                st.dataframe(_best_bets, width="stretch", hide_index=True)
-                st.caption("Top 10 qualifying moneyline bets. Market probability is the average no-vig UK bookmaker consensus; best odds are selected separately. Each pick needs at least a 5 percentage-point edge and positive expected value. No stake sizing is implied.")
-            else:
-                st.info("No UFC moneyline bets currently meet the rules. The full-card winner predictions remain available above; no bet is better than forcing one.")
-            if st.button("Refresh bookmaker odds", key="refresh_ufc_odds"):
-                load_uk_ufc_odds.clear()
-                st.rerun()
-        except Exception as _odds_exc:
-            st.warning(f"Live UK odds could not be loaded: {_odds_exc}")
-            st.caption("Check the Odds API key and confirm that the account includes MMA odds.")
 
 st.divider()
 st.subheader("6. Model build plan")
