@@ -114,7 +114,7 @@ try:
             st.caption(f"Venue: {next_card['venue']}")
         if next_card["bouts"]:
             st.markdown("**Confirmed bouts currently listed**")
-            st.dataframe(pd.DataFrame(next_card["bouts"]), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(next_card["bouts"]), width="stretch", hide_index=True)
         else:
             st.info("The event is listed, but the feed has not exposed its individual matchups yet. The card will refresh automatically as bouts are added.")
         if len(upcoming_cards) > 1:
@@ -124,7 +124,7 @@ try:
                     "Date (UK)": item["date"].tz_convert("Europe/London").strftime("%d %b %Y"),
                     "Bouts listed": len(item["bouts"]),
                 } for item in upcoming_cards[1:]])
-                st.dataframe(other_events, use_container_width=True, hide_index=True)
+                st.dataframe(other_events, width="stretch", hide_index=True)
 except Exception as schedule_exc:
     st.warning("The live UFC schedule could not be reached just now. Historical model tools remain available.")
     st.caption(f"Schedule feed error: {schedule_exc}")
@@ -169,7 +169,7 @@ try:
         except Exception as audit_exc:
             st.warning(f"Data audit unavailable: {audit_exc}")
         with st.expander("Preview historical results"):
-            st.dataframe(results.head(12), use_container_width=True, hide_index=True)
+            st.dataframe(results.head(12), width="stretch", hide_index=True)
     else:
         st.error("The results file is missing required columns. Model training is blocked until the data is corrected.")
         st.write("Columns found:", list(results.columns))
@@ -195,7 +195,7 @@ if "results" in locals() and not st.session_state.get("ufc_trained"):
 st.divider()
 st.subheader("3. Train and validate the winner model")
 st.write("This first model uses only each fighter's historical results before the bout: Elo rating, win/loss record, experience, recent form, streak and time since last fight. Draws are excluded from the binary winner model. Fight statistics recorded after the bout are deliberately not used.")
-if st.button("Train UFC winner model", type="primary", use_container_width=True):
+if st.button("Train UFC winner model", type="primary", width="stretch"):
     try:
         import importlib
         import ufc_model
@@ -239,7 +239,7 @@ if st.session_state.get("ufc_trained"):
     benchmark["Balanced accuracy %"] = benchmark["Balanced accuracy %"].round(1)
     benchmark["Log loss"] = benchmark["Log loss"].round(3)
     benchmark["Brier"] = benchmark["Brier"].round(3)
-    st.dataframe(benchmark, use_container_width=True, hide_index=True)
+    st.dataframe(benchmark, width="stretch", hide_index=True)
     with st.expander("Raw vs calibrated probability comparison"):
         raw_a, raw_b, raw_c = st.columns(3)
         raw_a.metric("Raw Brier", f"{metrics['raw_brier']:.3f}")
@@ -251,7 +251,7 @@ if st.session_state.get("ufc_trained"):
         cal = pd.DataFrame(metrics["calibration"])
         cal["predicted"] = (cal["predicted"] * 100).round(1)
         cal["observed"] = (cal["observed"] * 100).round(1)
-        st.dataframe(cal.rename(columns={"band": "Probability band", "fights": "Fights", "predicted": "Predicted %", "observed": "Observed %"}), use_container_width=True, hide_index=True)
+        st.dataframe(cal.rename(columns={"band": "Probability band", "fights": "Fights", "predicted": "Predicted %", "observed": "Observed %"}), width="stretch", hide_index=True)
 
     st.subheader("Confidence-threshold backtest")
     st.caption("Accuracy and share of unseen test fights selected at each minimum confidence. This is not a profit/ROI test because historical bookmaker odds are not included.")
@@ -260,7 +260,7 @@ if st.session_state.get("ufc_trained"):
         threshold_table["threshold"] = (threshold_table["threshold"] * 100).round(0).astype(int).astype(str) + "%"
         threshold_table["coverage"] = (threshold_table["coverage"] * 100).round(1)
         threshold_table["accuracy"] = (threshold_table["accuracy"] * 100).round(1)
-        st.dataframe(threshold_table.rename(columns={"threshold": "Minimum confidence", "fights": "Selected fights", "coverage": "Coverage %", "accuracy": "Accuracy %"}), use_container_width=True, hide_index=True)
+        st.dataframe(threshold_table.rename(columns={"threshold": "Minimum confidence", "fights": "Selected fights", "coverage": "Coverage %", "accuracy": "Accuracy %"}), width="stretch", hide_index=True)
     else:
         st.info("No test fights met the selected confidence thresholds.")
 
@@ -268,13 +268,13 @@ if st.session_state.get("ufc_trained"):
     if metrics.get("temporal"):
         temporal = pd.DataFrame(metrics["temporal"])
         temporal["accuracy"] = (temporal["accuracy"] * 100).round(1)
-        st.dataframe(temporal.rename(columns={"period": "Time block", "fights": "Fights", "accuracy": "Accuracy %", "start": "From", "end": "To"}), use_container_width=True, hide_index=True)
+        st.dataframe(temporal.rename(columns={"period": "Time block", "fights": "Fights", "accuracy": "Accuracy %", "start": "From", "end": "To"}), width="stretch", hide_index=True)
 
     st.subheader("Performance by weight class")
     if metrics.get("division_available"):
         div = pd.DataFrame(metrics["division"])
         div["accuracy"] = (div["accuracy"] * 100).round(1)
-        st.dataframe(div.rename(columns={"division": "Division", "fights": "Fights", "accuracy": "Accuracy %"}), use_container_width=True, hide_index=True)
+        st.dataframe(div.rename(columns={"division": "Division", "fights": "Fights", "accuracy": "Accuracy %"}), width="stretch", hide_index=True)
     else:
         st.info("The current results feed does not include weight class. A reliable bout-to-division mapping is needed before calculating division accuracy.")
 
@@ -312,7 +312,7 @@ if upcoming_cards and st.session_state.get("ufc_trained"):
         _predictions = predict_matchups(st.session_state["ufc_model"], st.session_state["ufc_snapshot"], _card["bouts"])
         if not _predictions.empty:
             st.markdown("**" + _card["name"] + " · " + _card["date"].tz_convert("Europe/London").strftime("%d %B %Y") + "**")
-            st.dataframe(_predictions, use_container_width=True, hide_index=True)
+            st.dataframe(_predictions, width="stretch", hide_index=True)
             st.caption("Confidence is the probability assigned to the selected winner. A 51/49 pick is shown as 51% confidence. Missing-history warnings identify fighters not found in the historical database.")
         else:
             st.info("The schedule feed has not supplied usable fighter names for this card yet.")
@@ -419,7 +419,7 @@ else:
             _best_bets = pd.DataFrame(_value_rows).sort_values(
                 ["Expected value / £1", "Edge"], ascending=False
             ).drop_duplicates(subset=["Fight", "Bet"])
-            st.dataframe(_best_bets, use_container_width=True, hide_index=True)
+            st.dataframe(_best_bets, width="stretch", hide_index=True)
             st.caption("Market probability is the average no-vig probability across books offering both sides. Best odds are selected separately. Edge threshold: at least 3 percentage points; expected value must be positive. Estimates are uncertain and do not guarantee profit.")
         else:
             st.info("No bets currently meet the value rules. The full-card predictions remain visible above. This is preferable to forcing a bet on every event.")
