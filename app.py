@@ -75,7 +75,7 @@ with st.sidebar:
     st.divider()
     st.markdown("**Model training**")
     st.caption("Retrain the points model using the latest historical game logs. The workflow validates it against the current model and only promotes it if holdout MAE improves.")
-    if st.button("Retrain points model", use_container_width=True):
+    if st.button("Retrain points model", width="stretch"):
         github_token = st.secrets.get("NBA_EDGE_GITHUB_TOKEN", os.getenv("NBA_EDGE_GITHUB_TOKEN", ""))
         if not github_token:
             st.warning("Training from this button needs the NBA_EDGE_GITHUB_TOKEN secret configured in the app deployment. See the setup note in the repository README.")
@@ -101,7 +101,7 @@ with st.sidebar:
                     st.caption(response.text[:1000])
             except requests.RequestException as exc:
                 st.error(f"Could not contact GitHub to start training: {exc}")
-    if st.button("Refresh today's projections", type="primary", disabled=not models_ready, use_container_width=True):
+    if st.button("Refresh today's projections", type="primary", disabled=not models_ready, width="stretch"):
         with st.spinner("Fetching today's NBA schedule and rosters, then generating projections…"):
             run = subprocess.run(
                 [sys.executable, str(ROOT / "auto_daily.py"), "--models", str(MODELS), "--out", str(PREDICTIONS)],
@@ -113,7 +113,7 @@ with st.sidebar:
         else:
             st.error("Refresh failed. The schedule/roster feed may be temporarily unavailable.")
             st.code((run.stderr or run.stdout)[-8000:])
-    if st.button("Update yesterday's accuracy", use_container_width=True):
+    if st.button("Update yesterday's accuracy", width="stretch"):
         with st.spinner("Checking completed NBA box scores…"):
             settle = subprocess.run(
                 [sys.executable, str(ROOT / "settle_results.py")],
@@ -191,7 +191,7 @@ else:
             "player_status": "Availability",
         })
         cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
-        st.dataframe(display[[c for c in cols if c in display]], use_container_width=True, hide_index=True)
+        st.dataframe(display[[c for c in cols if c in display]], width="stretch", hide_index=True)
         st.download_button("Download today's projections", predictions.to_csv(index=False), "nba_edge_daily_projections.csv", "text/csv")
         trend_cols = [c for c in ["pts_last5", "pts_last10", "pts_trend", "reb_last5", "reb_last10", "reb_trend", "ast_last5", "ast_last10", "ast_trend"] if c in predictions.columns]
         if trend_cols:
@@ -203,7 +203,7 @@ else:
                     "reb_last5": "REB L5", "reb_last10": "REB L10", "reb_trend": "REB trend",
                     "ast_last5": "AST L5", "ast_last10": "AST L10", "ast_trend": "AST trend",
                 })
-                st.dataframe(trend_view, use_container_width=True, hide_index=True)
+                st.dataframe(trend_view, width="stretch", hide_index=True)
         st.caption("Minutes are recent historical averages, not confirmed playing-time forecasts. Availability is based on the roster feed and may not reflect late injury news.")
 
         st.divider()
@@ -241,7 +241,7 @@ else:
                         fb_view[["Matchup", "Rank", "Player", "Team", "Opponent",
                                  "Estimated chance (%)", "Career sample first baskets",
                                  "Historical starts in sample"]],
-                        use_container_width=True, hide_index=True
+                        width="stretch", hide_index=True
                     )
                     st.download_button(
                         "Download first-basket picks",
@@ -414,7 +414,7 @@ else:
                 comparisons = comparisons.sort_values("_sort", ascending=False).drop(columns="_sort")
                 market_filter = st.multiselect("Markets", ["Points", "Rebounds", "Assists"], default=["Points", "Rebounds", "Assists"], key="line_markets")
                 comparisons = comparisons[comparisons["Market"].isin(market_filter)]
-                st.dataframe(comparisons, use_container_width=True, hide_index=True)
+                st.dataframe(comparisons, width="stretch", hide_index=True)
                 st.download_button("Download prop line comparisons", comparisons.to_csv(index=False), "nba_edge_prop_line_comparisons.csv", "text/csv")
 
                 st.divider()
@@ -496,7 +496,7 @@ else:
                 })
                 st.dataframe(
                     leaders[["Player", "Team", "Opponent", "Recent avg minutes", f"Projected {market_label.lower()}"]],
-                    use_container_width=True, hide_index=True
+                    width="stretch", hide_index=True
                 )
 
     else:
@@ -532,7 +532,7 @@ else:
                     "Within 3 stats": f"{(valid[error_col] <= 3).mean() * 100:.1f}%",
                 })
     if metric_rows:
-        st.dataframe(pd.DataFrame(metric_rows), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(metric_rows), width="stretch", hide_index=True)
     if "game_date" in settled:
         daily_rows = []
         for game_date, day in settled.groupby("game_date"):
@@ -547,7 +547,7 @@ else:
                         daily_rows.append({"Date": game_date, "Market": market_label, "Players": len(values), "MAE": round(values.mean(), 2)})
         if daily_rows:
             st.caption("Daily mean absolute error (lower is better)")
-            st.dataframe(pd.DataFrame(daily_rows).sort_values(["Date", "Market"], ascending=[False, True]), use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(daily_rows).sort_values(["Date", "Market"], ascending=[False, True]), width="stretch", hide_index=True)
     st.download_button("Download accuracy history", settled.to_csv(index=False), "nba_edge_accuracy_history.csv", "text/csv")
 
 if "predictions" in locals() and isinstance(predictions, pd.DataFrame) and not predictions.empty:
