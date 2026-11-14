@@ -148,7 +148,7 @@ else:
             a.metric("Courses", view["Course"].nunique())
             b.metric("Races", view[["Course", "Time", "Race ID"]].drop_duplicates().shape[0])
             c.metric("Declared runners", view["Runner"].replace("", pd.NA).notna().sum())
-            st.dataframe(view, use_container_width=True, hide_index=True)
+            st.dataframe(view, width="stretch", hide_index=True)
             st.download_button("Download racecards", view.to_csv(index=False), "horse_racing_edge_racecards.csv", "text/csv")
             st.success("Racecards loaded.")
 
@@ -204,9 +204,9 @@ else:
                         picks_view["Model estimate %"] = picks_view["Model estimate %"].round(1).astype(str) + "%"
                     if "Model vs market (pp)" in picks_view:
                         picks_view["Model vs market (pp)"] = picks_view["Model vs market (pp)"].round(1)
-                    st.dataframe(picks_view, use_container_width=True, hide_index=True)
+                    st.dataframe(picks_view, width="stretch", hide_index=True)
                     st.markdown("**Full runner rankings**")
-                    st.dataframe(predicted, use_container_width=True, hide_index=True)
+                    st.dataframe(predicted, width="stretch", hide_index=True)
                     st.download_button("Download horse predictions", predicted.to_csv(index=False), "horse_racing_edge_predictions.csv", "text/csv")
                 st.warning("These are experimental form scores, not proven betting edges. We need to record predictions before each race and compare them with results before promoting this as a validated model.")
     except requests.HTTPError as exc:
@@ -269,7 +269,7 @@ if db_path and Path(db_path).exists():
                 cols = pd.read_sql_query(f'PRAGMA table_info("{safe_table}")', conn)
                 count = pd.read_sql_query(f'SELECT COUNT(*) AS n FROM "{safe_table}"', conn).iloc[0]["n"]
                 table_info.append({"Table": table, "Rows": int(count), "Columns": ", ".join(cols["name"].astype(str))})
-        st.dataframe(pd.DataFrame(table_info), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(table_info), width="stretch", hide_index=True)
         selected_table = st.selectbox("Choose the table containing one row per horse per race", tables)
         if st.button("Load selected table and train model", type="primary", key="train_from_sqlite"):
             try:
@@ -301,7 +301,7 @@ if "racing_model_metrics" in st.session_state:
     m3.metric("Brier score", f'{metrics["brier"]:.4f}')
     m4.metric("Log loss", f'{metrics["log_loss"]:.4f}')
     st.caption(f'Trained on {metrics["train_races"]:,} earlier races and tested on {metrics["test_races"]:,} later races from {metrics["cutoff"]}.')
-    st.dataframe(st.session_state["racing_model_test"].sort_values(["race_date", "race_key", "rank"]), use_container_width=True, hide_index=True)
+    st.dataframe(st.session_state["racing_model_test"].sort_values(["race_date", "race_key", "rank"]), width="stretch", hide_index=True)
     st.warning("Backtest results are research metrics, not proof of profitability. Live selections remain disabled until current runners can be safely matched to historical form.")
 
 
