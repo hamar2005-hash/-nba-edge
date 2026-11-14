@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from io import BytesIO
+import os
 
 import pandas as pd
 import requests
@@ -339,7 +340,10 @@ def load_uk_ufc_odds(api_key):
 st.divider()
 st.subheader("5. Best bets")
 st.caption("Compares the calibrated winner probabilities with the best available UK bookmaker price. Picks are shown only when the model estimates positive value, not simply because one fighter is more likely to win.")
-try:\n    _odds_key = st.secrets.get("ODDS_API_KEY", os.getenv("ODDS_API_KEY", ""))\nexcept Exception:\n    _odds_key = os.getenv("ODDS_API_KEY", "")
+try:
+    _odds_key = st.secrets.get("ODDS_API_KEY", os.getenv("ODDS_API_KEY", ""))
+except Exception:
+    _odds_key = os.getenv("ODDS_API_KEY", "")
 if not _odds_key:
     st.info("Live bookmaker odds are not connected yet. Add an Odds API key as ODDS_API_KEY in Streamlit secrets to activate this section. The feed will compare UK bookmakers and select the best price for each side.")
 elif not upcoming_cards or not upcoming_cards[0].get("bouts") or not st.session_state.get("ufc_trained"):
