@@ -321,8 +321,36 @@ else:
                 )
                 st.dataframe(_best_bets, width="stretch", hide_index=True)
                 st.caption("Top 10 qualifying moneyline bets. Market probability is the average no-vig UK bookmaker consensus; best odds are selected separately. Each pick needs at least a 5 percentage-point edge and positive expected value. No stake sizing is implied.")
+
+                st.markdown("### Suggested parlay")
+                # Use at most one selection per fight to avoid contradictory legs.
+                _parlay_legs = (
+                    _best_bets.sort_values(["Expected value / £1", "Edge"], ascending=False)
+                    .drop_duplicates(subset=["Fight"])
+                    .head(3)
+                    .copy()
+                )
+                if len(_parlay_legs) >= 2:
+                    _combined_odds = float(_parlay_legs["Best odds"].prod())
+                    _combined_probability = float((_parlay_legs["Model win %"] / 100).prod())
+                    _parlay_ev = (_combined_probability * _combined_odds) - 1
+                    st.dataframe(
+                        _parlay_legs[["Fight", "Pick", "Best odds", "Bookmaker", "Model win %"]].rename(
+                            columns={"Model win %": "Model win probability %"}
+                        ),
+                        width="stretch", hide_index=True,
+                    )
+                    p1, p2, p3 = st.columns(3)
+                    p1.metric("Combined decimal odds", f"{_combined_odds:.2f}")
+                    p2.metric("Estimated chance", f"{_combined_probability * 100:.1f}%")
+                    p3.metric("Model EV per £1", f"£{_parlay_ev:+.2f}")
+                    st.caption("Automatically combines the top qualifying picks from different fights, with no more than one leg per bout. The combined chance multiplies the model probabilities and assumes the fight outcomes are independent. Parlays are high variance; this is an estimate, not a guarantee or a stake recommendation.")
+                else:
+                    st.info("A parlay will appear once at least two different fights have qualifying value picks.")
             else:
                 st.info("No UFC moneyline bets currently meet the rules. The full-card winner predictions remain available above; no bet is better than forcing one.")
+                st.markdown("### Suggested parlay")
+                st.caption("A parlay needs at least two qualifying picks from different fights, so none is shown until the model finds them.")
             if st.button("Refresh bookmaker odds", key="refresh_ufc_odds"):
                 load_uk_ufc_odds.clear()
                 st.rerun()
