@@ -214,6 +214,7 @@ try:
                 except Exception as _aux_predict_exc:
                     st.caption(f"Method and round predictions are temporarily unavailable: {_aux_predict_exc}")
             st.dataframe(_bout_table, width="stretch", hide_index=True)
+            st.caption("Method probabilities and Over/Under 1.5 and 2.5 rounds are produced by separate models. Higher round lines are withheld until the historical feed provides reliable scheduled-round information. Check the validation section below before relying on experimental outputs.")
             if st.session_state.get("ufc_trained") and "_bout_predictions" in locals():
                 try:
                     from ufc_tracking import record_predictions
