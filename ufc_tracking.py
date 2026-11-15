@@ -6,7 +6,7 @@ import pandas as pd
 
 HISTORY_COLUMNS = [
     "event_id", "event_name", "event_date", "bout", "fighter1", "fighter2",
-    "predicted_winner", "confidence", "predicted_at", "actual_winner",
+    "predicted_winner", "confidence", "predicted_odds", "odds_bookmaker", "predicted_at", "actual_winner",
     "actual_method", "status",
 ]
 
@@ -123,4 +123,52 @@ def settle_predictions(path, results):
         changed += 1
     if changed:
         history[HISTORY_COLUMNS].to_csv(path, index=False)
+    return changed
+
+
+def record_best_prices(path, odds_events):
+    """Snapshot best available UK decimal price for each already-logged pick."""
+    path = Path(path)
+    if not path.exists():
+        return 0
+    history = pd.read_csv(path)
+    if history.empty:
+        return 0
+    for col in ("predicted_odds", "odds_bookmaker"):
+        if col not in history.columns:
+            history[col] = pd.NA
+
+    prices = {}
+    for event in odds_events or []:
+        a, b = str(event.get("home_team", "")).strip(), str(event.get("away_team", "")).strip()
+        if not a or not b:
+            continue
+        pair = frozenset((fighter_key(a), fighter_key(b)))
+        best = {}
+        for book in event.get("bookmakers", []):
+            for market in book.get("markets", []):
+                if market.get("key") != "h2h":
+                    continue
+                for outcome in market.get("outcomes", []):
+                    name = fighter_key(outcome.get("name", ""))
+                    try:
+                        price = float(outcome.get("price", 0))
+                    except (TypeError, ValueError):
+                        continue
+                    if price > best.get(name, (0, ""))[0]:
+                        best[name] = (price, book.get("title", book.get("key", "UK bookmaker")))
+        prices[pair] = best
+
+    changed = 0
+    for idx, row in history.iterrows():
+        if pd.notna(row.get("predicted_odds")) and str(row.get("predicted_odds")).strip():
+            continue
+        pair = frozenset((fighter_key(row.get("fighter1")), fighter_key(row.get("fighter2"))))
+        quote = prices.get(pair, {}).get(fighter_key(row.get("predicted_winner")))
+        if quote:
+            history.at[idx, "predicted_odds"] = quote[0]
+            history.at[idx, "odds_bookmaker"] = quote[1]
+            changed += 1
+    if changed:
+        history.to_csv(path, index=False)
     return changed
