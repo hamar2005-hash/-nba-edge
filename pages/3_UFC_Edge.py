@@ -186,6 +186,19 @@ try:
                         on="Bout", how="left",
                     )
             st.dataframe(_bout_table, width="stretch", hide_index=True)
+            if st.session_state.get("ufc_trained") and "_bout_predictions" in locals():
+                try:
+                    from ufc_tracking import record_predictions
+                    _saved_count = record_predictions(
+                        DATA / "ufc_prediction_history.csv",
+                        next_card,
+                        _bout_predictions,
+                        now_utc=pd.Timestamp.now(tz="UTC"),
+                    )
+                    if _saved_count:
+                        st.caption(f"Saved {_saved_count} pre-fight prediction(s) to the live accuracy tracker.")
+                except Exception as _tracking_exc:
+                    st.caption(f"Live prediction tracking is temporarily unavailable: {_tracking_exc}")
         else:
             st.info("The event is listed, but the feed has not exposed its individual matchups yet. The card will refresh automatically as bouts are added.")
         if len(upcoming_cards) > 1:
@@ -447,6 +460,66 @@ except Exception as exc:
     st.error("The public dataset could not be loaded. No predictions have been generated.")
     st.caption(str(exc))
     st.button("Retry data connection", on_click=load_dataset.clear)
+
+# Live record: predictions are frozen before event start and settled only from
+# an unambiguous matching result in the historical feed.
+st.divider()
+st.subheader("Live prediction accuracy")
+st.caption("Tracks the actual full-card winner picks saved before fight night. Results are matched by both fighter names and event date; ambiguous matches, draws and no-contests are never counted as losses.")
+_UFC_HISTORY = DATA / "ufc_prediction_history.csv"
+if "results" in locals() and _UFC_HISTORY.exists():
+    try:
+        from ufc_tracking import settle_predictions
+        _newly_settled = settle_predictions(_UFC_HISTORY, results)
+        if _newly_settled:
+            st.caption(f"Updated {_newly_settled} completed fight result(s).")
+    except Exception as _settle_exc:
+        st.warning(f"Could not settle live UFC results: {_settle_exc}")
+
+if _UFC_HISTORY.exists():
+    try:
+        _live_history = pd.read_csv(_UFC_HISTORY)
+        _graded = _live_history[_live_history["status"].isin(["Correct", "Incorrect"])].copy()
+        _correct = int((_graded["status"] == "Correct").sum())
+        _total = len(_graded)
+        _accuracy = (_correct / _total * 100) if _total else None
+        _pending = int((_live_history["status"] == "Pending").sum())
+        _void = int((_live_history["status"] == "Void").sum())
+        _l1, _l2, _l3, _l4 = st.columns(4)
+        _l1.metric("Live accuracy", f"{_accuracy:.1f}%" if _accuracy is not None else "Not rated yet")
+        _l2.metric("Correct picks", f"{_correct}/{_total}")
+        _l3.metric("Pending fights", f"{_pending}")
+        _l4.metric("Voids", f"{_void}")
+        if _total:
+            _live_history["_sort_date"] = pd.to_datetime(_live_history["event_date"], utc=True, errors="coerce")
+            _graded = _live_history[_live_history["status"].isin(["Correct", "Incorrect"])].sort_values("_sort_date")
+            _recent_rows = []
+            for _window in (5, 10, 20):
+                _sample = _graded.tail(_window)
+                if len(_sample):
+                    _recent_rows.append({
+                        "Window": f"Last {len(_sample)} graded fights",
+                        "Record": f"{int((_sample['status'] == 'Correct').sum())}-{int((_sample['status'] == 'Incorrect').sum())}",
+                        "Accuracy": f"{(_sample['status'] == 'Correct').mean() * 100:.1f}%",
+                    })
+            if _recent_rows:
+                st.markdown("**Recent form**")
+                st.dataframe(pd.DataFrame(_recent_rows), width="stretch", hide_index=True)
+        _display_history = _live_history.drop(columns=["_sort_date"], errors="ignore").copy()
+        _display_history = _display_history.rename(columns={
+            "event_name": "Event", "event_date": "Event date", "bout": "Fight",
+            "predicted_winner": "Predicted winner", "confidence": "Confidence %",
+            "actual_winner": "Actual winner", "actual_method": "Actual method",
+            "status": "Result",
+        })
+        _display_cols = ["Event", "Event date", "Fight", "Predicted winner", "Confidence %", "Actual winner", "Actual method", "Result"]
+        st.dataframe(_display_history[[c for c in _display_cols if c in _display_history.columns]].sort_values("Event date", ascending=False), width="stretch", hide_index=True)
+        st.download_button("Download UFC prediction record", _live_history.to_csv(index=False), "ufc_edge_prediction_accuracy.csv", "text/csv")
+        st.caption("The live record starts when this tracker is deployed. Historical holdout results remain separate and are shown in the model validation section below.")
+    except Exception as _history_exc:
+        st.warning(f"Live accuracy history could not be displayed: {_history_exc}")
+else:
+    st.info("No live prediction record yet. The tracker will start saving full-card predictions automatically when the next card is available and predictions are generated before the event starts.")
 
 # Automatically prepare the model after the historical feed loads.
 if "results" in locals() and not st.session_state.get("ufc_trained"):
