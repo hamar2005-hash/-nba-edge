@@ -150,9 +150,17 @@ try:
         st.session_state["ufc_snapshot"] = _early_snapshot
         st.session_state["ufc_metrics"] = _early_metrics
         st.session_state["ufc_trained"] = True
+    if not st.session_state.get("ufc_aux_trained"):
+        import ufc_model
+        with st.spinner("Training method-of-victory and round-duration models…"):
+            _early_stats = load_dataset(DATA_FILES["Fight statistics"])
+            _aux_models, _aux_metrics, _aux_snapshot, _aux_frame = ufc_model.train_method_and_round_models(results, _early_stats)
+        st.session_state["ufc_aux_models"] = _aux_models
+        st.session_state["ufc_aux_metrics"] = _aux_metrics
+        st.session_state["ufc_aux_snapshot"] = _aux_snapshot
+        st.session_state["ufc_aux_trained"] = True
 except Exception as _early_train_exc:
-    st.session_state["ufc_trained"] = False
-    st.caption(f"Automatic predictions are waiting for the historical model: {_early_train_exc}")
+    st.caption(f"Some automatic UFC predictions are waiting for historical model data: {_early_train_exc}")
 
 st.subheader("1. Next UFC card")
 st.caption("The selected UFC card stays in place from Monday through Sunday, including after fight time begins. It rolls forward to the next announced card every Monday. The schedule feed refreshes every 30 minutes.")
@@ -189,6 +197,22 @@ try:
                         _bout_predictions[["Bout", "Predicted winner", "Confidence", "Data warning"]],
                         on="Bout", how="left",
                     )
+            if st.session_state.get("ufc_aux_trained"):
+                try:
+                    from ufc_model import predict_auxiliary_matchups
+                    _aux_predictions = predict_auxiliary_matchups(
+                        st.session_state["ufc_aux_models"],
+                        st.session_state["ufc_aux_snapshot"],
+                        next_card["bouts"],
+                    )
+                    if not _aux_predictions.empty:
+                        _aux_columns = [c for c in _aux_predictions.columns if c != "Bout"]
+                        _bout_table = _bout_table.merge(
+                            _aux_predictions[["Bout"] + _aux_columns],
+                            on="Bout", how="left",
+                        )
+                except Exception as _aux_predict_exc:
+                    st.caption(f"Method and round predictions are temporarily unavailable: {_aux_predict_exc}")
             st.dataframe(_bout_table, width="stretch", hide_index=True)
             if st.session_state.get("ufc_trained") and "_bout_predictions" in locals():
                 try:
@@ -477,7 +501,10 @@ st.subheader("Refresh and retrain")
 st.caption("Use this after a UFC event has finished and the results feed has updated. It clears the cached historical dataset, reloads the latest results and trains a fresh challenger against the existing chronological benchmarks.")
 if st.button("Refresh latest results and retrain UFC model", key="refresh_retrain_ufc", width="stretch"):
     load_dataset.clear()
-    for _key in ("ufc_trained", "ufc_model", "ufc_snapshot", "ufc_metrics"):
+    for _key in (
+        "ufc_trained", "ufc_model", "ufc_snapshot", "ufc_metrics",
+        "ufc_aux_trained", "ufc_aux_models", "ufc_aux_snapshot", "ufc_aux_metrics",
+    ):
         st.session_state.pop(_key, None)
     st.rerun()
 
@@ -664,7 +691,54 @@ if st.session_state.get("ufc_trained"):
         st.info("The current results feed does not include weight class. A reliable bout-to-division mapping is needed before calculating division accuracy.")
 
     st.subheader("Method-of-victory model")
-    st.info("Method predictions are switched off. The previous classifier achieved 27.9% accuracy against a 48.7% majority baseline and 17.7% balanced accuracy. We will rebuild it separately after adding verified pre-fight fighter attributes and testing it on a fresh chronological holdout.")
+    _aux_metrics = st.session_state.get("ufc_aux_metrics", {})
+    _method_metrics = _aux_metrics.get("method", {})
+    if _method_metrics.get("available"):
+        _method_status = "Passed benchmark" if _method_metrics.get("passed") else "Experimental · benchmark not passed"
+        st.metric("Method model status", _method_status)
+        _mc1, _mc2, _mc3, _mc4 = st.columns(4)
+        _mc1.metric("Holdout accuracy", f"{_method_metrics['accuracy']*100:.1f}%")
+        _mc2.metric("Balanced accuracy", f"{_method_metrics['balanced_accuracy']*100:.1f}%")
+        _mc3.metric("Log loss", f"{_method_metrics['log_loss']:.3f}", f"{_method_metrics['log_loss']-_method_metrics['baseline_log_loss']:+.3f} vs prior")
+        _mc4.metric("Test fights", f"{_method_metrics['test_fights']:,}")
+        st.caption(f"Chronological test period: {_method_metrics['test_start']} to {_method_metrics['test_end']}. Classes: KO/TKO, submission and decision. The model must beat the prior baseline on log loss and balanced accuracy before being treated as validated.")
+        if not _method_metrics.get("passed"):
+            st.warning("Method probabilities are displayed for research, but this model has not passed both baseline checks. Do not treat its most likely method as a betting edge.")
+    else:
+        st.info(_method_metrics.get("reason", "Method model has not trained yet."))
+
+    st.subheader("Over/under rounds model")
+    _round_metrics = _aux_metrics.get("rounds", {})
+    for _line in ("1.5", "2.5"):
+        _rm = _round_metrics.get(_line, {})
+        if _rm.get("available"):
+            _round_status = "Passed benchmark" if _rm.get("passed") else "Experimental · benchmark not passed"
+            st.markdown(f"**Over/Under {_line} rounds · {_round_status}**")
+            _rc1, _rc2, _rc3, _rc4 = st.columns(4)
+            _rc1.metric("Holdout accuracy", f"{_rm['accuracy']*100:.1f}%")
+            _rc2.metric("Balanced accuracy", f"{_rm['balanced_accuracy']*100:.1f}%")
+            _rc3.metric("Brier score", f"{_rm['brier']:.3f}", f"{_rm['brier']-_rm['baseline_brier']:+.3f} vs prior")
+            _rc4.metric("Test fights", f"{_rm['test_fights']:,}")
+            st.caption(f"Log loss {_rm['log_loss']:.3f} vs prior {_rm['baseline_log_loss']:.3f} · test period {_rm['test_start']} to {_rm['test_end']}. Round duration is trained from the recorded elapsed fight time.")
+            if not _rm.get("passed"):
+                st.warning(f"Over/under {_line} probabilities are experimental because they did not beat the prior baseline on both log loss and balanced accuracy.")
+        else:
+            st.info(f"Over/under {_line}: {_rm.get('reason', 'Model has not trained yet.')}")
+
+    if not st.session_state.get("ufc_aux_trained"):
+        if st.button("Train method and round models", key="train_ufc_aux_models"):
+            try:
+                _aux_stats = load_dataset(DATA_FILES["Fight statistics"])
+                from ufc_model import train_method_and_round_models
+                with st.spinner("Training independent method and round-duration models…"):
+                    _models, _metrics, _snapshot, _frame = train_method_and_round_models(results, _aux_stats)
+                st.session_state["ufc_aux_models"] = _models
+                st.session_state["ufc_aux_metrics"] = _metrics
+                st.session_state["ufc_aux_snapshot"] = _snapshot
+                st.session_state["ufc_aux_trained"] = True
+                st.rerun()
+            except Exception as _aux_train_exc:
+                st.error(f"Method and round model training failed: {_aux_train_exc}")
 
     st.subheader("Try a matchup")
     names = sorted(st.session_state["ufc_snapshot"].keys())
