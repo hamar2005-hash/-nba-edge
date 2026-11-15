@@ -6,8 +6,11 @@ import pandas as pd
 
 HISTORY_COLUMNS = [
     "event_id", "event_name", "event_date", "bout", "fighter1", "fighter2",
-    "predicted_winner", "confidence", "predicted_odds", "odds_bookmaker", "predicted_at", "actual_winner",
-    "actual_method", "status",
+    "predicted_winner", "confidence", "predicted_method",
+    "predicted_over_1_5", "predicted_over_2_5",
+    "predicted_odds", "odds_bookmaker", "predicted_at",
+    "actual_winner", "actual_method", "actual_duration_seconds",
+    "status", "method_status", "over_1_5_status", "over_2_5_status",
 ]
 
 
@@ -17,8 +20,16 @@ def fighter_key(value):
     return " ".join(value.split())
 
 
-def record_predictions(path, event, predictions, now_utc=None):
-    """Append immutable predictions only when saved before the event begins."""
+def _probability(row, label):
+    try:
+        value = float(row.get(label))
+        return value if 0 <= value <= 100 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def record_predictions(path, event, predictions, auxiliary_predictions=None, now_utc=None):
+    """Append immutable winner/method/round predictions before the event starts."""
     path = Path(path)
     event_date = pd.to_datetime(event.get("date"), utc=True, errors="coerce")
     now_utc = pd.Timestamp.now(tz="UTC") if now_utc is None else pd.Timestamp(now_utc)
@@ -31,11 +42,18 @@ def record_predictions(path, event, predictions, now_utc=None):
     for column in HISTORY_COLUMNS:
         if column not in existing.columns:
             existing[column] = pd.NA
+    known = set(zip(
+        existing["event_id"].astype(str),
+        existing["fighter1"].map(fighter_key),
+        existing["fighter2"].map(fighter_key),
+    ))
+    aux_lookup = {}
+    if auxiliary_predictions is not None and not auxiliary_predictions.empty:
+        for _, aux in auxiliary_predictions.iterrows():
+            parts = str(aux.get("Bout", "")).split(" vs ", 1)
+            if len(parts) == 2:
+                aux_lookup[frozenset((fighter_key(parts[0]), fighter_key(parts[1])))] = aux
 
-    known = set(
-        zip(existing["event_id"].astype(str), existing["fighter1"].map(fighter_key),
-            existing["fighter2"].map(fighter_key))
-    )
     additions = []
     for _, row in predictions.iterrows():
         parts = str(row.get("Bout", "")).split(" vs ", 1)
@@ -47,19 +65,22 @@ def record_predictions(path, event, predictions, now_utc=None):
         reverse_pair = (event_id, fighter_key(fighter2), fighter_key(fighter1))
         if pair in known or reverse_pair in known:
             continue
+        aux = aux_lookup.get(frozenset((fighter_key(fighter1), fighter_key(fighter2))))
+        aux = aux if aux is not None else {}
         additions.append({
-            "event_id": event_id,
-            "event_name": str(event.get("name", "UFC event")),
-            "event_date": event_date.isoformat(),
-            "bout": f"{fighter1} vs {fighter2}",
-            "fighter1": fighter1,
-            "fighter2": fighter2,
+            "event_id": event_id, "event_name": str(event.get("name", "UFC event")),
+            "event_date": event_date.isoformat(), "bout": f"{fighter1} vs {fighter2}",
+            "fighter1": fighter1, "fighter2": fighter2,
             "predicted_winner": str(row.get("Predicted winner", "")),
             "confidence": pd.to_numeric(row.get("Confidence"), errors="coerce"),
-            "predicted_at": now_utc.isoformat(),
-            "actual_winner": "",
-            "actual_method": "",
-            "status": "Pending",
+            "predicted_method": str(aux.get("Most likely method", "")),
+            "predicted_over_1_5": _probability(aux, "Over 1.5 %"),
+            "predicted_over_2_5": _probability(aux, "Over 2.5 %"),
+            "predicted_at": now_utc.isoformat(), "actual_winner": "",
+            "actual_method": "", "actual_duration_seconds": pd.NA,
+            "status": "Pending", "method_status": "Pending" if aux.get("Most likely method") else "Not tracked",
+            "over_1_5_status": "Pending" if _probability(aux, "Over 1.5 %") is not None else "Not tracked",
+            "over_2_5_status": "Pending" if _probability(aux, "Over 2.5 %") is not None else "Not tracked",
         })
         known.add(pair)
     if additions:
@@ -70,8 +91,25 @@ def record_predictions(path, event, predictions, now_utc=None):
     return len(additions)
 
 
-def settle_predictions(path, results):
-    """Grade saved picks against an unambiguous matching historical result."""
+def _duration_lookup(fight_stats):
+    required = {"Date", "Name", "Time"}
+    if fight_stats is None or not required.issubset(fight_stats.columns):
+        return {}
+    stats = fight_stats.copy()
+    stats["_date"] = pd.to_datetime(stats["Date"], dayfirst=True, errors="coerce").dt.normalize()
+    stats["_fighter"] = stats["Name"].map(fighter_key)
+    stats["_seconds"] = pd.to_numeric(stats["Time"], errors="coerce")
+    stats = stats[stats["_date"].notna() & stats["_fighter"].ne("") & stats["_seconds"].between(1, 1500)]
+    lookup = {}
+    for (day, fighter), group in stats.groupby(["_date", "_fighter"]):
+        # Ambiguous same-day repeat appearances are intentionally excluded.
+        if len(group) == 1:
+            lookup[(day, fighter)] = float(group.iloc[0]["_seconds"])
+    return lookup
+
+
+def settle_predictions(path, results, fight_stats=None):
+    """Grade winner, method and round picks using unambiguous historical results."""
     path = Path(path)
     if not path.exists() or results is None or results.empty:
         return 0
@@ -89,10 +127,17 @@ def settle_predictions(path, results):
     actual["_b"] = actual["Fighter 2"].map(fighter_key)
     actual["_result"] = pd.to_numeric(actual["Result"], errors="coerce")
     method_col = next((c for c in ("Method", "method") if c in actual.columns), None)
-
+    durations = _duration_lookup(fight_stats)
     changed = 0
+
     for idx, prediction in history.iterrows():
-        if str(prediction.get("status", "")) != "Pending":
+        pending = [
+            prediction.get("status") == "Pending",
+            prediction.get("method_status") == "Pending",
+            prediction.get("over_1_5_status") == "Pending",
+            prediction.get("over_2_5_status") == "Pending",
+        ]
+        if not any(pending):
             continue
         event_date = pd.to_datetime(prediction.get("event_date"), utc=True, errors="coerce")
         if pd.isna(event_date):
@@ -100,37 +145,73 @@ def settle_predictions(path, results):
         target_date = event_date.tz_convert("Europe/London").tz_localize(None).normalize()
         p1, p2 = fighter_key(prediction.get("fighter1")), fighter_key(prediction.get("fighter2"))
         dates = actual["_date"].dt.normalize()
-        pair_match = (
-            ((actual["_a"] == p1) & (actual["_b"] == p2)) |
-            ((actual["_a"] == p2) & (actual["_b"] == p1))
-        )
+        pair_match = (((actual["_a"] == p1) & (actual["_b"] == p2)) |
+                      ((actual["_a"] == p2) & (actual["_b"] == p1)))
         candidates = actual[pair_match & ((dates - target_date).abs().dt.days <= 1)]
         if len(candidates) != 1:
             continue
         fight = candidates.iloc[0]
         result = fight["_result"]
         if result == 3:
-            history.at[idx, "status"] = "Void"
+            for col in ("status", "method_status", "over_1_5_status", "over_2_5_status"):
+                if history.at[idx, col] == "Pending":
+                    history.at[idx, col] = "Void"
             history.at[idx, "actual_winner"] = "Draw / No contest"
-        elif result in (1, 2):
-            winner = str(fight["Fighter 1"] if result == 1 else fight["Fighter 2"])
+            changed += 1
+            continue
+        if result not in (1, 2):
+            continue
+
+        winner = str(fight["Fighter 1"] if result == 1 else fight["Fighter 2"])
+        if history.at[idx, "status"] == "Pending":
             history.at[idx, "actual_winner"] = winner
             history.at[idx, "status"] = (
-                "Correct" if fighter_key(winner) == fighter_key(prediction["predicted_winner"])
+                "Correct" if fighter_key(winner) == fighter_key(prediction.get("predicted_winner"))
                 else "Incorrect"
             )
-        else:
-            continue
+        actual_method = str(fight[method_col]) if method_col else ""
         if method_col:
-            history.at[idx, "actual_method"] = str(fight[method_col])
+            history.at[idx, "actual_method"] = actual_method
+            if history.at[idx, "method_status"] == "Pending":
+                predicted = str(prediction.get("predicted_method", ""))
+                # Group result labels to the same three classes as the model.
+                label = actual_method.casefold()
+                if "ko" in label or "tko" in label or "technical knockout" in label:
+                    actual_group = "KO/TKO"
+                elif "sub" in label:
+                    actual_group = "Submission"
+                elif "decision" in label:
+                    actual_group = "Decision"
+                else:
+                    actual_group = ""
+                if actual_group:
+                    history.at[idx, "method_status"] = "Correct" if predicted == actual_group else "Incorrect"
+
+        bout_day = pd.to_datetime(fight["Date"], dayfirst=True, errors="coerce")
+        if pd.notna(bout_day):
+            seconds = [durations.get((bout_day.normalize(), fighter)) for fighter in (p1, p2)]
+            seconds = [value for value in seconds if value is not None]
+            if seconds:
+                duration = float(pd.Series(seconds).median())
+                history.at[idx, "actual_duration_seconds"] = duration
+                for column, threshold in (("over_1_5_status", 450), ("over_2_5_status", 750)):
+                    if history.at[idx, column] == "Pending":
+                        predicted_over = pd.to_numeric(prediction.get(
+                            "predicted_" + column.replace("_status", "")
+                        ), errors="coerce")
+                        if pd.notna(predicted_over):
+                            actual_over = duration > threshold
+                            predicted_side = float(predicted_over) >= 50
+                            history.at[idx, column] = "Correct" if predicted_side == actual_over else "Incorrect"
         changed += 1
+
     if changed:
         history[HISTORY_COLUMNS].to_csv(path, index=False)
     return changed
 
 
 def record_best_prices(path, odds_events):
-    """Snapshot best available UK decimal price for each already-logged pick."""
+    """Snapshot best available UK decimal price for each already-logged winner pick."""
     path = Path(path)
     if not path.exists():
         return 0
@@ -140,7 +221,6 @@ def record_best_prices(path, odds_events):
     for col in ("predicted_odds", "odds_bookmaker"):
         if col not in history.columns:
             history[col] = pd.NA
-
     prices = {}
     for event in odds_events or []:
         a, b = str(event.get("home_team", "")).strip(), str(event.get("away_team", "")).strip()
@@ -161,7 +241,6 @@ def record_best_prices(path, odds_events):
                     if price > best.get(name, (0, ""))[0]:
                         best[name] = (price, book.get("title", book.get("key", "UK bookmaker")))
         prices[pair] = best
-
     changed = 0
     for idx, row in history.iterrows():
         if pd.notna(row.get("predicted_odds")) and str(row.get("predicted_odds")).strip():
