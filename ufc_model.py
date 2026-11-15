@@ -526,10 +526,13 @@ def build_auxiliary_training_rows(results, fight_stats):
                 rows.append(row)
                 if np.isfinite(duration):
                     rows[-1]["duration_seconds"] = duration
-            pending_updates.append((f1, f2, method, duration, result))
+            pending_updates.append((
+                f1, f2, method, duration, result,
+                stats1.get("performance"), stats2.get("performance"),
+            ))
 
         # Update only after every bout on the event date has been featurised.
-        for f1, f2, method, duration, result in pending_updates:
+        for f1, f2, method, duration, result, performance1, performance2 in pending_updates:
             winner, loser = (f1, f2) if result == 1 else (f2, f1)
             states[winner]["fights"] += 1
             states[loser]["fights"] += 1
@@ -539,10 +542,10 @@ def build_auxiliary_training_rows(results, fight_stats):
             if np.isfinite(duration):
                 states[f1]["durations"].append(duration)
                 states[f2]["durations"].append(duration)
-            if stats1.get("performance"):
-                states[f1]["performance"].append(stats1["performance"])
-            if stats2.get("performance"):
-                states[f2]["performance"].append(stats2["performance"])
+            if performance1:
+                states[f1]["performance"].append(performance1)
+            if performance2:
+                states[f2]["performance"].append(performance2)
             states[f1]["dates"].append(day)
             states[f2]["dates"].append(day)
 
