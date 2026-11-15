@@ -362,6 +362,11 @@ def predict_matchups(model, snapshot, matchups):
 # fighter history available before each bout; current-fight statistics are
 # used only to create labels, never as predictors.
 AUX_METHOD_CLASSES = ("KO/TKO", "Submission", "Decision")
+AUX_PERFORMANCE_FEATURES = (
+    "knockdown_rate", "sig_landed_rate", "sig_absorbed_rate",
+    "takedown_rate", "submission_attempt_rate", "ground_strike_rate",
+    "clinch_strike_rate", "sig_accuracy", "takedown_accuracy",
+)
 AUX_METHOD_FEATURES = [
     "experience_mean", "experience_max",
     "ko_win_mean", "ko_win_max", "sub_win_mean", "sub_win_max",
@@ -370,6 +375,10 @@ AUX_METHOD_FEATURES = [
     "decision_loss_mean", "decision_loss_max",
     "duration_mean", "duration_max", "recent_duration_mean",
     "finish_rate_mean", "days_since_mean",
+] + [
+    feature + suffix
+    for feature in AUX_PERFORMANCE_FEATURES
+    for suffix in ("_mean", "_max", "_diff_abs")
 ]
 AUX_ROUND_LINES = {"1.5": 450.0, "2.5": 750.0}
 
@@ -378,7 +387,7 @@ def _aux_state():
     return {
         "fights": 0, "method_wins": defaultdict(int),
         "method_losses": defaultdict(int), "durations": deque(maxlen=10),
-        "dates": deque(maxlen=20),
+        "performance": deque(maxlen=10), "dates": deque(maxlen=20),
     }
 
 
@@ -408,6 +417,11 @@ def _aux_fighter_features(state, day):
             fights,
         ),
         "days_since": min(days_since, 730),
+        **{
+            key: float(np.mean([item.get(key, 0.0) for item in state["performance"]]))
+            if state["performance"] else 0.0
+            for key in AUX_PERFORMANCE_FEATURES
+        },
     }
 
 
@@ -425,29 +439,55 @@ def _aux_pair_features(state1, state2, day):
     for key in ("ko_win", "sub_win", "decision_win", "ko_loss", "sub_loss", "decision_loss"):
         values[f"{key}_mean"] = (a[key] + b[key]) / 2
         values[f"{key}_max"] = max(a[key], b[key])
+    for key in AUX_PERFORMANCE_FEATURES:
+        values[f"{key}_mean"] = (a[key] + b[key]) / 2
+        values[f"{key}_max"] = max(a[key], b[key])
+        values[f"{key}_diff_abs"] = abs(a[key] - b[key])
     return {key: float(values[key]) for key in AUX_METHOD_FEATURES}
 
 
 def _aux_duration_lookup(results, fight_stats):
-    """Join post-fight elapsed seconds by date and fighter, without using them as features."""
+    """Join post-fight elapsed time and performance by date/fighter for labels and history."""
     required = {"Date", "Name", "Time"}
     if fight_stats is None or not required.issubset(fight_stats.columns):
         return {}
-    stats = fight_stats[["Date", "Name", "Time"]].copy()
+    stats = fight_stats.copy()
     stats["_date"] = pd.to_datetime(stats["Date"], dayfirst=True, errors="coerce").dt.normalize()
     stats["_fighter"] = stats["Name"].map(_fighter_key)
     stats["_seconds"] = pd.to_numeric(stats["Time"], errors="coerce")
+    numeric_columns = (
+        "Knockdowns", "Sig Strikes Landed", "Sig Strikes Attempted",
+        "Sig Strikes Absorbed", "Takedowns", "Takedown Attempts",
+        "Submission Attempts", "Clinch Strikes", "Ground Strikes",
+    )
+    for column in numeric_columns:
+        stats[column] = pd.to_numeric(stats[column], errors="coerce").fillna(0) if column in stats.columns else 0.0
     stats = stats[
         stats["_date"].notna() & stats["_fighter"].ne("")
         & stats["_seconds"].between(1, 1500)
     ]
-    # Each fight appears once per fighter in FightStats. Median is robust to
-    # duplicate rows and should be identical for both fighters in a bout.
-    return {
-        (date, fighter): float(seconds)
-        for (date, fighter), seconds in stats.groupby(["_date", "_fighter"])["_seconds"].median().items()
-    }
-
+    lookup = {}
+    for (day, fighter), group in stats.groupby(["_date", "_fighter"]):
+        row = group.iloc[-1]
+        seconds = float(row["_seconds"])
+        minutes = max(seconds / 60.0, 1.0)
+        sig_attempted = float(row["Sig Strikes Attempted"])
+        td_attempted = float(row["Takedown Attempts"])
+        lookup[(day, fighter)] = {
+            "seconds": seconds,
+            "performance": {
+                "knockdown_rate": float(row["Knockdowns"]) / minutes,
+                "sig_landed_rate": float(row["Sig Strikes Landed"]) / minutes,
+                "sig_absorbed_rate": float(row["Sig Strikes Absorbed"]) / minutes,
+                "takedown_rate": float(row["Takedowns"]) / minutes,
+                "submission_attempt_rate": float(row["Submission Attempts"]) / minutes,
+                "ground_strike_rate": float(row["Ground Strikes"]) / minutes,
+                "clinch_strike_rate": float(row["Clinch Strikes"]) / minutes,
+                "sig_accuracy": float(row["Sig Strikes Landed"]) / max(sig_attempted, 1.0),
+                "takedown_accuracy": float(row["Takedowns"]) / max(td_attempted, 1.0),
+            },
+        }
+    return lookup
 
 def build_auxiliary_training_rows(results, fight_stats):
     required = {"Date", "Fighter 1", "Fighter 2", "Result", "Method"}
@@ -471,9 +511,11 @@ def build_auxiliary_training_rows(results, fight_stats):
             if not f1 or not f2 or f1 == f2 or result not in (1, 2):
                 continue
             method = fight["_method"]
-            t1 = duration_lookup.get((day, f1))
-            t2 = duration_lookup.get((day, f2))
-            duration_values = [x for x in (t1, t2) if x is not None]
+            stats1 = duration_lookup.get((day, f1), {})
+            stats2 = duration_lookup.get((day, f2), {})
+            duration_values = [
+                item["seconds"] for item in (stats1, stats2) if item.get("seconds") is not None
+            ]
             duration = float(np.median(duration_values)) if duration_values else np.nan
 
             # Method labels can be trained from results alone; duration labels
@@ -497,6 +539,10 @@ def build_auxiliary_training_rows(results, fight_stats):
             if np.isfinite(duration):
                 states[f1]["durations"].append(duration)
                 states[f2]["durations"].append(duration)
+            if stats1.get("performance"):
+                states[f1]["performance"].append(stats1["performance"])
+            if stats2.get("performance"):
+                states[f2]["performance"].append(stats2["performance"])
             states[f1]["dates"].append(day)
             states[f2]["dates"].append(day)
 
@@ -656,6 +702,7 @@ def predict_auxiliary_matchups(models, snapshot, matchups):
             "experience": 0, "ko_win": 1/3, "sub_win": 1/3, "decision_win": 1/3,
             "ko_loss": 1/3, "sub_loss": 1/3, "decision_loss": 1/3,
             "duration": 600.0, "recent_duration": 600.0, "finish_rate": 1/3, "days_since": 730,
+            **{key: 0.0 for key in AUX_PERFORMANCE_FEATURES},
         }
         a = snapshot.get(_fighter_key(f1), neutral)
         b = snapshot.get(_fighter_key(f2), neutral)
@@ -671,6 +718,10 @@ def predict_auxiliary_matchups(models, snapshot, matchups):
         for key in ("ko_win", "sub_win", "decision_win", "ko_loss", "sub_loss", "decision_loss"):
             values[key + "_mean"] = (a[key] + b[key]) / 2
             values[key + "_max"] = max(a[key], b[key])
+        for key in AUX_PERFORMANCE_FEATURES:
+            values[key + "_mean"] = (a[key] + b[key]) / 2
+            values[key + "_max"] = max(a[key], b[key])
+            values[key + "_diff_abs"] = abs(a[key] - b[key])
         X = pd.DataFrame([{key: float(values[key]) for key in AUX_METHOD_FEATURES}])
         row = {"Bout": f"{f1} vs {f2}"}
         method_model = (models or {}).get("method")
