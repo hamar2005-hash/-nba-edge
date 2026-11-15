@@ -548,6 +548,23 @@ if _UFC_HISTORY.exists():
         _l3.metric("1u flat-stake P/L", f"{_units_profit:+.2f}u" if len(_priced_graded) else "No odds yet")
         _l4.metric("Pending fights", f"{_pending}")
         _l5.metric("Voids", f"{_void}")
+        _market_metrics = []
+        for _label, _column in (
+            ("Method", "method_status"),
+            ("Over 1.5", "over_1_5_status"),
+            ("Over 2.5", "over_2_5_status"),
+        ):
+            if _column in _live_history.columns:
+                _sample = _live_history[_live_history[_column].isin(["Correct", "Incorrect"])]
+                if len(_sample):
+                    _wins = int((_sample[_column] == "Correct").sum())
+                    _market_metrics.append({
+                        "Market": _label, "Record": f"{_wins}-{len(_sample) - _wins}",
+                        "Accuracy": f"{_wins / len(_sample) * 100:.1f}%",
+                    })
+        if _market_metrics:
+            st.markdown("**Accuracy by prediction market**")
+            st.dataframe(pd.DataFrame(_market_metrics), width="stretch", hide_index=True)
         if len(_priced_graded):
             st.caption(f"Profit/loss uses 1 unit staked on every prediction with a saved best-available UK decimal price: winner = odds minus 1 unit; loser = minus 1 unit. Draws/no-contests are void and excluded. {len(_priced_graded)} graded picks have usable odds; picks without a saved price are excluded, not assigned invented odds.")
         if _total:
