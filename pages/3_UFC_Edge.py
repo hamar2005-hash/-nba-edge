@@ -766,11 +766,12 @@ st.divider()
 st.subheader("6. Model build plan")
 steps = [
     ("Historical data audit", "Check dates, duplicates, outcomes, missing values and fighter-name consistency.", True),
-    ("Pre-fight feature engineering", "Build each fighter's record, recent form, streaks and opponent strength using past fights only.", False),
-    ("Winner model", "Train a simple baseline and stronger challenger; compare them on later, unseen events.", False),
-    ("Probability calibration", "Check Brier score, log loss and reliability before showing win probabilities.", False),
-    ("Method model", "Add KO/TKO, submission and decision probabilities only after the winner model is validated.", False),
-    ("Fight-card predictions and tracking", "Add upcoming cards, save predictions before fights, and settle them against official results.", False),
+    ("Pre-fight feature engineering", "Build fighter records, recent form, method history and prior striking/grappling rates without future-data leakage.", True),
+    ("Winner model", "Train and compare the winner model against chronological Elo and prior baselines.", True),
+    ("Probability calibration", "Evaluate Brier score, log loss and reliability on later unseen events.", True),
+    ("Method model", "Predict KO/TKO, submission or decision from each fighter's previous method and performance profile.", True),
+    ("Round-duration model", "Predict Over/Under 1.5 and 2.5 rounds; higher lines wait for reliable scheduled-round labels.", True),
+    ("Fight-card predictions and tracking", "Show full-card winner, method and round estimates; live settlement currently tracks winner picks.", True),
 ]
 for title, detail, complete in steps:
     icon = "✅" if complete else "◯"
