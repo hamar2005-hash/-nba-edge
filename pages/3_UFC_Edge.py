@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from io import BytesIO
+from pathlib import Path
 import os
 
 import pandas as pd
@@ -7,6 +8,9 @@ import requests
 import streamlit as st
 
 st.set_page_config(page_title="UFC Edge", page_icon="🥊", layout="wide")
+
+DATA = Path(__file__).resolve().parents[1] / "data"
+DATA.mkdir(exist_ok=True)
 
 st.markdown("""
 <style>
