@@ -74,6 +74,8 @@ class AuxiliaryUFCModelTests(unittest.TestCase):
         }])
         self.assertEqual(len(predictions), 1)
         self.assertIn("Most likely method", predictions.columns)
+        self.assertIn("Fighter 1 sig strikes/min", predictions.columns)
+        self.assertIn("Fighter 1 prior fights", predictions.columns)
         for line in ("1.5", "2.5"):
             self.assertIn(f"Over {line} %", predictions.columns)
             self.assertIn(f"Under {line} %", predictions.columns)
