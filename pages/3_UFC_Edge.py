@@ -262,6 +262,13 @@ else:
         try:
             with st.spinner("Comparing the upcoming card with current UK bookmaker prices…"):
                 _odds_events = load_uk_ufc_odds(_odds_key)
+            try:
+                from ufc_tracking import record_best_prices
+                _priced = record_best_prices(DATA / "ufc_prediction_history.csv", _odds_events)
+                if _priced:
+                    st.caption(f"Saved pre-fight UK odds for {_priced} tracked picks.")
+            except Exception as _price_track_exc:
+                st.caption(f"Could not save historical odds snapshots: {_price_track_exc}")
             from ufc_model import _fighter_key, predict_matchups
 
             _card = upcoming_cards[0]
@@ -489,11 +496,21 @@ if _UFC_HISTORY.exists():
         _accuracy = (_correct / _total * 100) if _total else None
         _pending = int((_live_history["status"] == "Pending").sum())
         _void = int((_live_history["status"] == "Void").sum())
-        _l1, _l2, _l3, _l4 = st.columns(4)
+        _priced_graded = _graded[pd.to_numeric(_graded.get("predicted_odds"), errors="coerce").notna()].copy() if "predicted_odds" in _graded.columns else _graded.iloc[0:0].copy()
+        _priced_graded["predicted_odds"] = pd.to_numeric(_priced_graded.get("predicted_odds"), errors="coerce")
+        _priced_graded["Units"] = _priced_graded.apply(
+            lambda row: (row["predicted_odds"] - 1.0) if row["status"] == "Correct" else -1.0,
+            axis=1,
+        ) if len(_priced_graded) else pd.Series(dtype=float)
+        _units_profit = float(_priced_graded["Units"].sum()) if len(_priced_graded) else 0.0
+        _l1, _l2, _l3, _l4, _l5 = st.columns(5)
         _l1.metric("Live accuracy", f"{_accuracy:.1f}%" if _accuracy is not None else "Not rated yet")
         _l2.metric("Correct picks", f"{_correct}/{_total}")
-        _l3.metric("Pending fights", f"{_pending}")
-        _l4.metric("Voids", f"{_void}")
+        _l3.metric("1u flat-stake P/L", f"{_units_profit:+.2f}u" if len(_priced_graded) else "No odds yet")
+        _l4.metric("Pending fights", f"{_pending}")
+        _l5.metric("Voids", f"{_void}")
+        if len(_priced_graded):
+            st.caption(f"Profit/loss uses 1 unit staked on every prediction with a saved best-available UK decimal price: winner = odds minus 1 unit; loser = minus 1 unit. Draws/no-contests are void and excluded. {len(_priced_graded)} graded picks have usable odds; picks without a saved price are excluded, not assigned invented odds.")
         if _total:
             _live_history["_sort_date"] = pd.to_datetime(_live_history["event_date"], utc=True, errors="coerce")
             _graded = _live_history[_live_history["status"].isin(["Correct", "Incorrect"])].sort_values("_sort_date")
@@ -513,10 +530,11 @@ if _UFC_HISTORY.exists():
         _display_history = _display_history.rename(columns={
             "event_name": "Event", "event_date": "Event date", "bout": "Fight",
             "predicted_winner": "Predicted winner", "confidence": "Confidence %",
+            "predicted_odds": "Odds snapshot", "odds_bookmaker": "Bookmaker",
             "actual_winner": "Actual winner", "actual_method": "Actual method",
             "status": "Result",
         })
-        _display_cols = ["Event", "Event date", "Fight", "Predicted winner", "Confidence %", "Actual winner", "Actual method", "Result"]
+        _display_cols = ["Event", "Event date", "Fight", "Predicted winner", "Confidence %", "Odds snapshot", "Bookmaker", "Actual winner", "Actual method", "Result"]
         st.dataframe(_display_history[[c for c in _display_cols if c in _display_history.columns]].sort_values("Event date", ascending=False), width="stretch", hide_index=True)
         st.download_button("Download UFC prediction record", _live_history.to_csv(index=False), "ufc_edge_prediction_accuracy.csv", "text/csv")
         st.caption("The live record starts when this tracker is deployed. Historical holdout results remain separate and are shown in the model validation section below.")
