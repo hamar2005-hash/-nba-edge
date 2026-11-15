@@ -468,7 +468,11 @@ def _aux_duration_lookup(results, fight_stats):
     ]
     lookup = {}
     for (day, fighter), group in stats.groupby(["_date", "_fighter"]):
-        row = group.iloc[-1]
+        # If a fighter has multiple rows on the same date, the source cannot
+        # identify which bout a stat belongs to, so omit it rather than leak.
+        if len(group) != 1:
+            continue
+        row = group.iloc[0]
         seconds = float(row["_seconds"])
         minutes = max(seconds / 60.0, 1.0)
         sig_attempted = float(row["Sig Strikes Attempted"])
