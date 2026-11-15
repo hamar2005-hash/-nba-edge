@@ -271,7 +271,7 @@ else:
                 prop_lines = load_prop_lines(
                     tuple(predictions["player"].dropna().astype(str).unique())
                 )
-            prediction_columns = ["player", "team", "opponent", "minutes_baseline",
+            prediction_columns = ["player", "team", "opponent", "game_date", "game_time_utc", "minutes_baseline",
                                    "points_projection", "rebounds_projection", "assists_projection",
                                    "pts_last5", "pts_last10", "pts_trend",
                                    "reb_last5", "reb_last10", "reb_trend",
@@ -371,6 +371,8 @@ else:
                 best_probability = max(p_over, p_under)
                 compare_rows.append({
                     "Player": row.get("player_line", row.get("player")),
+                    "Game date": row.get("game_date"),
+                    "Game time UTC": row.get("game_time_utc"),
                     "Team": row.get("team_projection", row.get("team")),
                     "Opponent": row.get("opponent_projection", row.get("opponent")),
                     "Market": market.title(),
@@ -408,6 +410,29 @@ else:
                 confidence_pool = pd.DataFrame(compare_rows)
                 confidence_pool = confidence_pool[confidence_pool["Estimated confidence"] >= 55].copy()
                 confidence_pool = confidence_pool.sort_values("Estimated confidence", ascending=False).head(10)
+
+                # Archive only single-stat, pre-game recommendations. Composite markets
+                # are excluded until their exact settlement rules are implemented.
+                _pick_history_path = DATA / "prop_pick_history.csv"
+                _pick_markets = {"Points", "Rebounds", "Assists"}
+                _new_picks = confidence_pool[confidence_pool["Market"].isin(_pick_markets)].copy()
+                if not _new_picks.empty:
+                    _now_utc = pd.Timestamp.now(tz="UTC")
+                    _new_picks["_start"] = pd.to_datetime(_new_picks["Game time UTC"], utc=True, errors="coerce")
+                    _new_picks = _new_picks[_new_picks["_start"].isna() | (_new_picks["_start"] > _now_utc)].copy()
+                    _new_picks["Pick date"] = pd.to_datetime(_new_picks["Game date"], errors="coerce").dt.strftime("%Y-%m-%d")
+                    _new_picks["Sky Bet odds"] = pd.NA
+                    _new_picks["Actual result"] = "Pending"
+                    _new_picks["Benchmark result"] = "Pending"
+                    _new_picks = _new_picks.rename(columns={"Player":"player","Team":"team","Opponent":"opponent","Market":"market","Best side":"side","Prop line":"line","Projection":"projection","Estimated confidence":"confidence_pct","Game date":"game_date","Game time UTC":"game_time_utc"})
+                    _keep = ["game_date","game_time_utc","player","team","opponent","market","side","line","projection","confidence_pct","Sky Bet odds","Actual result","Benchmark result"]
+                    _new_picks = _new_picks[[x for x in _keep if x in _new_picks.columns]]
+                    _old_picks = pd.read_csv(_pick_history_path) if _pick_history_path.exists() else pd.DataFrame()
+                    _all_picks = pd.concat([_old_picks, _new_picks], ignore_index=True)
+                    _dedupe = [x for x in ["game_date","player","team","opponent","market","side","line"] if x in _all_picks.columns]
+                    _all_picks = _all_picks.drop_duplicates(_dedupe, keep="last")
+                    _all_picks.to_csv(_pick_history_path, index=False)
+
                 if confidence_pool.empty:
                     st.info("No matched prop currently reaches the 55% confidence threshold. No picks are being promoted.")
                 else:
@@ -534,6 +559,83 @@ else:
             st.caption("Daily mean absolute error (lower is better)")
             st.dataframe(pd.DataFrame(daily_rows).sort_values(["Date", "Market"], ascending=[False, True]), width="stretch", hide_index=True)
     st.download_button("Download accuracy history", settled.to_csv(index=False), "nba_edge_accuracy_history.csv", "text/csv")
+
+# Betting performance is tracked separately from projection MAE. Only archived
+# pre-game recommendations are graded; actual Sky Bet prices are optional/manual.
+PICK_HISTORY = DATA / "prop_pick_history.csv"
+st.divider()
+st.subheader("💷 NBA prop betting performance")
+st.caption("One unit staked on every archived single-stat recommendation. Enter the actual Sky Bet decimal odds when available. A separate 1.91 fixed-odds benchmark is shown for consistent model comparison.")
+if PICK_HISTORY.exists():
+    try:
+        picks = pd.read_csv(PICK_HISTORY)
+    except Exception:
+        picks = pd.DataFrame()
+else:
+    picks = pd.DataFrame()
+
+if picks.empty:
+    st.info("No pre-game prop picks have been archived yet. New eligible recommendations will be saved automatically before tip-off.")
+else:
+    if not settled.empty:
+        _actual_map = {"Points":"actual_points","Rebounds":"actual_rebounds","Assists":"actual_assists"}
+        for _market_name, _actual_col in _actual_map.items():
+            _mask = picks["market"].astype(str).str.lower().eq(_market_name.lower())
+            _day = settled[["game_date","player","team",_actual_col]].copy() if _actual_col in settled.columns else pd.DataFrame()
+            if not _day.empty:
+                _day["player_key"] = _day["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]","",regex=True)
+                picks["player_key"] = picks["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]","",regex=True)
+                _join = picks.loc[_mask, ["game_date","player_key","team","line","side"]].merge(_day[["game_date","player_key","team",_actual_col]],on=["game_date","player_key","team"],how="left")
+                _actual_values = _join[_actual_col]
+                _results = []
+                for _idx, _row in _join.iterrows():
+                    if pd.isna(_row[_actual_col]):
+                        _results.append("Pending")
+                    elif float(_row[_actual_col]) == float(_row["line"]):
+                        _results.append("Push")
+                    elif (_row["side"] == "Over" and float(_row[_actual_col]) > float(_row["line"])) or (_row["side"] == "Under" and float(_row[_actual_col]) < float(_row["line"])):
+                        _results.append("Win")
+                    else:
+                        _results.append("Loss")
+                picks.loc[_mask, "Actual result"] = _results
+                picks.loc[_mask, "Benchmark result"] = _results
+        picks.to_csv(PICK_HISTORY,index=False)
+
+    _editable_cols = ["Sky Bet odds"]
+    if "Sky Bet odds" not in picks:
+        picks["Sky Bet odds"] = pd.NA
+    _edited = st.data_editor(picks, hide_index=True, width="stretch", num_rows="fixed", disabled=[x for x in picks.columns if x not in _editable_cols], column_config={"Sky Bet odds":st.column_config.NumberColumn("Sky Bet decimal odds",min_value=1.01,max_value=100.0,step=0.01,format="%.2f",help="Enter the price actually available on Sky Bet before the event starts.")})
+    if st.button("Save Sky Bet odds", key="save_nba_sky_odds"):
+        _edited.to_csv(PICK_HISTORY,index=False)
+        st.success("Sky Bet prices saved to the local pick history.")
+        st.rerun()
+
+    _graded = picks[picks["Actual result"].isin(["Win","Loss","Push"])].copy()
+    _settled_count = len(_graded)
+    _wins = int((_graded["Actual result"]=="Win").sum())
+    _losses = int((_graded["Actual result"]=="Loss").sum())
+    _pushes = int((_graded["Actual result"]=="Push").sum())
+    _fixed_pl = float((_graded["Actual result"].map({"Win":0.91,"Loss":-1.0,"Push":0.0})).sum())
+    _priced = _graded[pd.to_numeric(_graded["Sky Bet odds"],errors="coerce").notna()].copy()
+    _priced["Sky Bet odds"] = pd.to_numeric(_priced["Sky Bet odds"],errors="coerce")
+    _actual_pl = float(_priced.apply(lambda row: row["Sky Bet odds"]-1.0 if row["Actual result"]=="Win" else -1.0 if row["Actual result"]=="Loss" else 0.0,axis=1).sum()) if len(_priced) else 0.0
+    _m1,_m2,_m3,_m4,_m5=st.columns(5)
+    _m1.metric("Settled picks",_settled_count)
+    _m2.metric("Record",f"{_wins}-{_losses}-{_pushes}")
+    _m3.metric("1.91 benchmark P/L",f"{_fixed_pl:+.2f}u")
+    _m4.metric("Actual Sky Bet P/L",f"{_actual_pl:+.2f}u" if len(_priced) else "No prices entered")
+    _m5.metric("Priced picks",len(_priced))
+    _market_rows=[]
+    for _market_name in ["Points","Rebounds","Assists"]:
+        _subset=_graded[_graded["market"].astype(str).str.lower().eq(_market_name.lower())]
+        _mw=int((_subset["Actual result"]=="Win").sum())
+        _ml=int((_subset["Actual result"]=="Loss").sum())
+        _mp=int((_subset["Actual result"]=="Push").sum())
+        _benchmark=float(_subset["Actual result"].map({"Win":0.91,"Loss":-1.0,"Push":0.0}).sum())
+        _market_rows.append({"Market":_market_name,"Record":f"{_mw}-{_ml}-{_mp}","1.91 P/L":f"{_benchmark:+.2f}u"})
+    st.markdown("**Performance by market**")
+    st.dataframe(pd.DataFrame(_market_rows),hide_index=True,width="stretch")
+    st.download_button("Download NBA betting history",picks.to_csv(index=False),"nba_edge_betting_history.csv","text/csv")
 
 if "predictions" in locals() and isinstance(predictions, pd.DataFrame) and not predictions.empty:
     st.divider()
