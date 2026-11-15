@@ -733,7 +733,21 @@ def predict_auxiliary_matchups(models, snapshot, matchups):
             values[key + "_max"] = max(a[key], b[key])
             values[key + "_diff_abs"] = abs(a[key] - b[key])
         X = pd.DataFrame([{key: float(values[key]) for key in AUX_METHOD_FEATURES}])
-        row = {"Bout": f"{f1} vs {f2}"}
+        row = {
+            "Bout": f"{f1} vs {f2}",
+            "Fighter 1 prior fights": int(a["experience"]),
+            "Fighter 2 prior fights": int(b["experience"]),
+            "Fighter 1 sig strikes/min": round(float(a["sig_landed_rate"]), 2),
+            "Fighter 2 sig strikes/min": round(float(b["sig_landed_rate"]), 2),
+            "Fighter 1 takedowns/min": round(float(a["takedown_rate"]), 3),
+            "Fighter 2 takedowns/min": round(float(b["takedown_rate"]), 3),
+            "Combined prior finish rate %": round(
+                (float(a["finish_rate"]) + float(b["finish_rate"])) * 50, 1
+            ),
+            "Average prior fight duration (sec)": round(
+                (float(a["duration"]) + float(b["duration"])) / 2, 1
+            ),
+        }
         method_model = (models or {}).get("method")
         if method_model is not None:
             method_probs = method_model.predict_proba(X)[0]
