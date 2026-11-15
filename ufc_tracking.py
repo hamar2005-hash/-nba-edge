@@ -76,6 +76,9 @@ def settle_predictions(path, results):
     if not path.exists() or results is None or results.empty:
         return 0
     history = pd.read_csv(path)
+    for column in HISTORY_COLUMNS:
+        if column not in history.columns:
+            history[column] = pd.NA
     required = {"Date", "Fighter 1", "Fighter 2", "Result"}
     if not required.issubset(results.columns) or history.empty:
         return 0
