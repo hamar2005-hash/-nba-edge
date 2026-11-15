@@ -29,10 +29,19 @@ def synthetic_history():
                 "Result": 1 if (event_idx + bout_idx) % 2 else 2,
                 "Method": method,
             })
-            stats.extend([
-                {"Date": date_text, "Name": f1, "Time": duration},
-                {"Date": date_text, "Name": f2, "Time": duration},
-            ])
+            for fighter_offset, fighter in enumerate((f1, f2)):
+                stats.append({
+                    "Date": date_text, "Name": fighter, "Time": duration,
+                    "Knockdowns": (event_idx + bout_idx + fighter_offset) % 2,
+                    "Sig Strikes Landed": 12 + bout_idx + fighter_offset,
+                    "Sig Strikes Attempted": 28 + bout_idx + fighter_offset,
+                    "Sig Strikes Absorbed": 10 + event_idx % 4,
+                    "Takedowns": bout_idx % 3,
+                    "Takedown Attempts": 1 + bout_idx % 4,
+                    "Submission Attempts": (event_idx + fighter_offset) % 3,
+                    "Clinch Strikes": 2 + bout_idx,
+                    "Ground Strikes": 1 + event_idx % 5,
+                })
     return pd.DataFrame(results), pd.DataFrame(stats)
 
 
@@ -46,9 +55,10 @@ class AuxiliaryUFCModelTests(unittest.TestCase):
         self.assertGreater(len(frame), 600)
         self.assertTrue(set(AUX_METHOD_FEATURES).issubset(frame.columns))
         self.assertTrue(frame["duration_seconds"].notna().all())
-        self.assertTrue({"ko_win", "sub_win", "decision_win"}.issubset(
+        self.assertTrue({"ko_win", "sub_win", "decision_win", "sig_landed_rate", "takedown_accuracy"}.issubset(
             set(snapshot[next(iter(snapshot))].keys())
         ))
+        self.assertGreater(frame.iloc[-1]["sig_landed_rate_mean"], 0)
 
     def test_models_train_and_predict(self):
         models, metrics, snapshot, frame = train_method_and_round_models(
