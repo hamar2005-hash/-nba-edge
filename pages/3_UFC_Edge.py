@@ -222,6 +222,7 @@ try:
                         DATA / "ufc_prediction_history.csv",
                         next_card,
                         _bout_predictions,
+                        auxiliary_predictions=_aux_predictions if "_aux_predictions" in locals() else None,
                         now_utc=pd.Timestamp.now(tz="UTC"),
                     )
                     if _saved_count:
@@ -513,12 +514,13 @@ if st.button("Refresh latest results and retrain UFC model", key="refresh_retrai
 # an unambiguous matching result in the historical feed.
 st.divider()
 st.subheader("Live prediction accuracy")
-st.caption("Tracks the actual full-card winner picks saved before fight night. Results are matched by both fighter names and event date; ambiguous matches, draws and no-contests are never counted as losses.")
+st.caption("Tracks winner, method-of-victory and Over/Under 1.5 and 2.5 round predictions saved before fight night. Results are matched by fighter names and event date; ambiguous matches are left pending, while draws/no-contests are void.")
 _UFC_HISTORY = DATA / "ufc_prediction_history.csv"
 if "results" in locals() and _UFC_HISTORY.exists():
     try:
         from ufc_tracking import settle_predictions
-        _newly_settled = settle_predictions(_UFC_HISTORY, results)
+        _fight_stats_for_settlement = stats if "stats" in locals() else load_dataset(DATA_FILES["Fight statistics"])
+        _newly_settled = settle_predictions(_UFC_HISTORY, results, _fight_stats_for_settlement)
         if _newly_settled:
             st.caption(f"Updated {_newly_settled} completed fight result(s).")
     except Exception as _settle_exc:
@@ -571,7 +573,16 @@ if _UFC_HISTORY.exists():
             "actual_winner": "Actual winner", "actual_method": "Actual method",
             "status": "Result",
         })
-        _display_cols = ["Event", "Event date", "Fight", "Predicted winner", "Confidence %", "Odds snapshot", "Bookmaker", "Actual winner", "Actual method", "Result"]
+        _display_history = _display_history.rename(columns={
+            "predicted_method": "Predicted method",
+            "predicted_over_1_5": "Predicted Over 1.5 %",
+            "predicted_over_2_5": "Predicted Over 2.5 %",
+            "method_status": "Method result",
+            "over_1_5_status": "Over 1.5 result",
+            "over_2_5_status": "Over 2.5 result",
+            "actual_duration_seconds": "Actual duration (seconds)",
+        })
+        _display_cols = ["Event", "Event date", "Fight", "Predicted winner", "Confidence %", "Predicted method", "Method result", "Predicted Over 1.5 %", "Over 1.5 result", "Predicted Over 2.5 %", "Over 2.5 result", "Odds snapshot", "Bookmaker", "Actual winner", "Actual method", "Actual duration (seconds)", "Result"]
         st.dataframe(_display_history[[c for c in _display_cols if c in _display_history.columns]].sort_values("Event date", ascending=False), width="stretch", hide_index=True)
         st.download_button("Download UFC prediction record", _live_history.to_csv(index=False), "ufc_edge_prediction_accuracy.csv", "text/csv")
         st.caption("The live record starts when this tracker is deployed. Historical holdout results remain separate and are shown in the model validation section below.")
@@ -642,6 +653,33 @@ if st.session_state.get("ufc_trained"):
     benchmark["Log loss"] = benchmark["Log loss"].round(3)
     benchmark["Brier"] = benchmark["Brier"].round(3)
     st.dataframe(benchmark, width="stretch", hide_index=True)
+    # Reliability diagnostics: group untouched test predictions into probability bands.
+    try:
+        from ufc_model import _chronological_split, build_training_rows
+        _calibration_rows = build_training_rows(results)
+        _cal_train, _cal_validation, _cal_test = _chronological_split(_calibration_rows)
+        _cal_test = _cal_test.copy()
+        _cal_test["actual"] = (_cal_test["target"] == 1).astype(int)
+        _cal_test["predicted_probability"] = metrics.get("test_probabilities", [])
+        if len(_cal_test) == len(_cal_test["predicted_probability"]) and _cal_test["predicted_probability"].notna().all():
+            _cal_test["Confidence band"] = pd.cut(
+                _cal_test["predicted_probability"],
+                bins=[0, .5, .6, .7, .8, .9, 1.000001],
+                labels=["Below 50%", "50-60%", "60-70%", "70-80%", "80-90%", "90%+"],
+                include_lowest=True,
+            )
+            _calibration_table = _cal_test.groupby("Confidence band", observed=False).agg(
+                Fights=("actual", "size"),
+                **{"Average predicted %": ("predicted_probability", lambda x: x.mean() * 100),
+                   "Actual win %": ("actual", lambda x: x.mean() * 100)},
+            ).reset_index()
+            st.subheader("Confidence calibration")
+            st.caption("A 70% prediction should win about 70% of the time over a sufficiently large sample. These bins are diagnostics, not guarantees.")
+            st.dataframe(_calibration_table.round(1), width="stretch", hide_index=True)
+        else:
+            st.info("Confidence-band calibration will appear when the model exposes untouched test probabilities.")
+    except Exception as _calibration_exc:
+        st.caption(f"Confidence calibration is not available for this model version: {_calibration_exc}")
     st.caption(f"Selected model: logistic regression C={metrics.get('selected_c', 0.5):g}. {metrics.get('selection_reason', 'Candidate settings were compared chronologically.') } The final test period remains untouched.")
     if metrics.get("candidate_comparison"):
         _candidate_table = pd.DataFrame(metrics["candidate_comparison"])
