@@ -516,6 +516,19 @@ st.divider()
 st.subheader("Live prediction accuracy")
 st.caption("Tracks winner, method-of-victory and Over/Under 1.5 and 2.5 round predictions saved before fight night. Results are matched by fighter names and event date; ambiguous matches are left pending, while draws/no-contests are void.")
 _UFC_HISTORY = DATA / "ufc_prediction_history.csv"
+
+_refresh_accuracy = st.button("Refresh UFC results and settle tracker", key="refresh_ufc_accuracy", width="stretch")
+if _refresh_accuracy:
+    try:
+        load_dataset.clear()
+        _fresh_results = load_dataset(DATA_FILES["Fight results"])
+        _fresh_stats = load_dataset(DATA_FILES["Fight statistics"])
+        from ufc_tracking import settle_predictions
+        _settled_now = settle_predictions(_UFC_HISTORY, _fresh_results, _fresh_stats)
+        st.success(f"Results feed refreshed. Updated {_settled_now} fight record(s).")
+        st.rerun()
+    except Exception as _refresh_accuracy_exc:
+        st.error(f"Could not refresh UFC results: {_refresh_accuracy_exc}")
 if "results" in locals() and _UFC_HISTORY.exists():
     try:
         from ufc_tracking import settle_predictions
@@ -542,12 +555,14 @@ if _UFC_HISTORY.exists():
             axis=1,
         ) if len(_priced_graded) else pd.Series(dtype=float)
         _units_profit = float(_priced_graded["Units"].sum()) if len(_priced_graded) else 0.0
+        _units_staked = float(len(_priced_graded))
+        _yield_pct = (_units_profit / _units_staked * 100) if _units_staked else None
         _l1, _l2, _l3, _l4, _l5 = st.columns(5)
         _l1.metric("Live accuracy", f"{_accuracy:.1f}%" if _accuracy is not None else "Not rated yet")
         _l2.metric("Correct picks", f"{_correct}/{_total}")
         _l3.metric("1u flat-stake P/L", f"{_units_profit:+.2f}u" if len(_priced_graded) else "No odds yet")
-        _l4.metric("Pending fights", f"{_pending}")
-        _l5.metric("Voids", f"{_void}")
+        _l4.metric("Yield", f"{_yield_pct:+.1f}%" if _yield_pct is not None else "Not rated yet")
+        _l5.metric("Pending / void", f"{_pending} / {_void}")
         _market_metrics = []
         for _label, _column in (
             ("Method", "method_status"),
@@ -565,6 +580,29 @@ if _UFC_HISTORY.exists():
         if _market_metrics:
             st.markdown("**Accuracy by prediction market**")
             st.dataframe(pd.DataFrame(_market_metrics), width="stretch", hide_index=True)
+
+        # Event-level summaries make it possible to see whether performance is
+        # improving card by card, without mixing different events together.
+        _event_rows = []
+        _event_source = _live_history.copy()
+        _event_source["_event_day"] = pd.to_datetime(_event_source["event_date"], utc=True, errors="coerce").dt.tz_convert("Europe/London").dt.strftime("%Y-%m-%d")
+        for (_event_name, _event_day), _event_group in _event_source.groupby(["event_name", "_event_day"], dropna=False):
+            _event_graded = _event_group[_event_group["status"].isin(["Correct", "Incorrect"])]
+            _event_correct = int((_event_graded["status"] == "Correct").sum())
+            _event_total = len(_event_graded)
+            _event_priced = _event_graded[pd.to_numeric(_event_graded.get("predicted_odds"), errors="coerce").notna()].copy() if "predicted_odds" in _event_graded.columns else _event_graded.iloc[0:0].copy()
+            _event_priced["predicted_odds"] = pd.to_numeric(_event_priced.get("predicted_odds"), errors="coerce")
+            _event_units = _event_priced.apply(lambda row: row["predicted_odds"] - 1.0 if row["status"] == "Correct" else -1.0, axis=1).sum() if len(_event_priced) else 0.0
+            _event_rows.append({
+                "Event": _event_name, "Date": _event_day,
+                "Record": f"{_event_correct}-{_event_total - _event_correct}",
+                "Accuracy": f"{_event_correct / _event_total * 100:.1f}%" if _event_total else "Pending",
+                "1u P/L": f"{_event_units:+.2f}u" if len(_event_priced) else "No odds",
+                "Priced bets": len(_event_priced),
+            })
+        if _event_rows:
+            st.markdown("**Performance by event**")
+            st.dataframe(pd.DataFrame(_event_rows).sort_values("Date", ascending=False), width="stretch", hide_index=True)
         if len(_priced_graded):
             st.caption(f"Profit/loss uses 1 unit staked on every prediction with a saved best-available UK decimal price: winner = odds minus 1 unit; loser = minus 1 unit. Draws/no-contests are void and excluded. {len(_priced_graded)} graded picks have usable odds; picks without a saved price are excluded, not assigned invented odds.")
         if _total:
