@@ -653,33 +653,31 @@ if st.session_state.get("ufc_trained"):
     benchmark["Log loss"] = benchmark["Log loss"].round(3)
     benchmark["Brier"] = benchmark["Brier"].round(3)
     st.dataframe(benchmark, width="stretch", hide_index=True)
-    # Reliability diagnostics: group untouched test predictions into probability bands.
-    try:
-        from ufc_model import _chronological_split, build_training_rows
-        _calibration_rows = build_training_rows(results)
-        _cal_train, _cal_validation, _cal_test = _chronological_split(_calibration_rows)
-        _cal_test = _cal_test.copy()
-        _cal_test["actual"] = (_cal_test["target"] == 1).astype(int)
-        _cal_test["predicted_probability"] = metrics.get("test_probabilities", [])
-        if len(_cal_test) == len(_cal_test["predicted_probability"]) and _cal_test["predicted_probability"].notna().all():
-            _cal_test["Confidence band"] = pd.cut(
-                _cal_test["predicted_probability"],
-                bins=[0, .5, .6, .7, .8, .9, 1.000001],
-                labels=["Below 50%", "50-60%", "60-70%", "70-80%", "80-90%", "90%+"],
-                include_lowest=True,
-            )
-            _calibration_table = _cal_test.groupby("Confidence band", observed=False).agg(
-                Fights=("actual", "size"),
-                **{"Average predicted %": ("predicted_probability", lambda x: x.mean() * 100),
-                   "Actual win %": ("actual", lambda x: x.mean() * 100)},
-            ).reset_index()
-            st.subheader("Confidence calibration")
-            st.caption("A 70% prediction should win about 70% of the time over a sufficiently large sample. These bins are diagnostics, not guarantees.")
-            st.dataframe(_calibration_table.round(1), width="stretch", hide_index=True)
-        else:
-            st.info("Confidence-band calibration will appear when the model exposes untouched test probabilities.")
-    except Exception as _calibration_exc:
-        st.caption(f"Confidence calibration is not available for this model version: {_calibration_exc}")
+    # Reliability diagnostics use the untouched test predictions returned by training.
+    _test_probabilities = metrics.get("test_probabilities", [])
+    _test_targets = metrics.get("test_targets", [])
+    if len(_test_probabilities) == len(_test_targets) and len(_test_targets):
+        _calibration_frame = pd.DataFrame({
+            "predicted_probability": _test_probabilities,
+            "actual": _test_targets,
+        })
+        _calibration_frame["Confidence band"] = pd.cut(
+            _calibration_frame["predicted_probability"],
+            bins=[0, .5, .6, .7, .8, .9, 1.000001],
+            labels=["Below 50%", "50-60%", "60-70%", "70-80%", "80-90%", "90%+"],
+            include_lowest=True,
+        )
+        _calibration_table = _calibration_frame.groupby("Confidence band", observed=False).agg(
+            Fights=("actual", "size"),
+            **{"Average predicted %": ("predicted_probability", lambda x: x.mean() * 100),
+               "Actual win %": ("actual", lambda x: x.mean() * 100)},
+        ).reset_index()
+        st.subheader("Confidence calibration")
+        st.caption("A 70% prediction should win about 70% of the time over a sufficiently large sample. These are out-of-sample diagnostics, not guarantees.")
+        st.dataframe(_calibration_table.round(1), width="stretch", hide_index=True)
+    else:
+        st.info("Confidence-band calibration will appear after the model is retrained with test-probability reporting.")
+
     st.caption(f"Selected model: logistic regression C={metrics.get('selected_c', 0.5):g}. {metrics.get('selection_reason', 'Candidate settings were compared chronologically.') } The final test period remains untouched.")
     if metrics.get("candidate_comparison"):
         _candidate_table = pd.DataFrame(metrics["candidate_comparison"])
