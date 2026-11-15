@@ -472,6 +472,15 @@ except Exception as exc:
     st.caption(str(exc))
     st.button("Retry data connection", on_click=load_dataset.clear)
 
+st.divider()
+st.subheader("Refresh and retrain")
+st.caption("Use this after a UFC event has finished and the results feed has updated. It clears the cached historical dataset, reloads the latest results and trains a fresh challenger against the existing chronological benchmarks.")
+if st.button("Refresh latest results and retrain UFC model", key="refresh_retrain_ufc", width="stretch"):
+    load_dataset.clear()
+    for _key in ("ufc_trained", "ufc_model", "ufc_snapshot", "ufc_metrics"):
+        st.session_state.pop(_key, None)
+    st.rerun()
+
 # Live record: predictions are frozen before event start and settled only from
 # an unambiguous matching result in the historical feed.
 st.divider()
@@ -605,6 +614,17 @@ if st.session_state.get("ufc_trained"):
     benchmark["Log loss"] = benchmark["Log loss"].round(3)
     benchmark["Brier"] = benchmark["Brier"].round(3)
     st.dataframe(benchmark, width="stretch", hide_index=True)
+    st.caption(f"Selected challenger: logistic regression C={metrics.get('selected_c', 0.5):g}. Candidate settings were compared on the chronological calibration period; the final test period remains untouched.")
+    if metrics.get("candidate_comparison"):
+        _candidate_table = pd.DataFrame(metrics["candidate_comparison"])
+        _candidate_table = _candidate_table.rename(columns={
+            "C": "Regularisation C",
+            "calibration_brier": "Calibration Brier",
+            "calibration_log_loss": "Calibration log loss",
+        })
+        for _metric_col in ("Calibration Brier", "Calibration log loss"):
+            _candidate_table[_metric_col] = _candidate_table[_metric_col].round(4)
+        st.dataframe(_candidate_table, width="stretch", hide_index=True)
     with st.expander("Raw vs calibrated probability comparison"):
         raw_a, raw_b, raw_c = st.columns(3)
         raw_a.metric("Raw Brier", f"{metrics['raw_brier']:.3f}")
