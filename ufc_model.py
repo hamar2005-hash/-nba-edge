@@ -176,14 +176,37 @@ def train_and_evaluate(results):
     if any(part["target"].nunique() < 2 for part in (train, calibration, test)):
         raise ValueError("Chronological train/calibration/test split does not contain both winner classes.")
 
-    base_model = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scale", StandardScaler()),
-        ("classifier", LogisticRegression(max_iter=2000, class_weight="balanced", C=0.5)),
-    ])
-    base_model.fit(train[FEATURES], train["target"])
+    # Select a challenger using the later calibration period, then retain a
+    # completely untouched final test period for the reported performance.
+    candidate_rows = []
+    candidates = []
+    for candidate_c in (0.10, 0.25, 0.50, 1.0, 2.0):
+        candidate = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scale", StandardScaler()),
+            ("classifier", LogisticRegression(
+                max_iter=2000, class_weight="balanced", C=candidate_c
+            )),
+        ])
+        candidate.fit(train[FEATURES], train["target"])
+        candidate_probs = np.clip(
+            candidate.predict_proba(calibration[FEATURES])[:, 1], 1e-6, 1 - 1e-6
+        )
+        candidate_rows.append({
+            "C": candidate_c,
+            "calibration_brier": float(brier_score_loss(calibration["target"], candidate_probs)),
+            "calibration_log_loss": float(log_loss(calibration["target"], candidate_probs, labels=[0, 1])),
+        })
+        candidates.append(candidate)
 
-    # Platt scaling: learn a probability correction on the separate calibration period.
+    selected_index = min(
+        range(len(candidate_rows)),
+        key=lambda i: (candidate_rows[i]["calibration_brier"], candidate_rows[i]["calibration_log_loss"]),
+    )
+    selected_c = candidate_rows[selected_index]["C"]
+    base_model = candidates[selected_index]
+
+    # Platt scaling: fit the probability correction on the later calibration period.
     calibration_raw = np.clip(base_model.predict_proba(calibration[FEATURES])[:, 1], 1e-6, 1 - 1e-6)
     calibration_logits = np.log(calibration_raw / (1 - calibration_raw)).reshape(-1, 1)
     calibrator = LogisticRegression(C=1e6, solver="lbfgs")
@@ -210,6 +233,8 @@ def train_and_evaluate(results):
     elo_predictions = (elo_probs >= 0.5).astype(int)
     base_predictions = (base_probs >= 0.5).astype(int)
     metrics = {
+        "selected_c": float(selected_c),
+        "candidate_comparison": candidate_rows,
         "elo_accuracy": float(accuracy_score(test["target"], elo_predictions)),
         "elo_balanced_accuracy": float(balanced_accuracy_score(test["target"], elo_predictions)),
         "elo_log_loss": float(log_loss(test["target"], elo_probs, labels=[0, 1])),
