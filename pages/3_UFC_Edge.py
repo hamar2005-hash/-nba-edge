@@ -614,7 +614,7 @@ if st.session_state.get("ufc_trained"):
     benchmark["Log loss"] = benchmark["Log loss"].round(3)
     benchmark["Brier"] = benchmark["Brier"].round(3)
     st.dataframe(benchmark, width="stretch", hide_index=True)
-    st.caption(f"Selected challenger: logistic regression C={metrics.get('selected_c', 0.5):g}. Candidate settings were compared on the chronological calibration period; the final test period remains untouched.")
+    st.caption(f"Selected model: logistic regression C={metrics.get('selected_c', 0.5):g}. {metrics.get('selection_reason', 'Candidate settings were compared chronologically.') } The final test period remains untouched.")
     if metrics.get("candidate_comparison"):
         _candidate_table = pd.DataFrame(metrics["candidate_comparison"])
         _candidate_table = _candidate_table.rename(columns={
