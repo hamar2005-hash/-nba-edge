@@ -46,7 +46,7 @@ hr { border-color: var(--edge-line); }
   <div class="edge-kicker">Basketball intelligence</div>
   <div class="edge-title">🏀 NBA EDGE</div>
   <div class="edge-subtitle">Daily player projections, prop-line comparisons and model performance.</div>
-  <span class="edge-pill">POINTS</span><span class="edge-pill">REBOUNDS</span><span class="edge-pill">ASSISTS</span><span class="edge-pill">NO ODDS OR PRICES</span>
+  <span class="edge-pill">POINTS</span><span class="edge-pill">REBOUNDS</span><span class="edge-pill">ASSISTS</span><span class="edge-pill">OPTIONAL SKY BET ODDS TRACKING</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -243,7 +243,7 @@ else:
 
         st.divider()
         st.subheader("🎯 Player prop line comparison")
-        st.caption("Current lines are fetched from Stat Pick. Bookmaker names, odds and prices are not shown or stored.")
+        st.caption("Current prop lines are fetched from Stat Pick. Bookmaker prices are not supplied by this feed; enter actual Sky Bet decimal odds in the performance tracker when available.")
         @st.cache_data(ttl=300, show_spinner=False)
         def load_prop_lines(player_names):
             # Streamlit may retain an older imported module across a hot reload.
@@ -619,12 +619,17 @@ else:
     _priced = _graded[pd.to_numeric(_graded["Sky Bet odds"],errors="coerce").notna()].copy()
     _priced["Sky Bet odds"] = pd.to_numeric(_priced["Sky Bet odds"],errors="coerce")
     _actual_pl = float(_priced.apply(lambda row: row["Sky Bet odds"]-1.0 if row["Actual result"]=="Win" else -1.0 if row["Actual result"]=="Loss" else 0.0,axis=1).sum()) if len(_priced) else 0.0
+    _fixed_yield = (_fixed_pl / _settled_count * 100) if _settled_count else 0.0
+    _actual_yield = (_actual_pl / len(_priced) * 100) if len(_priced) else None
     _m1,_m2,_m3,_m4,_m5=st.columns(5)
     _m1.metric("Settled picks",_settled_count)
     _m2.metric("Record",f"{_wins}-{_losses}-{_pushes}")
     _m3.metric("1.91 benchmark P/L",f"{_fixed_pl:+.2f}u")
     _m4.metric("Actual Sky Bet P/L",f"{_actual_pl:+.2f}u" if len(_priced) else "No prices entered")
     _m5.metric("Priced picks",len(_priced))
+    _y1,_y2=st.columns(2)
+    _y1.metric("1.91 benchmark yield",f"{_fixed_yield:+.1f}%")
+    _y2.metric("Sky Bet yield",f"{_actual_yield:+.1f}%" if _actual_yield is not None else "Not available")
     _market_rows=[]
     for _market_name in ["Points","Rebounds","Assists"]:
         _subset=_graded[_graded["market"].astype(str).str.lower().eq(_market_name.lower())]
