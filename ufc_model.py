@@ -423,8 +423,8 @@ def _aux_pair_features(state1, state2, day):
         "days_since_mean": (a["days_since"] + b["days_since"]) / 2,
     }
     for key in ("ko_win", "sub_win", "decision_win", "ko_loss", "sub_loss", "decision_loss"):
-        values[key.replace("_", "_") + "_mean"] = (a[key] + b[key]) / 2
-        values[key.replace("_", "_") + "_max"] = max(a[key], b[key])
+        values[f"{key}_mean"] = (a[key] + b[key]) / 2
+        values[f"{key}_max"] = max(a[key], b[key])
     return {key: float(values[key]) for key in AUX_METHOD_FEATURES}
 
 
@@ -483,8 +483,6 @@ def build_auxiliary_training_rows(results, fight_stats):
                 row.update({"date": day, "method_target": method})
                 rows.append(row)
                 if np.isfinite(duration):
-                    row_duration = dict(row)
-                    row_duration["duration_seconds"] = duration
                     rows[-1]["duration_seconds"] = duration
             pending_updates.append((f1, f2, method, duration, result))
 
