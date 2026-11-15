@@ -356,3 +356,337 @@ def predict_matchups(model, snapshot, matchups):
         missing = [fighter for fighter, key in ((fighter1, key1), (fighter2, key2)) if key not in snapshot]
         rows.append({"Bout": fighter1 + " vs " + fighter2, "Predicted winner": fighter1 if probability1 >= 0.5 else fighter2, fighter1 + " win %": round(probability1 * 100, 1), fighter2 + " win %": round((1.0 - probability1) * 100, 1), "Confidence": round(confidence * 100, 1), "Data warning": ("No historical profile: " + ", ".join(missing)) if missing else "Both fighters have historical profiles"})
     return pd.DataFrame(rows)
+
+
+# Independent method-of-victory and fight-duration models. These use only
+# fighter history available before each bout; current-fight statistics are
+# used only to create labels, never as predictors.
+AUX_METHOD_CLASSES = ("KO/TKO", "Submission", "Decision")
+AUX_METHOD_FEATURES = [
+    "experience_mean", "experience_max",
+    "ko_win_mean", "ko_win_max", "sub_win_mean", "sub_win_max",
+    "decision_win_mean", "decision_win_max",
+    "ko_loss_mean", "ko_loss_max", "sub_loss_mean", "sub_loss_max",
+    "decision_loss_mean", "decision_loss_max",
+    "duration_mean", "duration_max", "recent_duration_mean",
+    "finish_rate_mean", "days_since_mean",
+]
+AUX_ROUND_LINES = {"1.5": 450.0, "2.5": 750.0}
+
+
+def _aux_state():
+    return {
+        "fights": 0, "method_wins": defaultdict(int),
+        "method_losses": defaultdict(int), "durations": deque(maxlen=10),
+        "dates": deque(maxlen=20),
+    }
+
+
+def _aux_rate(count, total, classes=3):
+    return float((count + 1) / (total + classes))
+
+
+def _aux_fighter_features(state, day):
+    fights = state["fights"]
+    wins_total = sum(state["method_wins"].values())
+    losses_total = sum(state["method_losses"].values())
+    duration_values = list(state["durations"])
+    days_since = (day - state["dates"][-1]).days if state["dates"] else 730
+    return {
+        "experience": fights,
+        "ko_win": _aux_rate(state["method_wins"]["KO/TKO"], wins_total),
+        "sub_win": _aux_rate(state["method_wins"]["Submission"], wins_total),
+        "decision_win": _aux_rate(state["method_wins"]["Decision"], wins_total),
+        "ko_loss": _aux_rate(state["method_losses"]["KO/TKO"], losses_total),
+        "sub_loss": _aux_rate(state["method_losses"]["Submission"], losses_total),
+        "decision_loss": _aux_rate(state["method_losses"]["Decision"], losses_total),
+        "duration": float(np.mean(duration_values)) if duration_values else 600.0,
+        "recent_duration": float(np.mean(duration_values[-5:])) if duration_values else 600.0,
+        "finish_rate": _aux_rate(
+            sum(state["method_wins"][x] + state["method_losses"][x]
+                for x in ("KO/TKO", "Submission")),
+            fights,
+        ),
+        "days_since": min(days_since, 730),
+    }
+
+
+def _aux_pair_features(state1, state2, day):
+    a, b = _aux_fighter_features(state1, day), _aux_fighter_features(state2, day)
+    values = {
+        "experience_mean": (a["experience"] + b["experience"]) / 2,
+        "experience_max": max(a["experience"], b["experience"]),
+        "duration_mean": (a["duration"] + b["duration"]) / 2,
+        "duration_max": max(a["duration"], b["duration"]),
+        "recent_duration_mean": (a["recent_duration"] + b["recent_duration"]) / 2,
+        "finish_rate_mean": (a["finish_rate"] + b["finish_rate"]) / 2,
+        "days_since_mean": (a["days_since"] + b["days_since"]) / 2,
+    }
+    for key in ("ko_win", "sub_win", "decision_win", "ko_loss", "sub_loss", "decision_loss"):
+        values[key.replace("_", "_") + "_mean"] = (a[key] + b[key]) / 2
+        values[key.replace("_", "_") + "_max"] = max(a[key], b[key])
+    return {key: float(values[key]) for key in AUX_METHOD_FEATURES}
+
+
+def _aux_duration_lookup(results, fight_stats):
+    """Join post-fight elapsed seconds by date and fighter, without using them as features."""
+    required = {"Date", "Name", "Time"}
+    if fight_stats is None or not required.issubset(fight_stats.columns):
+        return {}
+    stats = fight_stats[["Date", "Name", "Time"]].copy()
+    stats["_date"] = pd.to_datetime(stats["Date"], dayfirst=True, errors="coerce").dt.normalize()
+    stats["_fighter"] = stats["Name"].map(_fighter_key)
+    stats["_seconds"] = pd.to_numeric(stats["Time"], errors="coerce")
+    stats = stats[
+        stats["_date"].notna() & stats["_fighter"].ne("")
+        & stats["_seconds"].between(1, 1500)
+    ]
+    # Each fight appears once per fighter in FightStats. Median is robust to
+    # duplicate rows and should be identical for both fighters in a bout.
+    return {
+        (date, fighter): float(seconds)
+        for (date, fighter), seconds in stats.groupby(["_date", "_fighter"])["_seconds"].median().items()
+    }
+
+
+def build_auxiliary_training_rows(results, fight_stats):
+    required = {"Date", "Fighter 1", "Fighter 2", "Result", "Method"}
+    if not required.issubset(results.columns):
+        raise ValueError(f"Auxiliary models require result columns: {sorted(required - set(results.columns))}")
+    duration_lookup = _aux_duration_lookup(results, fight_stats)
+    df = results.copy()
+    df["_date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce").dt.normalize()
+    df["_f1"] = df["Fighter 1"].fillna("").astype(str).map(_fighter_key)
+    df["_f2"] = df["Fighter 2"].fillna("").astype(str).map(_fighter_key)
+    df["_result"] = pd.to_numeric(df["Result"], errors="coerce")
+    df["_method"] = df["Method"].map(_method_group)
+    df = df.dropna(subset=["_date", "_result"]).sort_values("_date", kind="stable")
+    states = defaultdict(_aux_state)
+    rows = []
+
+    for day, group in df.groupby("_date", sort=True):
+        pending_updates = []
+        for _, fight in group.iterrows():
+            f1, f2, result = fight["_f1"], fight["_f2"], int(fight["_result"])
+            if not f1 or not f2 or f1 == f2 or result not in (1, 2):
+                continue
+            method = fight["_method"]
+            t1 = duration_lookup.get((day, f1))
+            t2 = duration_lookup.get((day, f2))
+            duration_values = [x for x in (t1, t2) if x is not None]
+            duration = float(np.median(duration_values)) if duration_values else np.nan
+
+            # Method labels can be trained from results alone; duration labels
+            # require a matched FightStats time value.
+            if method in AUX_METHOD_CLASSES:
+                row = _aux_pair_features(states[f1], states[f2], day)
+                row.update({"date": day, "method_target": method})
+                rows.append(row)
+                if np.isfinite(duration):
+                    row_duration = dict(row)
+                    row_duration["duration_seconds"] = duration
+                    rows[-1]["duration_seconds"] = duration
+            pending_updates.append((f1, f2, method, duration, result))
+
+        # Update only after every bout on the event date has been featurised.
+        for f1, f2, method, duration, result in pending_updates:
+            winner, loser = (f1, f2) if result == 1 else (f2, f1)
+            states[winner]["fights"] += 1
+            states[loser]["fights"] += 1
+            if method in AUX_METHOD_CLASSES:
+                states[winner]["method_wins"][method] += 1
+                states[loser]["method_losses"][method] += 1
+            if np.isfinite(duration):
+                states[f1]["durations"].append(duration)
+                states[f2]["durations"].append(duration)
+            states[f1]["dates"].append(day)
+            states[f2]["dates"].append(day)
+
+    frame = pd.DataFrame(rows)
+    if frame.empty:
+        raise ValueError("No usable historical method labels were created.")
+    snapshot_day = pd.Timestamp.utcnow().tz_localize(None).normalize()
+    snapshot = {
+        fighter: _aux_fighter_features(state, snapshot_day)
+        for fighter, state in states.items()
+    }
+    return frame, snapshot
+
+
+def _chronological_aux_split(frame):
+    dates = pd.Index(frame["date"].drop_duplicates().sort_values())
+    if len(dates) < 10:
+        raise ValueError("At least 10 distinct event dates are required for auxiliary validation.")
+    train_end = max(1, int(len(dates) * .70))
+    cal_end = min(max(train_end + 1, int(len(dates) * .80)), len(dates) - 1)
+    train_cut, cal_cut = dates[train_end - 1], dates[cal_end - 1]
+    train = frame[frame["date"] <= train_cut].copy()
+    calibration = frame[(frame["date"] > train_cut) & (frame["date"] <= cal_cut)].copy()
+    test = frame[frame["date"] > cal_cut].copy()
+    if train.empty or calibration.empty or test.empty:
+        raise ValueError("Auxiliary chronological split contains an empty partition.")
+    return train, calibration, test
+
+
+def _aux_pipeline(c_value, multiclass=False):
+    return Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scale", StandardScaler()),
+        ("classifier", LogisticRegression(
+            max_iter=2500, class_weight="balanced", C=c_value
+        )),
+    ])
+
+
+def _fit_aux_method(frame):
+    usable = frame[frame["method_target"].isin(AUX_METHOD_CLASSES)].copy()
+    train, calibration, test = _chronological_aux_split(usable)
+    if train["method_target"].nunique() < 3:
+        raise ValueError("The training period does not contain all three method classes.")
+    candidates, scores = [], []
+    for c_value in (0.10, 0.50, 1.0):
+        model = _aux_pipeline(c_value, multiclass=True)
+        model.fit(train[AUX_METHOD_FEATURES], train["method_target"])
+        probs = model.predict_proba(calibration[AUX_METHOD_FEATURES])
+        scores.append({
+            "C": c_value,
+            "calibration_log_loss": float(log_loss(
+                calibration["method_target"], probs, labels=list(model.classes_)
+            )),
+        })
+        candidates.append(model)
+    incumbent = next(i for i, row in enumerate(scores) if row["C"] == .50)
+    best = min(range(len(scores)), key=lambda i: scores[i]["calibration_log_loss"])
+    selected = best if scores[best]["calibration_log_loss"] < scores[incumbent]["calibration_log_loss"] else incumbent
+    model = candidates[selected]
+    probabilities = model.predict_proba(test[AUX_METHOD_FEATURES])
+    predictions = model.predict(test[AUX_METHOD_FEATURES])
+    baseline = DummyClassifier(strategy="prior").fit(train[AUX_METHOD_FEATURES], train["method_target"])
+    baseline_probs = baseline.predict_proba(test[AUX_METHOD_FEATURES])
+    baseline_pred = baseline.predict(test[AUX_METHOD_FEATURES])
+    ll = float(log_loss(test["method_target"], probabilities, labels=list(model.classes_)))
+    baseline_ll = float(log_loss(test["method_target"], baseline_probs, labels=list(baseline.classes_)))
+    bal_acc = float(balanced_accuracy_score(test["method_target"], predictions))
+    base_bal_acc = float(balanced_accuracy_score(test["method_target"], baseline_pred))
+    metrics = {
+        "available": True, "passed": bool(ll < baseline_ll and bal_acc > base_bal_acc),
+        "accuracy": float(accuracy_score(test["method_target"], predictions)),
+        "balanced_accuracy": bal_acc, "log_loss": ll,
+        "baseline_balanced_accuracy": base_bal_acc, "baseline_log_loss": baseline_ll,
+        "test_fights": int(len(test)), "selected_c": float(scores[selected]["C"]),
+        "candidate_comparison": scores,
+        "test_start": str(test["date"].min().date()), "test_end": str(test["date"].max().date()),
+        "class_counts": {str(k): int(v) for k, v in test["method_target"].value_counts().items()},
+    }
+    return model, metrics
+
+
+def _fit_aux_round(frame, line, seconds):
+    usable = frame.dropna(subset=["duration_seconds"]).copy()
+    usable["target"] = (usable["duration_seconds"] > seconds).astype(int)
+    train, calibration, test = _chronological_aux_split(usable)
+    if train["target"].nunique() < 2 or calibration["target"].nunique() < 2 or test["target"].nunique() < 2:
+        raise ValueError(f"Not enough over/under examples on both sides of the {line} line.")
+    candidates, scores = [], []
+    for c_value in (0.10, 0.50, 1.0):
+        model = _aux_pipeline(c_value)
+        model.fit(train[AUX_METHOD_FEATURES], train["target"])
+        probs = model.predict_proba(calibration[AUX_METHOD_FEATURES])[:, 1]
+        scores.append({
+            "C": c_value,
+            "calibration_brier": float(brier_score_loss(calibration["target"], probs)),
+            "calibration_log_loss": float(log_loss(calibration["target"], probs, labels=[0, 1])),
+        })
+        candidates.append(model)
+    incumbent = next(i for i, row in enumerate(scores) if row["C"] == .50)
+    best = min(range(len(scores)), key=lambda i: (scores[i]["calibration_brier"], scores[i]["calibration_log_loss"]))
+    improved = (
+        scores[best]["calibration_brier"] < scores[incumbent]["calibration_brier"]
+        and scores[best]["calibration_log_loss"] < scores[incumbent]["calibration_log_loss"]
+    )
+    selected = best if improved else incumbent
+    model = candidates[selected]
+    probs = model.predict_proba(test[AUX_METHOD_FEATURES])[:, 1]
+    pred = (probs >= .5).astype(int)
+    baseline = DummyClassifier(strategy="prior").fit(train[AUX_METHOD_FEATURES], train["target"])
+    base_probs = baseline.predict_proba(test[AUX_METHOD_FEATURES])[:, 1]
+    base_pred = baseline.predict(test[AUX_METHOD_FEATURES])
+    ll = float(log_loss(test["target"], probs, labels=[0, 1]))
+    base_ll = float(log_loss(test["target"], base_probs, labels=[0, 1]))
+    bal_acc = float(balanced_accuracy_score(test["target"], pred))
+    base_bal_acc = float(balanced_accuracy_score(test["target"], base_pred))
+    metrics = {
+        "available": True, "passed": bool(ll < base_ll and bal_acc > base_bal_acc),
+        "accuracy": float(accuracy_score(test["target"], pred)),
+        "balanced_accuracy": bal_acc, "brier": float(brier_score_loss(test["target"], probs)),
+        "log_loss": ll, "baseline_brier": float(brier_score_loss(test["target"], base_probs)),
+        "baseline_log_loss": base_ll, "baseline_balanced_accuracy": base_bal_acc,
+        "test_fights": int(len(test)), "selected_c": float(scores[selected]["C"]),
+        "candidate_comparison": scores,
+        "test_start": str(test["date"].min().date()), "test_end": str(test["date"].max().date()),
+        "over_rate": float(test["target"].mean()),
+    }
+    return model, metrics
+
+
+def train_method_and_round_models(results, fight_stats):
+    """Train independent, leakage-safe method and round-duration predictors."""
+    frame, snapshot = build_auxiliary_training_rows(results, fight_stats)
+    output = {"method": None, "rounds": {}}
+    metrics = {"method": {"available": False}, "rounds": {}}
+    try:
+        output["method"], metrics["method"] = _fit_aux_method(frame)
+    except Exception as exc:
+        metrics["method"] = {"available": False, "reason": str(exc)}
+    for line, seconds in AUX_ROUND_LINES.items():
+        try:
+            output["rounds"][line], metrics["rounds"][line] = _fit_aux_round(frame, line, seconds)
+        except Exception as exc:
+            metrics["rounds"][line] = {"available": False, "reason": str(exc)}
+    return output, metrics, snapshot, frame
+
+
+def predict_auxiliary_matchups(models, snapshot, matchups):
+    """Return method probabilities and O/U 1.5 and 2.5 probabilities for a card."""
+    rows = []
+    for bout in matchups or []:
+        f1 = str(bout.get("Fighter 1", "")).strip()
+        f2 = str(bout.get("Fighter 2", "")).strip()
+        if not f1 or not f2:
+            continue
+        neutral = {
+            "experience": 0, "ko_win": 1/3, "sub_win": 1/3, "decision_win": 1/3,
+            "ko_loss": 1/3, "sub_loss": 1/3, "decision_loss": 1/3,
+            "duration": 600.0, "recent_duration": 600.0, "finish_rate": 1/3, "days_since": 730,
+        }
+        a = snapshot.get(_fighter_key(f1), neutral)
+        b = snapshot.get(_fighter_key(f2), neutral)
+        values = {
+            "experience_mean": (a["experience"] + b["experience"]) / 2,
+            "experience_max": max(a["experience"], b["experience"]),
+            "duration_mean": (a["duration"] + b["duration"]) / 2,
+            "duration_max": max(a["duration"], b["duration"]),
+            "recent_duration_mean": (a["recent_duration"] + b["recent_duration"]) / 2,
+            "finish_rate_mean": (a["finish_rate"] + b["finish_rate"]) / 2,
+            "days_since_mean": (a["days_since"] + b["days_since"]) / 2,
+        }
+        for key in ("ko_win", "sub_win", "decision_win", "ko_loss", "sub_loss", "decision_loss"):
+            values[key + "_mean"] = (a[key] + b[key]) / 2
+            values[key + "_max"] = max(a[key], b[key])
+        X = pd.DataFrame([{key: float(values[key]) for key in AUX_METHOD_FEATURES}])
+        row = {"Bout": f"{f1} vs {f2}"}
+        method_model = (models or {}).get("method")
+        if method_model is not None:
+            method_probs = method_model.predict_proba(X)[0]
+            for label, probability in zip(method_model.classes_, method_probs):
+                row[f"{label} %"] = round(float(probability) * 100, 1)
+            if len(method_probs):
+                row["Most likely method"] = str(method_model.classes_[int(np.argmax(method_probs))])
+        for line, model in (models or {}).get("rounds", {}).items():
+            over = float(model.predict_proba(X)[0, 1])
+            row[f"Over {line} %"] = round(over * 100, 1)
+            row[f"Under {line} %"] = round((1 - over) * 100, 1)
+        missing = [name for name in (f1, f2) if _fighter_key(name) not in snapshot]
+        row["Style data warning"] = ("Limited history: " + ", ".join(missing)) if missing else ""
+        rows.append(row)
+    return pd.DataFrame(rows)
