@@ -55,6 +55,8 @@ class AuxiliaryUFCModelTests(unittest.TestCase):
         self.assertGreater(len(frame), 600)
         self.assertTrue(set(AUX_METHOD_FEATURES).issubset(frame.columns))
         self.assertTrue(frame["duration_seconds"].notna().all())
+        self.assertNotIn("duration_seconds", AUX_METHOD_FEATURES)
+        self.assertEqual(frame.iloc[0]["sig_landed_rate_mean"], 0.0)
         self.assertTrue({"ko_win", "sub_win", "decision_win", "sig_landed_rate", "takedown_accuracy"}.issubset(
             set(snapshot[next(iter(snapshot))].keys())
         ))
