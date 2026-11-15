@@ -271,6 +271,9 @@ def train_and_evaluate(results):
         "brier": float(brier_score_loss(test["target"], probabilities)),
         "raw_brier": float(brier_score_loss(test["target"], raw_probabilities)),
         "baseline_brier": float(brier_score_loss(test["target"], base_probs)),
+        # Stored only for the in-app reliability table; these are untouched test rows.
+        "test_probabilities": probabilities.astype(float).tolist(),
+        "test_targets": test["target"].astype(int).tolist(),
     }
 
     # Threshold audit: accuracy and coverage on the untouched test period.
