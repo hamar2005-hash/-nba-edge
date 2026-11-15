@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "ufc_model.py"
+      - "pages/3_UFC_Edge.py"
       - "tests/**"
       - ".github/workflows/ufc-model-checks.yml"
   pull_request:
@@ -21,6 +22,8 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install model dependencies
-        run: python -m pip install --upgrade pip numpy pandas scikit-learn
+        run: python -m pip install --upgrade pip numpy pandas scikit-learn==1.6.1
+      - name: Compile UFC model and Streamlit page
+        run: python -m compileall -q ufc_model.py pages/3_UFC_Edge.py
       - name: Run UFC regression tests
         run: python -m unittest discover -s tests -v
