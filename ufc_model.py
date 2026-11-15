@@ -199,11 +199,24 @@ def train_and_evaluate(results):
         })
         candidates.append(candidate)
 
-    selected_index = min(
+    incumbent_index = next(i for i, row in enumerate(candidate_rows) if row["C"] == 0.50)
+    challenger_index = min(
         range(len(candidate_rows)),
         key=lambda i: (candidate_rows[i]["calibration_brier"], candidate_rows[i]["calibration_log_loss"]),
     )
+    incumbent_score = candidate_rows[incumbent_index]
+    challenger_score = candidate_rows[challenger_index]
+    challenger_improves_both = (
+        challenger_score["calibration_brier"] < incumbent_score["calibration_brier"]
+        and challenger_score["calibration_log_loss"] < incumbent_score["calibration_log_loss"]
+    )
+    selected_index = challenger_index if challenger_improves_both else incumbent_index
     selected_c = candidate_rows[selected_index]["C"]
+    selection_reason = (
+        "Challenger improved both calibration Brier and log loss."
+        if challenger_improves_both
+        else "Kept incumbent C=0.50 because no challenger improved both calibration metrics."
+    )
     base_model = candidates[selected_index]
 
     # Platt scaling: fit the probability correction on the later calibration period.
@@ -234,6 +247,7 @@ def train_and_evaluate(results):
     base_predictions = (base_probs >= 0.5).astype(int)
     metrics = {
         "selected_c": float(selected_c),
+        "selection_reason": selection_reason,
         "candidate_comparison": candidate_rows,
         "elo_accuracy": float(accuracy_score(test["target"], elo_predictions)),
         "elo_balanced_accuracy": float(balanced_accuracy_score(test["target"], elo_predictions)),
