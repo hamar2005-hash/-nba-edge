@@ -1,0 +1,73 @@
+import unittest
+from datetime import date, timedelta
+
+import pandas as pd
+
+from ufc_model import (
+    AUX_METHOD_FEATURES,
+    build_auxiliary_training_rows,
+    predict_auxiliary_matchups,
+    train_method_and_round_models,
+)
+
+
+def synthetic_history():
+    results, stats = [], []
+    methods = ("KO/TKO", "Submission", "Decision - Unanimous")
+    durations = (300, 440, 600, 740, 900, 1200, 1500)
+    start = date(2010, 1, 1)
+    for event_idx in range(120):
+        event_date = start + timedelta(days=event_idx * 7)
+        date_text = event_date.strftime("%d/%m/%Y")
+        for bout_idx in range(6):
+            n = (event_idx * 12 + bout_idx * 2) % 240
+            f1, f2 = f"Fighter {n}", f"Fighter {n + 1}"
+            method = methods[(event_idx + bout_idx) % len(methods)]
+            duration = durations[(event_idx * 6 + bout_idx) % len(durations)]
+            results.append({
+                "Date": date_text, "Fighter 1": f1, "Fighter 2": f2,
+                "Result": 1 if (event_idx + bout_idx) % 2 else 2,
+                "Method": method,
+            })
+            stats.extend([
+                {"Date": date_text, "Name": f1, "Time": duration},
+                {"Date": date_text, "Name": f2, "Time": duration},
+            ])
+    return pd.DataFrame(results), pd.DataFrame(stats)
+
+
+class AuxiliaryUFCModelTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.results, cls.stats = synthetic_history()
+
+    def test_features_are_pre_fight_and_duration_is_label_only(self):
+        frame, snapshot = build_auxiliary_training_rows(self.results, self.stats)
+        self.assertGreater(len(frame), 600)
+        self.assertTrue(set(AUX_METHOD_FEATURES).issubset(frame.columns))
+        self.assertTrue(frame["duration_seconds"].notna().all())
+        self.assertTrue({"ko_win", "sub_win", "decision_win"}.issubset(
+            set(snapshot[next(iter(snapshot))].keys())
+        ))
+
+    def test_models_train_and_predict(self):
+        models, metrics, snapshot, frame = train_method_and_round_models(
+            self.results, self.stats
+        )
+        self.assertTrue(metrics["method"]["available"], metrics["method"])
+        self.assertTrue(metrics["rounds"]["1.5"]["available"], metrics["rounds"]["1.5"])
+        self.assertTrue(metrics["rounds"]["2.5"]["available"], metrics["rounds"]["2.5"])
+        predictions = predict_auxiliary_matchups(models, snapshot, [{
+            "Fighter 1": "Fighter 1", "Fighter 2": "Fighter 2"
+        }])
+        self.assertEqual(len(predictions), 1)
+        self.assertIn("Most likely method", predictions.columns)
+        for line in ("1.5", "2.5"):
+            self.assertIn(f"Over {line} %", predictions.columns)
+            self.assertIn(f"Under {line} %", predictions.columns)
+            total = predictions.iloc[0][f"Over {line} %"] + predictions.iloc[0][f"Under {line} %"]
+            self.assertAlmostEqual(total, 100.0, delta=0.2)
+
+
+if __name__ == "__main__":
+    unittest.main()
