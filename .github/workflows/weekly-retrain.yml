@@ -107,16 +107,26 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import zipfile
-          required = sorted(str(p) for p in Path("models").glob("*_model.joblib")) + [
+          core_models = [
+              "models/points_model.joblib",
+              "models/rebounds_model.joblib",
+              "models/assists_model.joblib",
               "models/latest_player_features.csv",
+          ]
+          missing = [p for p in core_models if not Path(p).exists()]
+          if missing:
+              raise SystemExit("Cannot package incomplete core models: " + ", ".join(missing))
+          # Reports and team-defense snapshots are useful metadata, but are not
+          # prerequisites for publishing a validated market model. Include them
+          # when available so a market-only retrain can still publish its bundle.
+          optional = [
+              *sorted(str(p) for p in Path("models").glob("*_model.joblib")),
               "models/weekly_retrain_report.json",
               "models/latest_team_defense.csv",
           ]
-          missing = [p for p in required if not Path(p).exists()]
-          if missing:
-              raise SystemExit("Cannot package incomplete models: " + ", ".join(missing))
+          files = list(dict.fromkeys(core_models + [p for p in optional if Path(p).exists()]))
           with zipfile.ZipFile("NBA_Trained_Models.zip", "w", zipfile.ZIP_DEFLATED) as archive:
-              for path in required:
+              for path in files:
                   archive.write(path, path)
           PY
       - name: Commit updated data, models and report
