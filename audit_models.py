@@ -60,7 +60,7 @@ def main():
                   "last_date": str(pd.Timestamp(dates[-1]).date())}}
     detail_rows = []
     for fold_no in range(FOLDS):
-        train_end, test_end = boundaries[fold_no + 1], boundaries[fold_no + 2]
+        train_end, test_end = boundaries[fold_no], boundaries[fold_no + 1]
         train_dates = dates[:train_end]
         test_dates = dates[train_end:test_end]
         if not len(test_dates):
