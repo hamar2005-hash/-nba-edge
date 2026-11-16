@@ -11,7 +11,7 @@ DATA = Path("data")
 PREDICTIONS = DATA / "prediction_history.csv"
 SETTLED = DATA / "settled_results.csv"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; NBAEdge/1.0)"}
-MARKETS = {"points": "PTS", "rebounds": "REB", "assists": "AST"}
+MARKETS = {"points": "PTS", "rebounds": "REB", "assists": "AST", "threes": "FG3M"}
 
 def norm(value):
     return re.sub(r"[^a-z0-9]", "", str(value).lower())
@@ -51,6 +51,7 @@ def actuals_from_summary(summary, event_id, game_date):
                     "actual_points": number("PTS"),
                     "actual_rebounds": number("REB"),
                     "actual_assists": number("AST"),
+                    "actual_threes": number("FG3M"),
                 })
     return rows
 
