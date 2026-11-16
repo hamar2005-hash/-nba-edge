@@ -611,7 +611,7 @@ if st.button("Refresh latest results and retrain UFC model", key="refresh_retrai
 # an unambiguous matching result in the historical feed.
 st.divider()
 st.subheader("Live prediction accuracy")
-st.caption("Tracks winner, method-of-victory and Over/Under 1.5 and 2.5 round predictions saved before fight night. Results are matched by fighter names and event date; ambiguous matches are left pending, while draws/no-contests are void.")
+st.caption("Tracks winner, method-of-victory and Over/Under 1.5 and 2.5 round predictions saved before fight night. Results are matched by fighter names and event date; ambiguous matches stay pending, while draws and no-contests are void. Odds are only captured before the scheduled event start.")
 _UFC_HISTORY = DATA / "ufc_prediction_history.csv"
 
 _refresh_accuracy = st.button("Refresh UFC results and settle tracker", key="refresh_ufc_accuracy", width="stretch")
@@ -978,7 +978,7 @@ steps = [
     ("Probability calibration", "Evaluate Brier score, log loss and reliability on later unseen events.", True),
     ("Method model", "Predict KO/TKO, submission or decision from each fighter's previous method and performance profile.", True),
     ("Round-duration model", "Predict Over/Under 1.5 and 2.5 rounds; higher lines wait for reliable scheduled-round labels.", True),
-    ("Fight-card predictions and tracking", "Show full-card winner, method and round estimates; live settlement currently tracks winner picks.", True),
+    ("Fight-card predictions and tracking", "Show full-card winner, method and round estimates; settle winner, method and round markets with pre-fight odds and one-unit profit tracking.", True),
 ]
 for title, detail, complete in steps:
     icon = "✅" if complete else "◯"
@@ -1001,6 +1001,6 @@ with right:
     st.write("- Test on later events not used for training")
     st.write("- Keep a permanent prediction history")
 
-st.warning("Research model only. A good historical score does not prove a profitable betting edge. No betting recommendations are shown at this stage.")
+st.warning("Research model only. Best Bets require validated model benchmarks, a meaningful edge and positive expected value. Historical results do not guarantee future profit.")
 
 st.caption("Historical dataset: UFC-Almanac, sourced from UFCStats. Dataset and source attribution are retained for this project.")
