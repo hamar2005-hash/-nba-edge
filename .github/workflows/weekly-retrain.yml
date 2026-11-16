@@ -34,7 +34,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: nba-edge-weekly-retraining
+  group: nba-edge-points-v2-hf-backtest
   cancel-in-progress: false
 
 jobs:
