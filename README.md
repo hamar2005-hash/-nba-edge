@@ -5,7 +5,7 @@ Automated NBA player projections built with Streamlit and the existing trained m
 ## Features
 
 - Automatically reads the NBA schedule and team rosters from ESPN's public data feed.
-- Generates points, rebounds and assists projections, with weekly-trained extensions for three-pointers made, steals, blocks and turnovers.
+- Generates points, rebounds, assists and dedicated three-pointers-made projections, with optional extensions for steals, blocks and turnovers.
 - Displays roster-feed availability labels and recent last-five versus last-ten player form.
 - Shows expanded player leaderboards across the supported markets.
 - Shows top 10 projected players for each market, with recent average minutes for context.
@@ -14,7 +14,7 @@ Automated NBA player projections built with Streamlit and the existing trained m
 - Archives daily slates and compares them with completed ESPN box scores.
 - Tracks mean absolute error by market and by date.
 - Refreshes projections and settles completed games through GitHub Actions.
-- Retrains points with a dedicated minutes forecast multiplied by a separately learned scoring-rate forecast; rebounds and assists retain their existing model architecture. Candidates are promoted only when they beat the incumbent on the same chronological holdout.
+- Retrains points with a dedicated minutes forecast multiplied by a separately learned scoring-rate forecast; rebounds and assists retain their existing model architecture. A dedicated three-pointers-made model uses lagged 3PA, 3P%, minutes, role and opponent 3-point defense features. Candidates are promoted only when they beat the incumbent on the same chronological holdout.
 
 ## No bookmaker data
 
@@ -64,3 +64,8 @@ The points-only run collects the latest player game logs, trains separate minute
 ## Same-player NBA Bet Builders
 
 The daily dashboard includes experimental two-leg same-player milestone combinations (for example, 10+ points plus 5+ rebounds). The module estimates the joint probability with a bivariate simulation using model projections and holdout residual spread. It does not multiply standalone leg probabilities. Fair decimal odds are a mathematical conversion of that model estimate, not a sportsbook quote. Correlation assumptions and residual-based distributions are provisional and require backtesting against archived results before use as a betting edge. No bookmaker odds or prices are scraped, stored or displayed.
+
+
+## Three-pointers-made model
+
+The three-pointers-made model is trained separately with `python train_threes.py`. It uses a chronological holdout and must beat a last-five/season-average baseline before saving `models/threes_model.joblib`. The model is loaded automatically by `auto_daily.py` when present, displayed in the daily projections and Top 10 sections, and settled against ESPN's FG3M box-score statistic. To train and package it on the live app, run the GitHub Actions workflow **Weekly NBA Edge model improvement** on `main` with market **threes**. Rebounds and assists model files are not changed by this process.
