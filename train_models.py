@@ -29,6 +29,11 @@ POINT_EXTRA = [
     'THREE_PCT_L5','THREE_PCT_L10','THREE_PCT_SEASON_PRE',
     'FT_PCT_L5','FT_PCT_L10','FT_PCT_SEASON_PRE',
     'POINTS_PER_FGA_L5','POINTS_PER_FGA_L10','POINTS_PER_FGA_SEASON_PRE',
+    'OPP_ALLOWED_3PA_L5','OPP_ALLOWED_3PA_L10','OPP_ALLOWED_3PA_SEASON_PRE',
+    'OPP_ALLOWED_3P_PCT_L5','OPP_ALLOWED_3P_PCT_L10','OPP_ALLOWED_3P_PCT_SEASON_PRE',
+    'OPP_ALLOWED_2P_PCT_L5','OPP_ALLOWED_2P_PCT_L10','OPP_ALLOWED_2P_PCT_SEASON_PRE',
+    'OPP_ALLOWED_EFG_L5','OPP_ALLOWED_EFG_L10','OPP_ALLOWED_EFG_SEASON_PRE',
+    'OPP_ALLOWED_FT_RATE_L5','OPP_ALLOWED_FT_RATE_L10','OPP_ALLOWED_FT_RATE_SEASON_PRE',
 ]
 
 def prepare(path):
@@ -43,7 +48,16 @@ def prepare(path):
         if c not in df: df[c]=np.nan
         df[c]=pd.to_numeric(df[c],errors='coerce')
     df=df.sort_values(['PLAYER_ID','GAME_DATE','GAME_ID']).reset_index(drop=True)
-    df['HOME']=df['MATCHUP'].astype(str).str.contains(' vs. ',regex=False).astype(int)
+    # Build pre-game opponent defensive shot-profile features from player game logs.
+    # A team's box-score shooting totals in a game are the shots its opponent allowed.
+    matchup = df['MATCHUP'].astype(str)
+    df['TEAM_ABBREVIATION'] = df.get('TEAM_ABBREVIATION', matchup.str.split().str[0]).astype(str)
+    df['OPPONENT_ABBREVIATION'] = np.where(
+        matchup.str.contains(' vs. ', regex=False),
+        matchup.str.split(' vs. ').str[-1],
+        matchup.str.split(' @ ').str[-1]
+    )
+    df['HOME']=matchup.str.contains(' vs. ',regex=False).astype(int)
     df['REST_DAYS']=df.groupby('PLAYER_ID')['GAME_DATE'].diff().dt.days.clip(0,14)
     df['GAMES_PLAYED_BEFORE']=df.groupby('PLAYER_ID').cumcount()
     for stat in STATS:
@@ -86,6 +100,41 @@ def prepare(path):
         for n in (5,10):
             df[f'{stat}_L{n}']=g.transform(lambda s:s.shift(1).rolling(n,min_periods=2).mean())
         df[f'{stat}_SEASON_PRE']=g.transform(lambda s:s.shift(1).expanding(min_periods=2).mean())
+
+    # Aggregate each offense by game, then attribute those shots to the opponent
+    # as shots allowed. Rolling features are shifted, so today's game is excluded.
+    team_game = df.groupby(['GAME_ID','GAME_DATE','TEAM_ABBREVIATION'], as_index=False).agg(
+        TEAM_FGA=('FGA','sum'), TEAM_FGM=('FGM','sum'),
+        TEAM_FG3A=('FG3A','sum'), TEAM_FG3M=('FG3M','sum'),
+        TEAM_FTA=('FTA','sum'), TEAM_FTM=('FTM','sum')
+    )
+    matchup_map = df[['GAME_ID','TEAM_ABBREVIATION','OPPONENT_ABBREVIATION']].drop_duplicates()
+    team_game = team_game.merge(matchup_map, on=['GAME_ID','TEAM_ABBREVIATION'], how='left')
+    team_game['OPP_ALLOWED_3PA'] = team_game['TEAM_FG3A']
+    team_game['OPP_ALLOWED_3P_PCT'] = team_game['TEAM_FG3M'] / team_game['TEAM_FG3A'].replace(0,np.nan)
+    team_game['OPP_ALLOWED_2P_PCT'] = (
+        (team_game['TEAM_FGM']-team_game['TEAM_FG3M']) /
+        (team_game['TEAM_FGA']-team_game['TEAM_FG3A']).replace(0,np.nan)
+    )
+    team_game['OPP_ALLOWED_EFG'] = (
+        team_game['TEAM_FGM']+0.5*team_game['TEAM_FG3M']
+    ) / team_game['TEAM_FGA'].replace(0,np.nan)
+    team_game['OPP_ALLOWED_FT_RATE'] = team_game['TEAM_FTA'] / team_game['TEAM_FGA'].replace(0,np.nan)
+    defense = team_game.rename(columns={
+        'OPPONENT_ABBREVIATION':'DEF_TEAM',
+        'TEAM_ABBREVIATION':'OFF_TEAM'
+    })
+    defense = defense.dropna(subset=['DEF_TEAM']).sort_values(['DEF_TEAM','GAME_DATE','GAME_ID'])
+    defense_features = ['OPP_ALLOWED_3PA','OPP_ALLOWED_3P_PCT','OPP_ALLOWED_2P_PCT','OPP_ALLOWED_EFG','OPP_ALLOWED_FT_RATE']
+    for stat in defense_features:
+        g=defense.groupby('DEF_TEAM',sort=False)[stat]
+        for n in (5,10):
+            defense[f'{stat}_L{n}']=g.transform(lambda v:v.shift(1).rolling(n,min_periods=3).mean())
+        defense[f'{stat}_SEASON_PRE']=g.transform(lambda v:v.shift(1).expanding(min_periods=3).mean())
+    keep=['GAME_ID','DEF_TEAM']+[f'{stat}_{period}' for stat in defense_features for period in ('L5','L10','SEASON_PRE')]
+    defense=defense[keep].drop_duplicates(['GAME_ID','DEF_TEAM'])
+    df=df.merge(defense,left_on=['GAME_ID','OPPONENT_ABBREVIATION'],right_on=['GAME_ID','DEF_TEAM'],how='left')
+    df=df.drop(columns=['DEF_TEAM'])
     return df
 
 def main():
