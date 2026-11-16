@@ -8,7 +8,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
-from train_models import prepare
+from train_models import prepare, BASE_FEATURES, POINT_EXTRA
 
 FEATURES = [
     "MIN_LAST", "MIN_L3", "MIN_STD_L5", "MIN_STD_L10", "MIN_TREND_5V10", "MIN_SEASON_PRE",
@@ -72,9 +72,9 @@ def main():
     joblib.dump(pack, out / "threes_model.joblib")
     latest = df.sort_values("GAME_DATE").groupby("PLAYER_ID", as_index=False).tail(1)
     identity = ["PLAYER_ID", "PLAYER_NAME"] + (["TEAM_ABBREVIATION"] if "TEAM_ABBREVIATION" in latest else []) + ["GAME_DATE"]
-    snapshot_cols = list(dict.fromkeys(identity + features + [
-        c for c in ["PTS_L5","PTS_L10","REB_L5","REB_L10","AST_L5","AST_L10"] if c in latest
-    ]))
+    snapshot_cols = list(dict.fromkeys(
+        identity + [c for c in BASE_FEATURES + POINT_EXTRA + features if c in latest.columns]
+    ))
     latest[snapshot_cols].to_csv(out / "latest_player_features.csv", index=False)
     report = {
         "market": "three-pointers made", "model_version": pack["model_version"],
