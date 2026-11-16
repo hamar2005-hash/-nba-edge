@@ -250,7 +250,7 @@ st.divider()
 def load_uk_ufc_odds(api_key):
     endpoint = "https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds/"
     response = requests.get(endpoint, params={
-        "apiKey": api_key, "regions": "uk", "markets": "h2h",
+        "apiKey": api_key, "regions": "uk", "markets": "h2h,totals",
         "oddsFormat": "decimal",
     }, timeout=25)
     response.raise_for_status()
