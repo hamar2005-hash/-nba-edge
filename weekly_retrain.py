@@ -153,6 +153,23 @@ def main():
         if market == 'points':
             features=points_features
             candidate,score,holdout=fit_points_v2(train,test,features)
+
+            # Controlled ablation: same chronological split, same training rows,
+            # same inner-validation blend tuning and same untouched holdout.
+            defense_features=[c for c in features if c.startswith('OPP_ALLOWED_')]
+            no_defense_features=[c for c in features if c not in defense_features]
+            _,ablation_score,_=fit_points_v2(train,test,no_defense_features)
+            defense_ablation={
+                'full_feature_mae':float(score['mae']),
+                'without_defense_features_mae':float(ablation_score['mae']),
+                'full_feature_rmse':float(score['rmse']),
+                'without_defense_features_rmse':float(ablation_score['rmse']),
+                'mae_change_from_defense_features':float(ablation_score['mae']-score['mae']),
+                'rmse_change_from_defense_features':float(ablation_score['rmse']-score['rmse']),
+                'defense_feature_count':len(defense_features),
+                'same_holdout_rows':int(score['test_rows'])==int(ablation_score['test_rows']),
+                'interpretation':'Positive MAE/RMSE change means removing defensive features made error worse; negative means removing them improved error.'
+            }
             incumbent_mae=None
             incumbent_rmse=None
             if incumbent_path.exists():
@@ -185,6 +202,8 @@ def main():
                 'candidate_minutes_l5_baseline_mae':score['minutes_l5_baseline_mae'],
                 'candidate_points_l5_baseline_mae':score['points_l5_baseline_mae'],
                 'candidate_rate_mae':score['rate_mae'],
+                'defense_feature_ablation':defense_ablation,
+                'ablation_without_defense_selected_direct_weight':float(ablation_score['selected_direct_weight']),
                 'selected_direct_weight':score['selected_direct_weight'],
                 'inner_validation_start':score['inner_validation_start'],
                 'inner_validation_mae_by_weight':score['inner_validation_mae_by_weight'],
