@@ -1,7 +1,10 @@
 """Train and evaluate UFC method and round models on chronological holdouts."""
 import json
+import sys
 from pathlib import Path
 import pandas as pd
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 import ufc_model
 
 BASE = "https://raw.githubusercontent.com/Sam-Armstrong/UFC-Almanac/main/data/"
