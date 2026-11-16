@@ -38,7 +38,7 @@ jobs:
           modules = [
               "auto_daily", "collect_nba_data", "first_basket", "racing_model", "racing_predictions",
               "predict_props", "prop_lines", "same_player_builders", "settle_results",
-              "train_models", "weekly_retrain",
+              "train_models", "weekly_retrain", "probability_utils",
           ]
           for name in modules:
               importlib.import_module(name)
@@ -76,7 +76,15 @@ jobs:
           assert set(frame.columns).isdisjoint({"overOdds", "underOdds", "odds", "price", "bookmaker"}), "Odds/prices leaked into parsed output"
           price_only = {"headline": {"displayName": "Points", "statSlug": "points", "value": 1.91}}
           assert not extract_rows(price_only, "Test Player", "", "test-player"), "Generic price-like values must not be treated as prop lines"
-          print("Prop parser attribution fixture OK; odds/prices are excluded.")
+          three_point = {"headline": {"displayName": "3+ Made Threes", "statSlug": "3pm", "line": 2.5}}
+          three_rows = extract_rows(three_point, "Three Point Player", "AAA", "three-point-player")
+          assert len(three_rows) == 1 and three_rows[0]["market"] == "threes", f"3PM prop label was not recognized: {three_rows}"
+          from probability_utils import probability_at_least
+          p3 = probability_at_least(3.0, 1.23, 3)
+          assert 0.5 < p3 < 0.8, f"Unexpected 3+ estimate for a 3.0 projection: {p3}"
+          assert probability_at_least(4.0, 1.23, 3) > p3, "3+ probability should rise with the projection"
+          assert probability_at_least(3.0, 1.23, 2) > p3 > probability_at_least(3.0, 1.23, 4)
+          print("3PM prop parser and probability checks OK.")
 
           from racing_predictions import _card_form_stats, _history_stats, _records
           history = [
@@ -126,6 +134,7 @@ jobs:
                       "models/points_model.joblib",
                       "models/rebounds_model.joblib",
                       "models/assists_model.joblib",
+                      "models/threes_model.joblib",
                       "models/latest_player_features.csv",
 
                   }
@@ -134,7 +143,7 @@ jobs:
                   archive.extractall(tmp)
 
               model_dir = Path(tmp) / "models"
-              for market in ("points", "rebounds", "assists"):
+              for market in ("points", "rebounds", "assists", "threes"):
                   pack = joblib.load(model_dir / f"{market}_model.joblib")
                   assert isinstance(pack, dict), f"{market} model package is not a dictionary"
                   assert "model" in pack and "feature_cols" in pack, f"{market} package keys are incomplete"
@@ -145,7 +154,7 @@ jobs:
               needed = {"PLAYER_ID", "PLAYER_NAME", "GAME_DATE"}
               assert needed.issubset(features.columns), f"Feature snapshot is missing {sorted(needed - set(features.columns))}"
               assert not features.empty, "Feature snapshot is empty"
-              for market in ("points", "rebounds", "assists"):
+              for market in ("points", "rebounds", "assists", "threes"):
                   pack = joblib.load(model_dir / f"{market}_model.joblib")
                   missing_features = set(pack["feature_cols"]) - set(features.columns)
                   assert not missing_features, f"{market} model input fields missing: {sorted(missing_features)}"
