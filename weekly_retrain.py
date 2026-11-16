@@ -42,7 +42,7 @@ def fit_candidate(train, test, features, market, target):
 
 
 def fit_points_v2(train, test, features):
-    """Fit minutes and points-per-minute models, then combine them on holdout."""
+    """Fit role-aware minutes, scoring-rate and direct-points candidates."""
     train = train[train.GAMES_PLAYED_BEFORE >= 2].copy()
     test = test[test.GAMES_PLAYED_BEFORE >= 2].copy()
     train = train[(train.MIN > 0) & train.PTS.notna()].copy()
@@ -50,41 +50,43 @@ def fit_points_v2(train, test, features):
     if len(train) < 1000 or len(test) < 100:
         raise RuntimeError(f'Insufficient points-v2 rows: train={len(train)}, holdout={len(test)}')
 
-    minutes_model = make_regressor(seed=43)
+    minutes_model = Pipeline([
+        ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
+        ('regressor', ExtraTreesRegressor(n_estimators=350, min_samples_leaf=5, max_features=0.85, n_jobs=-1, random_state=43))
+    ])
     rate_model = make_regressor(seed=44)
+    direct_model = make_regressor(seed=45)
     rate_train = train['PTS'] / train['MIN'].clip(lower=1)
     minutes_model.fit(train[features], train['MIN'])
     rate_model.fit(train[features], rate_train)
-
-    predictor = PointsV2Predictor(minutes_model, rate_model, features)
+    direct_model.fit(train[features], train['PTS'])
+    predictor = PointsV2Predictor(minutes_model, rate_model, features, direct_model=direct_model, direct_weight=0.25)
     details = predictor.predict_with_details(test[features])
     pred = details['points']
+    direct_pred = details['direct_points']
+    rate_pred = details['rate_points']
     residual = test['PTS'].to_numpy() - pred
     minute_residual = test['MIN'].to_numpy() - details['expected_minutes']
-
-    pack = {
-        'model': predictor,
-        'feature_cols': features,
-        'target': 'PTS',
-        'market': 'points',
-        'model_version': 'points_v2_minutes_rate',
-        'residual_std': float(np.std(residual, ddof=1)),
-        'minutes_residual_std': float(np.std(minute_residual, ddof=1)),
-        'points_per_minute_residual_std': float(np.std(
-            (test['PTS'] / test['MIN'].clip(lower=1)).to_numpy() - details['points_per_minute'],
-            ddof=1
-        )),
-    }
+    baseline_minutes = test['MIN_L5'].fillna(test['MIN_SEASON_PRE']).fillna(train['MIN'].median()).to_numpy()
+    baseline_points = test['PTS_L5'].fillna(test['PTS_SEASON_PRE']).fillna(train['PTS'].median()).to_numpy()
+    rate_actual = test['PTS'].to_numpy() / test['MIN'].clip(lower=1).to_numpy()
     score = {
-        'train_rows': int(len(train)),
-        'test_rows': int(len(test)),
+        'train_rows': int(len(train)), 'test_rows': int(len(test)),
         'mae': float(mean_absolute_error(test['PTS'], pred)),
         'rmse': float(np.sqrt(mean_squared_error(test['PTS'], pred))),
+        'direct_points_mae': float(mean_absolute_error(test['PTS'], direct_pred)),
+        'rate_product_mae': float(mean_absolute_error(test['PTS'], rate_pred)),
         'minutes_mae': float(mean_absolute_error(test['MIN'], details['expected_minutes'])),
         'minutes_rmse': float(np.sqrt(mean_squared_error(test['MIN'], details['expected_minutes']))),
+        'minutes_l5_baseline_mae': float(mean_absolute_error(test['MIN'], baseline_minutes)),
+        'points_l5_baseline_mae': float(mean_absolute_error(test['PTS'], baseline_points)),
+        'rate_mae': float(mean_absolute_error(rate_actual, details['points_per_minute'])),
     }
+    pack = {'model': predictor, 'feature_cols': features, 'target': 'PTS', 'market': 'points',
+            'model_version': 'points_v2_role_aware_blend', 'residual_std': float(np.std(residual, ddof=1)),
+            'minutes_residual_std': float(np.std(minute_residual, ddof=1)),
+            'points_per_minute_residual_std': float(np.std(rate_actual - details['points_per_minute'], ddof=1))}
     return pack, score, test
-
 
 def main():
     parser=argparse.ArgumentParser(description='Retrain and validate NBA Edge models.')
