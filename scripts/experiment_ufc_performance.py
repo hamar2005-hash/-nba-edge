@@ -73,13 +73,24 @@ def build_past_performance(results, stats, base_frame):
 
 
 def evaluate(frame, features, train_idx, cal_idx, test_idx):
-    model = Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("scale", StandardScaler()),
-        ("classifier", LogisticRegression(max_iter=2500, class_weight="balanced", C=0.5)),
-    ])
     train, cal, test = frame.loc[train_idx], frame.loc[cal_idx], frame.loc[test_idx]
-    model.fit(train[features], train["target"])
+    candidates, scores = [], []
+    for c_value in (0.10, 0.25, 0.50, 1.0, 2.0):
+        candidate = Pipeline([
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scale", StandardScaler()),
+            ("classifier", LogisticRegression(max_iter=2500, class_weight="balanced", C=c_value)),
+        ])
+        candidate.fit(train[features], train["target"])
+        p = np.clip(candidate.predict_proba(cal[features])[:, 1], 1e-6, 1-1e-6)
+        scores.append({"C": c_value, "brier": float(brier_score_loss(cal["target"], p)),
+                       "log_loss": float(log_loss(cal["target"], p, labels=[0,1]))})
+        candidates.append(candidate)
+    incumbent = next(i for i, row in enumerate(scores) if row["C"] == .50)
+    best = min(range(len(scores)), key=lambda i: (scores[i]["brier"], scores[i]["log_loss"]))
+    selected = best if (scores[best]["brier"] < scores[incumbent]["brier"]
+                        and scores[best]["log_loss"] < scores[incumbent]["log_loss"]) else incumbent
+    model = candidates[selected]
     raw_cal = np.clip(model.predict_proba(cal[features])[:, 1], 1e-6, 1-1e-6)
     logits = np.log(raw_cal / (1-raw_cal)).reshape(-1, 1)
     calibrator = LogisticRegression(C=1e6, max_iter=1000).fit(logits, cal["target"])
@@ -88,6 +99,8 @@ def evaluate(frame, features, train_idx, cal_idx, test_idx):
     probs = calibrator.predict_proba(test_logits)[:, 1]
     pred = (probs >= .5).astype(int)
     return {
+        "selected_c": float(scores[selected]["C"]),
+        "calibration_candidates": scores,
         "accuracy": float(accuracy_score(test["target"], pred)),
         "balanced_accuracy": float(balanced_accuracy_score(test["target"], pred)),
         "brier": float(brier_score_loss(test["target"], probs)),
@@ -118,7 +131,7 @@ def main():
     candidate = evaluate(combined, extra_features, train_idx, cal_idx, test_idx)
     passed = candidate["brier"] < baseline["brier"] and candidate["log_loss"] < baseline["log_loss"]
     report = {
-        "experiment": "past-only rolling performance rates",
+        "experiment": "past-only rolling performance rates with calibration-period C selection",
         "feature_window": "last 10 prior fights per fighter",
         "same_chronological_split": True,
         "same_test_rows": baseline["test_fights"] == candidate["test_fights"],
