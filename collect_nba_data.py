@@ -78,7 +78,7 @@ def normalise_logs(frame: pd.DataFrame) -> pd.DataFrame:
 def download_archive_season(season: str, cache_dir: Path, session: requests.Session) -> pd.DataFrame:
     cache = cache_dir / f"player_logs_{season}.csv"
     if cache.exists():
-        cached = pd.read_csv(cache, low_memory=False)
+        cached = pd.read_csv(cache, low_memory=False, parse_dates=["GAME_DATE"])
         if not cached.empty:
             print(f"Cached {season}: {len(cached):,} player-game rows")
             return cached
