@@ -112,6 +112,7 @@ def main():
             features=points_features
             candidate,score,holdout=fit_points_v2(train,test,features)
             incumbent_mae=None
+            incumbent_rmse=None
             if incumbent_path.exists():
                 incumbent=joblib.load(incumbent_path)
                 old_features=incumbent.get('feature_cols',features)
@@ -120,10 +121,13 @@ def main():
                 try:
                     incumbent_pred=incumbent['model'].predict(common[old_features])
                     incumbent_mae=float(mean_absolute_error(common[target],incumbent_pred))
+                    incumbent_rmse=float(np.sqrt(mean_squared_error(common[target],incumbent_pred)))
                 except Exception as exc:
                     print(f'points: incumbent comparison failed: {exc}')
             accept=(not incumbent_path.exists()) or (
-                incumbent_mae is not None and score['mae'] < incumbent_mae
+                incumbent_mae is not None
+                and score['mae'] <= incumbent_mae * 0.99
+                and (incumbent_rmse is None or score['rmse'] <= incumbent_rmse)
             )
             if accept:
                 joblib.dump(candidate,incumbent_path)
@@ -134,13 +138,19 @@ def main():
                 'candidate_holdout_rmse':score['rmse'],
                 'candidate_minutes_mae':score['minutes_mae'],
                 'candidate_minutes_rmse':score['minutes_rmse'],
+                'candidate_direct_points_mae':score['direct_points_mae'],
+                'candidate_rate_product_mae':score['rate_product_mae'],
+                'candidate_minutes_l5_baseline_mae':score['minutes_l5_baseline_mae'],
+                'candidate_points_l5_baseline_mae':score['points_l5_baseline_mae'],
+                'candidate_rate_mae':score['rate_mae'],
+                'promotion_threshold_mae_improvement_pct':1.0,
                 'candidate_accepted':bool(accept),
                 'train_rows':score['train_rows'],
                 'holdout_rows':score['test_rows'],
                 'model_version':candidate['model_version'],
                 'confidence_tier_note':'Heuristic tiers use holdout point/minute residual spread and forecast-vs-recent-minutes deviation; not calibrated probabilities.'
             }
-            print(f"points-v2: incumbent MAE={incumbent_mae}; candidate MAE={score['mae']:.4f}; minutes MAE={score['minutes_mae']:.3f}; accepted={accept}")
+            print(f"points-v2: incumbent MAE={incumbent_mae}; candidate MAE={score['mae']:.4f}; direct MAE={score['direct_points_mae']:.4f}; minutes ML/baseline MAE={score['minutes_mae']:.3f}/{score['minutes_l5_baseline_mae']:.3f}; accepted={accept}")
             continue
 
         features=base
