@@ -164,7 +164,8 @@ def settle_predictions(path, results, fight_stats=None):
             continue
         fight = candidates.iloc[0]
         result = fight["_result"]
-        if result == 3:
+        if result in (3, 4):
+            # Draws and no-contests are void, not wins or losses.
             for col in ("status", "method_status", "over_1_5_status", "over_2_5_status"):
                 if history.at[idx, col] == "Pending":
                     history.at[idx, col] = "Void"
@@ -198,6 +199,8 @@ def settle_predictions(path, results, fight_stats=None):
                     actual_group = ""
                 if actual_group:
                     history.at[idx, "method_status"] = "Correct" if predicted == actual_group else "Incorrect"
+                else:
+                    history.at[idx, "method_status"] = "Unclassified"
 
         bout_day = pd.to_datetime(fight["Date"], dayfirst=True, errors="coerce")
         if pd.notna(bout_day):
@@ -241,6 +244,7 @@ def record_best_prices(path, odds_events):
     for col in ("odds_bookmaker", "over_1_5_bookmaker", "over_2_5_bookmaker"):
         history[col] = history[col].astype("object")
     winner_prices, total_prices = {}, {}
+    now_utc = pd.Timestamp.now(tz="UTC")
     for event in odds_events or []:
         a, b = str(event.get("home_team", "")).strip(), str(event.get("away_team", "")).strip()
         if not a or not b:
@@ -274,6 +278,10 @@ def record_best_prices(path, odds_events):
         winner_prices[pair], total_prices[pair] = winners, totals
     changed = 0
     for idx, row in history.iterrows():
+        # Never backfill a missing quote after the scheduled event has started.
+        event_date = pd.to_datetime(row.get("event_date"), utc=True, errors="coerce")
+        if pd.isna(event_date) or event_date <= now_utc:
+            continue
         pair = frozenset((fighter_key(row.get("fighter1")), fighter_key(row.get("fighter2"))))
         winner = fighter_key(row.get("predicted_winner"))
         old_price = row.get("predicted_odds")
