@@ -67,7 +67,11 @@ models_ready = all(path.exists() for path in model_files) and features_file.exis
 with st.sidebar:
     st.subheader("⚙️ System status")
     if models_ready:
-        st.success("Trained models available")
+        st.success("Core trained models available")
+        if (MODELS / "threes_model.joblib").exists():
+            st.success("Dedicated 3-pointers model available")
+        else:
+            st.info("3-pointers model not trained yet. Run the 3PM training workflow to enable it.")
     else:
         st.error("Model bundle incomplete")
         st.caption("The repository needs the three trained model files and latest_player_features.csv inside NBA_Trained_Models.zip.")
@@ -151,7 +155,7 @@ else:
         a.metric("Games", predictions["game"].nunique())
         b.metric("Players", predictions["player"].nunique())
         c.metric("Player projections", len(predictions))
-        d.metric("Markets", "3")
+        d.metric("Markets", "4" if "threes_projection" in predictions.columns else "3")
 
         games = ["All games"] + sorted(predictions["game"].dropna().unique().tolist())
         selected_game = st.selectbox("Filter by game", games)
@@ -533,6 +537,7 @@ else:
         ("Points", "points_projection", "actual_points", "points_absolute_error"),
         ("Rebounds", "rebounds_projection", "actual_rebounds", "rebounds_absolute_error"),
         ("Assists", "assists_projection", "actual_assists", "assists_absolute_error"),
+        ("Three-pointers made", "threes_projection", "actual_threes", "threes_absolute_error"),
     ]:
         if {projection_col, actual_col, error_col}.issubset(settled.columns):
             valid = settled.dropna(subset=[projection_col, actual_col])
@@ -552,6 +557,7 @@ else:
                 ("Points", "points_absolute_error"),
                 ("Rebounds", "rebounds_absolute_error"),
                 ("Assists", "assists_absolute_error"),
+                ("Three-pointers made", "threes_absolute_error"),
             ]:
                 if error_col in day:
                     values = pd.to_numeric(day[error_col], errors="coerce").dropna()
