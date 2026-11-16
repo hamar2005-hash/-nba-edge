@@ -48,17 +48,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Restore monthly NBA game-log cache
+      - name: Restore season archive cache
         uses: actions/cache@v4
         with:
-          path: data/monthly_cache
-          key: nba-player-logs-v1-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+          path: data/season_cache
+          key: nba-player-logs-hf-v1-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
-            nba-player-logs-v1-${{ runner.os }}-${{ github.ref_name }}-
+            nba-player-logs-hf-v1-${{ runner.os }}-${{ github.ref_name }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install pyarrow>=15
       - name: Restore current production models
         run: |
           python - <<'PY'
@@ -74,8 +75,8 @@ jobs:
           if missing:
               raise SystemExit("Current model bundle is incomplete: " + ", ".join(missing))
           PY
-      - name: Collect latest historical player game logs
-        run: python collect_nba_data.py --start-season 2021-22 --end-season 2026-27 --out data/player_game_logs.csv --sleep 1.5 --retries 2
+      - name: Collect historical player game logs
+        run: python collect_nba_data.py --start-season 2021-22 --end-season 2025-26 --current-season 2026-27 --out data/player_game_logs.csv
       - name: Train and validate candidates
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.market }}" = "points" ]; then
