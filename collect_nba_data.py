@@ -45,6 +45,7 @@ def normalise_logs(frame: pd.DataFrame) -> pd.DataFrame:
             "PLAYER_ID": pd.to_numeric(src["player_id"], errors="coerce"),
             "PLAYER_NAME": src["player_name"].astype(str),
             "TEAM_ABBREVIATION": src["team"].astype(str),
+            "SEASON": src["season"].astype(str),
             "MATCHUP": [
                 f"{team} {'vs.' if bool(home) else '@'} {opp}"
                 for team, opp, home in zip(src["team"], src["opponent"], src["home"])
@@ -167,7 +168,7 @@ def main() -> None:
     # Guard against a partial archive silently producing a misleading backtest.
     archived = data[data.get("DATA_SOURCE", pd.Series(index=data.index, dtype=str)) == "huggingface_archive"]
     expected = end_year - start_year + 1
-    observed_seasons = archived["GAME_DATE"].dt.year.nunique()
+    observed_seasons = archived["SEASON"].nunique() if "SEASON" in archived else 0
     if archived.empty or observed_seasons < expected:
         raise SystemExit(f"Historical archive incomplete: expected {expected} seasons, got {observed_seasons}")
 
