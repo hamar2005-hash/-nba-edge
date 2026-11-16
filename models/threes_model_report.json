@@ -1,0 +1,13 @@
+{
+  "market": "three-pointers made",
+  "model_version": "dedicated_threes_made_v1",
+  "train_rows": 101983,
+  "holdout_rows": 26403,
+  "holdout_start": "2025-10-22",
+  "feature_count": 33,
+  "candidate_mae": 0.8969817617267994,
+  "candidate_rmse": 1.2307116348221747,
+  "last5_or_season_baseline_mae": 0.9283559948995694,
+  "beats_baseline": true,
+  "residual_std": 1.2306506367251906
+}

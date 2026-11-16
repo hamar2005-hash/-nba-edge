@@ -1,0 +1,26 @@
+{
+  "points": {
+    "train_rows": 104528,
+    "test_rows": 26977,
+    "holdout_start": "2025-11-06",
+    "mae": 4.62644081043939,
+    "rmse": 6.002205191309348,
+    "residual_std": 6.002134278538415
+  },
+  "rebounds": {
+    "train_rows": 104528,
+    "test_rows": 26977,
+    "holdout_start": "2025-11-06",
+    "mae": 1.8982871324133253,
+    "rmse": 2.4979942593115445,
+    "residual_std": 2.498039538828438
+  },
+  "assists": {
+    "train_rows": 104528,
+    "test_rows": 26977,
+    "holdout_start": "2025-11-06",
+    "mae": 1.355708303738668,
+    "rmse": 1.8379408973308349,
+    "residual_std": 1.8379746727789543
+  }
+}
