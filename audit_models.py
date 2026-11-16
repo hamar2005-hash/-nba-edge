@@ -105,16 +105,10 @@ def main():
             l5 = scored[l5_col].fillna(scored[season_col]).fillna(fallback).to_numpy()
             season = scored[season_col].fillna(fallback).to_numpy()
             naive_scores = {"last5_or_season": score(y, l5), "season_average": score(y, season)}
-            incumbent_score = None
-            incumbent_path = MODELS / f"{market}_model.joblib"
-            if incumbent_path.exists():
-                try:
-                    incumbent = joblib.load(incumbent_path)
-                    old_features = incumbent.get("feature_cols", features)
-                    inc_pred = incumbent["model"].predict(scored[old_features])
-                    incumbent_score = score(y, inc_pred)
-                except Exception as exc:
-                    incumbent_score = {"error": str(exc)}
+            # Existing bundled models have no recorded training cutoff, so scoring them
+            # on historical folds could leak information from later seasons. We deliberately
+            # omit that comparison until provenance is added to the model bundle.
+            incumbent_score = {"status": "not_scored", "reason": "training cutoff metadata unavailable; historical leakage risk"}
             # Error diagnostics by actual playing-time band and recent role trend.
             minute = scored["MIN"].to_numpy()
             bands = {"under_15": minute < 15, "15_to_24": (minute >= 15) & (minute < 25),
