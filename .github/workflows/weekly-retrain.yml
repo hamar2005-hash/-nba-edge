@@ -68,24 +68,24 @@ jobs:
           PY
       - name: Collect historical player game logs
         run: python collect_nba_data.py --start-season 2021-22 --end-season 2025-26 --current-season 2026-27 --out data/player_game_logs.csv
-      - name: Audit development models or retrain candidates
+      - name: Run paired production-vs-Points-V2 comparison
+        if: github.event_name == 'push'
+        run: python weekly_retrain.py --market points
+      - name: Audit development markets or retrain candidates
+        if: github.event_name != 'push'
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "push" ]; then
-            python audit_models.py
-          elif [ "${{ inputs.market }}" = "points" ]; then
+          if [ "${{ inputs.market }}" = "points" ]; then
             python weekly_retrain.py --market points
           else
             python weekly_retrain.py --market all
           fi
-      - name: Upload Points V2 backtest report
+      - name: Upload paired Points V2 comparison report
         if: always() && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
-          name: multi-market-model-audit
-          path: |
-            models/multi_market_audit.json
-            models/multi_market_audit_errors.csv
-          if-no-files-found: warn
+          name: paired-points-v2-comparison
+          path: models/weekly_retrain_report.json
+          if-no-files-found: error
           retention-days: 14
       - name: Package current accepted models
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
