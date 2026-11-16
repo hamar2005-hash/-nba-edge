@@ -12,7 +12,17 @@ from sklearn.pipeline import Pipeline
 TARGETS = {'points':'PTS', 'rebounds':'REB', 'assists':'AST'}
 STATS = ['PTS','REB','AST','MIN','FGA','FG3A','FTA','TOV','STL','BLK']
 BASE_FEATURES = [f'{s}_L{n}' for s in STATS for n in (5,10)] + [f'{s}_SEASON_PRE' for s in STATS] + ['REST_DAYS','HOME','GAMES_PLAYED_BEFORE']
-POINT_EXTRA = ['PTS_PER_MIN_L5','PTS_PER_MIN_L10','SHOT_ATTEMPTS_L5','SHOT_ATTEMPTS_L10','USAGE_PROXY_L5','USAGE_PROXY_L10','TS_PROXY_L5','TS_PROXY_L10','PTS_STD_L5','PTS_STD_L10','PTS_TREND_5V10']
+# Points-only features. Keep BASE_FEATURES untouched so rebounds and assists do not change.
+POINT_EXTRA = [
+    'PTS_PER_MIN_L5','PTS_PER_MIN_L10','PTS_PER_MIN_SEASON_PRE',
+    'SHOT_ATTEMPTS_L5','SHOT_ATTEMPTS_L10',
+    'USAGE_PROXY_L5','USAGE_PROXY_L10','USAGE_PROXY_SEASON_PRE',
+    'TS_PROXY_L5','TS_PROXY_L10','TS_PROXY_SEASON_PRE',
+    'PTS_STD_L5','PTS_STD_L10','PTS_TREND_5V10',
+    'MIN_LAST','MIN_L3','MIN_STD_L5','MIN_STD_L10',
+    'MIN_TREND_5V10','MIN_SEASON_PRE',
+    'PTS_PER_MIN_L3','PTS_PER_MIN_STD_L5',
+]
 
 def prepare(path):
     df=pd.read_csv(path)
@@ -33,6 +43,12 @@ def prepare(path):
         g=df.groupby('PLAYER_ID',sort=False)[stat]
         for n in (5,10): df[f'{stat}_L{n}']=g.transform(lambda s:s.shift(1).rolling(n,min_periods=2).mean())
         df[f'{stat}_SEASON_PRE']=g.transform(lambda s:s.shift(1).expanding(min_periods=2).mean())
+    df['MIN_LAST']=df.groupby('PLAYER_ID')['MIN'].shift(1)
+    gmin=df.groupby('PLAYER_ID',sort=False)['MIN']
+    df['MIN_L3']=gmin.transform(lambda s:s.shift(1).rolling(3,min_periods=2).mean())
+    for n in (5,10):
+        df[f'MIN_STD_L{n}']=gmin.transform(lambda s:s.shift(1).rolling(n,min_periods=3).std())
+    df['MIN_TREND_5V10']=df['MIN_L5']-df['MIN_L10']
     df['PTS_PER_MIN']=df['PTS']/df['MIN'].replace(0,np.nan)
     df['SHOT_ATTEMPTS']=df['FGA']+0.44*df['FTA']
     df['USAGE_PROXY']=(df['FGA']+0.44*df['FTA']+df['TOV'])/df['MIN'].replace(0,np.nan)
@@ -40,6 +56,10 @@ def prepare(path):
     for stat in ['PTS_PER_MIN','SHOT_ATTEMPTS','USAGE_PROXY','TS_PROXY']:
         g=df.groupby('PLAYER_ID',sort=False)[stat]
         for n in (5,10): df[f'{stat}_L{n}']=g.transform(lambda s:s.shift(1).rolling(n,min_periods=2).mean())
+        df[f'{stat}_SEASON_PRE']=g.transform(lambda s:s.shift(1).expanding(min_periods=2).mean())
+    gppm=df.groupby('PLAYER_ID',sort=False)['PTS_PER_MIN']
+    df['PTS_PER_MIN_L3']=gppm.transform(lambda s:s.shift(1).rolling(3,min_periods=2).mean())
+    df['PTS_PER_MIN_STD_L5']=gppm.transform(lambda s:s.shift(1).rolling(5,min_periods=3).std())
     g=df.groupby('PLAYER_ID',sort=False)['PTS']
     for n in (5,10): df[f'PTS_STD_L{n}']=g.transform(lambda s:s.shift(1).rolling(n,min_periods=3).std())
     df['PTS_TREND_5V10']=df['PTS_L5']-df['PTS_L10']
