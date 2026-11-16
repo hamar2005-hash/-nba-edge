@@ -44,7 +44,10 @@ def fetch_csv(name: str, url: str) -> pd.DataFrame:
     response.raise_for_status()
     path = OUT / f"{name}.csv"
     path.write_bytes(response.content)
-    return pd.read_csv(path, low_memory=False)
+    frame = pd.read_csv(path, low_memory=False)
+    if frame.empty:
+        raise ValueError(f"Source feed '{name}' downloaded successfully but contains no rows")
+    return frame
 
 
 def first_present(columns, candidates):
