@@ -166,6 +166,8 @@ else:
             "team": "Team",
             "opponent": "Opponent",
             "minutes_baseline": "Recent avg minutes",
+            "expected_minutes": "Forecast minutes",
+            "points_confidence": "Points confidence",
             "points_projection": "Projected points",
             "rebounds_projection": "Projected rebounds",
             "assists_projection": "Projected assists",
@@ -175,7 +177,7 @@ else:
             "turnovers_projection": "Projected turnovers",
             "player_status": "Availability",
         })
-        cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
+        cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Forecast minutes", "Points confidence", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
         st.dataframe(display[[c for c in cols if c in display]], width="stretch", hide_index=True)
         st.download_button("Download today's projections", predictions.to_csv(index=False), "nba_edge_daily_projections.csv", "text/csv")
         trend_cols = [c for c in ["pts_last5", "pts_last10", "pts_trend", "reb_last5", "reb_last10", "reb_trend", "ast_last5", "ast_last10", "ast_trend"] if c in predictions.columns]
@@ -189,7 +191,7 @@ else:
                     "ast_last5": "AST L5", "ast_last10": "AST L10", "ast_trend": "AST trend",
                 })
                 st.dataframe(trend_view, width="stretch", hide_index=True)
-        st.caption("Minutes are recent historical averages, not confirmed playing-time forecasts. Availability is based on the roster feed and may not reflect late injury news.")
+        st.caption("Points V2 forecasts playing time separately from scoring rate. Confidence tiers are heuristic indicators based on historical holdout error and the gap between forecast and recent minutes, not calibrated probabilities. Availability is based on the roster feed and may not reflect late injury news.")
 
         st.divider()
         st.subheader("🏀 First basket scorer")
