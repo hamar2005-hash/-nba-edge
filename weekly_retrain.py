@@ -193,8 +193,15 @@ def main():
                 accepted_any=True
             report['markets'][market]={
                 'incumbent_holdout_mae':incumbent_mae,
+                'incumbent_holdout_rmse':incumbent_rmse,
                 'candidate_holdout_mae':score['mae'],
                 'candidate_holdout_rmse':score['rmse'],
+                'holdout_rows':int(score['test_rows']),
+                'same_holdout_for_both_models':bool(incumbent_mae is not None),
+                'mae_improvement_points':(float(incumbent_mae-score['mae']) if incumbent_mae is not None else None),
+                'mae_improvement_pct':(float((incumbent_mae-score['mae'])/incumbent_mae*100) if incumbent_mae not in (None,0) else None),
+                'rmse_improvement_points':(float(incumbent_rmse-score['rmse']) if incumbent_rmse is not None else None),
+                'rmse_improvement_pct':(float((incumbent_rmse-score['rmse'])/incumbent_rmse*100) if incumbent_rmse not in (None,0) else None),
                 'candidate_minutes_mae':score['minutes_mae'],
                 'candidate_minutes_rmse':score['minutes_rmse'],
                 'candidate_direct_points_mae':score['direct_points_mae'],
