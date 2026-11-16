@@ -13,12 +13,23 @@ on:
         options:
           - all
           - points
-
+          - threes
+  push:
+    branches: [points-v2-minutes-model]
+    paths:
+      - "weekly_retrain.py"
+      - "audit_models.py"
+      - "points_v2.py"
+      - "train_threes.py"
+      - "test_threes_integration.py"
+      - "train_models.py"
+      - "collect_nba_data.py"
+      - ".github/workflows/weekly-retrain.yml"
 permissions:
   contents: write
 
 concurrency:
-  group: nba-edge-weekly-retraining
+  group: nba-edge-points-v2-hf-backtest
   cancel-in-progress: false
 
 jobs:
@@ -32,13 +43,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Restore monthly NBA game-log cache
+      - name: Restore season archive cache
         uses: actions/cache@v4
         with:
-          path: data/monthly_cache
-          key: nba-player-logs-v1-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+          path: data/season_cache
+          key: nba-player-logs-hf-v1-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
-            nba-player-logs-v1-${{ runner.os }}-${{ github.ref_name }}-
+            nba-player-logs-hf-v1-${{ runner.os }}-${{ github.ref_name }}-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -58,16 +69,40 @@ jobs:
           if missing:
               raise SystemExit("Current model bundle is incomplete: " + ", ".join(missing))
           PY
-      - name: Collect latest historical player game logs
-        run: python collect_nba_data.py --start-season 2021-22 --end-season 2026-27 --out data/player_game_logs.csv --sleep 1.5 --retries 2
-      - name: Train and validate candidates
+      - name: Collect historical player game logs
+        run: python collect_nba_data.py --start-season 2021-22 --end-season 2025-26 --current-season 2026-27 --out data/player_game_logs.csv
+      - name: Run paired production-vs-Points-V2 comparison
+        if: github.event_name == 'push'
+        run: python weekly_retrain.py --market points
+      - name: Train three-pointers-made candidate
+        if: github.event_name == 'push'
+        run: python train_threes.py
+      - name: Smoke-test daily prediction, app and settlement integration
+        if: github.event_name == 'push'
+        run: python test_threes_integration.py
+      - name: Train the dedicated three-pointers-made model
+        if: github.event_name == 'workflow_dispatch' && inputs.market == 'threes'
+        run: python train_threes.py
+      - name: Audit development markets or retrain candidates
+        if: github.event_name != 'push' && !(github.event_name == 'workflow_dispatch' && inputs.market == 'threes')
         run: |
           if [ "${{ inputs.market }}" = "points" ]; then
             python weekly_retrain.py --market points
           else
             python weekly_retrain.py --market all
           fi
+      - name: Upload paired Points V2 comparison report
+        if: always() && github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: paired-points-v2-comparison
+          path: |
+            models/weekly_retrain_report.json
+            models/threes_model_report.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Package current accepted models
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -85,6 +120,7 @@ jobs:
                   archive.write(path, path)
           PY
       - name: Commit updated data, models and report
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

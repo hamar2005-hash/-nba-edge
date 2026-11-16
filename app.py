@@ -54,7 +54,7 @@ hr { border-color: var(--edge-line); }
 # or if a previous extraction left only part of the required files behind.
 model_files = [MODELS / f"{market}_model.joblib" for market in ("points", "rebounds", "assists")]
 required_bundle_files = model_files + [MODELS / "latest_player_features.csv"]
-if BUNDLE.exists() and not all(path.exists() for path in required_bundle_files):
+if BUNDLE.exists() and (not all(path.exists() for path in required_bundle_files) or not (MODELS / "threes_model.joblib").exists()):
     try:
         with zipfile.ZipFile(BUNDLE) as archive:
             archive.extractall(ROOT)
@@ -67,7 +67,11 @@ models_ready = all(path.exists() for path in model_files) and features_file.exis
 with st.sidebar:
     st.subheader("⚙️ System status")
     if models_ready:
-        st.success("Trained models available")
+        st.success("Core trained models available")
+        if (MODELS / "threes_model.joblib").exists():
+            st.success("Dedicated 3-pointers model available")
+        else:
+            st.info("3-pointers model not trained yet. Run the 3PM training workflow to enable it.")
     else:
         st.error("Model bundle incomplete")
         st.caption("The repository needs the three trained model files and latest_player_features.csv inside NBA_Trained_Models.zip.")
@@ -151,7 +155,7 @@ else:
         a.metric("Games", predictions["game"].nunique())
         b.metric("Players", predictions["player"].nunique())
         c.metric("Player projections", len(predictions))
-        d.metric("Markets", "3")
+        d.metric("Markets", "4" if "threes_projection" in predictions.columns else "3")
 
         games = ["All games"] + sorted(predictions["game"].dropna().unique().tolist())
         selected_game = st.selectbox("Filter by game", games)
@@ -166,6 +170,8 @@ else:
             "team": "Team",
             "opponent": "Opponent",
             "minutes_baseline": "Recent avg minutes",
+            "expected_minutes": "Forecast minutes",
+            "points_confidence": "Points confidence",
             "points_projection": "Projected points",
             "rebounds_projection": "Projected rebounds",
             "assists_projection": "Projected assists",
@@ -175,7 +181,7 @@ else:
             "turnovers_projection": "Projected turnovers",
             "player_status": "Availability",
         })
-        cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
+        cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Forecast minutes", "Points confidence", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
         st.dataframe(display[[c for c in cols if c in display]], width="stretch", hide_index=True)
         st.download_button("Download today's projections", predictions.to_csv(index=False), "nba_edge_daily_projections.csv", "text/csv")
         trend_cols = [c for c in ["pts_last5", "pts_last10", "pts_trend", "reb_last5", "reb_last10", "reb_trend", "ast_last5", "ast_last10", "ast_trend"] if c in predictions.columns]
@@ -189,7 +195,7 @@ else:
                     "ast_last5": "AST L5", "ast_last10": "AST L10", "ast_trend": "AST trend",
                 })
                 st.dataframe(trend_view, width="stretch", hide_index=True)
-        st.caption("Minutes are recent historical averages, not confirmed playing-time forecasts. Availability is based on the roster feed and may not reflect late injury news.")
+        st.caption("Points V2 forecasts playing time separately from scoring rate. Confidence tiers are heuristic indicators based on historical holdout error and the gap between forecast and recent minutes, not calibrated probabilities. Availability is based on the roster feed and may not reflect late injury news.")
 
         st.divider()
         st.subheader("🏀 First basket scorer")
@@ -531,6 +537,7 @@ else:
         ("Points", "points_projection", "actual_points", "points_absolute_error"),
         ("Rebounds", "rebounds_projection", "actual_rebounds", "rebounds_absolute_error"),
         ("Assists", "assists_projection", "actual_assists", "assists_absolute_error"),
+        ("Three-pointers made", "threes_projection", "actual_threes", "threes_absolute_error"),
     ]:
         if {projection_col, actual_col, error_col}.issubset(settled.columns):
             valid = settled.dropna(subset=[projection_col, actual_col])
@@ -550,6 +557,7 @@ else:
                 ("Points", "points_absolute_error"),
                 ("Rebounds", "rebounds_absolute_error"),
                 ("Assists", "assists_absolute_error"),
+                ("Three-pointers made", "threes_absolute_error"),
             ]:
                 if error_col in day:
                     values = pd.to_numeric(day[error_col], errors="coerce").dropna()

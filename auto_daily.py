@@ -10,6 +10,7 @@ import argparse, json, re, sys
 import joblib
 import pandas as pd
 import requests
+from points_v2 import PointsV2Predictor  # Ensure the saved Points V2 class is importable before joblib loads it.
 
 ROOT = Path(__file__).resolve().parent
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
@@ -139,7 +140,29 @@ def main():
                         else:
                             value = base.get(column, 0)
                         xrow[column] = value
-                    projection = float(pack["model"].predict(pd.DataFrame([xrow], columns=pack["feature_cols"]))[0])
+                    xframe = pd.DataFrame([xrow], columns=pack["feature_cols"])
+                    if market == "points" and hasattr(pack["model"], "predict_with_details"):
+                        details = pack["model"].predict_with_details(xframe)
+                        projection = float(details["points"][0])
+                        expected_minutes = float(details["expected_minutes"][0])
+                        recent_minutes = pd.to_numeric(
+                            pd.Series([base.get("MIN_L5", base.get("MIN_L10", 0))]),
+                            errors="coerce"
+                        ).iloc[0]
+                        recent_minutes = float(recent_minutes) if pd.notna(recent_minutes) else 0.0
+                        point_spread = float(pack.get("residual_std", 99.0))
+                        minute_spread = float(pack.get("minutes_residual_std", 99.0))
+                        deviation = abs(expected_minutes - recent_minutes)
+                        if point_spread <= 4.5 and minute_spread <= 4.0 and deviation <= 3.0:
+                            confidence = "High"
+                        elif point_spread <= 5.5 and minute_spread <= 6.0 and deviation <= 6.0:
+                            confidence = "Medium"
+                        else:
+                            confidence = "Low"
+                        record["expected_minutes"] = round(expected_minutes, 1)
+                        record["points_confidence"] = confidence
+                    else:
+                        projection = float(pack["model"].predict(xframe)[0])
                     record[f"{market}_projection"] = round(max(0.0, projection), 1)
                 record["minutes_baseline"] = round(float(base.get("MIN_L5", base.get("MIN_L10", 0)) or 0), 1)
                 record["player_status"] = status_text or "Not supplied"
