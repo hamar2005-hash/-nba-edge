@@ -10,6 +10,7 @@ import argparse, json, re, sys
 import joblib
 import pandas as pd
 import requests
+from points_v2 import PointsV2Predictor  # Ensure the saved Points V2 class is importable before joblib loads it.
 
 ROOT = Path(__file__).resolve().parent
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
