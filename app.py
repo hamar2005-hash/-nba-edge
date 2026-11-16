@@ -644,7 +644,8 @@ else:
         _mw=int((_subset["Actual result"]=="Win").sum())
         _ml=int((_subset["Actual result"]=="Loss").sum())
         _mp=int((_subset["Actual result"]=="Push").sum())
-        _benchmark=float(_subset["Actual result"].map({"Win":0.91,"Loss":-1.0,"Push":0.0}).sum())
+        # Count-based calculation avoids dtype/coercion failures in older persisted pick-history CSVs.
+        _benchmark=(_mw * 0.91) - _ml
         _market_rows.append({"Market":_market_name,"Record":f"{_mw}-{_ml}-{_mp}","1.91 P/L":f"{_benchmark:+.2f}u"})
     st.markdown("**Performance by market**")
     st.dataframe(pd.DataFrame(_market_rows),hide_index=True,width="stretch")
