@@ -183,6 +183,42 @@ else:
         })
         cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Forecast minutes", "Points confidence", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
         st.dataframe(display[[c for c in cols if c in display]], width="stretch", hide_index=True)
+
+        # Keep the dedicated three-pointers model visible in its own focused table.
+        st.divider()
+        st.subheader("Three-pointers made projections")
+        st.caption("Separate view for the dedicated 3PM model. Projections are expected made threes, not over/under recommendations.")
+        if "threes_projection" in view.columns:
+            threes_cols = [
+                c for c in [
+                    "game", "player", "team", "opponent", "player_status",
+                    "minutes_baseline", "expected_minutes", "threes_projection",
+                ] if c in view.columns
+            ]
+            threes_view = view[threes_cols].copy().rename(columns={
+                "game": "Matchup",
+                "player": "Player",
+                "team": "Team",
+                "opponent": "Opponent",
+                "player_status": "Availability",
+                "minutes_baseline": "Recent avg minutes",
+                "expected_minutes": "Forecast minutes",
+                "threes_projection": "Projected made threes",
+            })
+            threes_view["Projected made threes"] = pd.to_numeric(
+                threes_view["Projected made threes"], errors="coerce"
+            ).round(1)
+            threes_view = threes_view.sort_values("Projected made threes", ascending=False, na_position="last")
+            st.dataframe(threes_view, width="stretch", hide_index=True)
+            st.download_button(
+                "Download 3-point projections",
+                threes_view.to_csv(index=False),
+                "nba_edge_three_point_projections.csv",
+                "text/csv",
+            )
+        else:
+            st.warning("The dedicated 3PM model is not present in today's prediction file. Refresh today's projections after the updated model bundle is available.")
+
         st.download_button("Download today's projections", predictions.to_csv(index=False), "nba_edge_daily_projections.csv", "text/csv")
         trend_cols = [c for c in ["pts_last5", "pts_last10", "pts_trend", "reb_last5", "reb_last10", "reb_trend", "ast_last5", "ast_last10", "ast_trend"] if c in predictions.columns]
         if trend_cols:
