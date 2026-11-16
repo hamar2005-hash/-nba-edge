@@ -24,7 +24,7 @@ def audit_results(results):
     missing = sorted(required - set(results.columns))
     if missing:
         return {"missing_columns": missing}
-    dates = pd.to_datetime(results["Date"], dayfirst=True, errors="coerce")
+    dates = pd.to_datetime(results["Date"], format="mixed", dayfirst=True, errors="coerce")
     outcomes = pd.to_numeric(results["Result"], errors="coerce")
     a = results["Fighter 1"].fillna("").astype(str).str.strip().map(_fighter_key)
     b = results["Fighter 2"].fillna("").astype(str).str.strip().map(_fighter_key)
@@ -85,7 +85,7 @@ def build_chronological_rows(results):
     if not required.issubset(results.columns):
         raise ValueError(f"Results data missing columns: {sorted(required - set(results.columns))}")
     df = results.copy()
-    df["date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
+    df["date"] = pd.to_datetime(df["Date"], format="mixed", dayfirst=True, errors="coerce")
     df["result"] = pd.to_numeric(df["Result"], errors="coerce")
     df["fighter1"] = df["Fighter 1"].astype(str).str.strip()
     df["fighter2"] = df["Fighter 2"].astype(str).str.strip()
@@ -455,7 +455,7 @@ def _aux_duration_lookup(results, fight_stats):
     if fight_stats is None or not required.issubset(fight_stats.columns):
         return {}
     stats = fight_stats.copy()
-    stats["_date"] = pd.to_datetime(stats["Date"], dayfirst=True, errors="coerce").dt.normalize()
+    stats["_date"] = pd.to_datetime(stats["Date"], format="mixed", dayfirst=True, errors="coerce").dt.normalize()
     stats["_fighter"] = stats["Name"].map(_fighter_key)
     stats["_seconds"] = pd.to_numeric(stats["Time"], errors="coerce")
     numeric_columns = (
@@ -613,6 +613,37 @@ def _fit_aux_method(frame):
     best = min(range(len(scores)), key=lambda i: scores[i]["calibration_log_loss"])
     selected = best if scores[best]["calibration_log_loss"] < scores[incumbent]["calibration_log_loss"] else incumbent
     model = candidates[selected]
+    # Calibrate each class one-vs-rest on the later calibration window, then
+    # renormalize. The untouched test window remains evaluation-only.
+    cal_raw = np.clip(model.predict_proba(calibration[AUX_METHOD_FEATURES]), 1e-6, 1 - 1e-6)
+    class_calibrators = []
+    for class_index, label in enumerate(model.classes_):
+        logits = np.log(cal_raw[:, class_index] / (1 - cal_raw[:, class_index])).reshape(-1, 1)
+        binary_target = (calibration["method_target"].to_numpy() == label).astype(int)
+        if np.unique(binary_target).size == 2:
+            calibrator = LogisticRegression(C=1e6, max_iter=1000).fit(logits, binary_target)
+            class_calibrators.append(calibrator)
+        else:
+            class_calibrators.append(None)
+
+    class CalibratedMethodModel:
+        def __init__(self, estimator, calibrators):
+            self.estimator, self.calibrators = estimator, calibrators
+            self.classes_ = estimator.classes_
+        def predict_proba(self, X):
+            raw = np.clip(self.estimator.predict_proba(X), 1e-6, 1 - 1e-6)
+            calibrated = []
+            for i, calibrator in enumerate(self.calibrators):
+                if calibrator is None:
+                    calibrated.append(raw[:, i])
+                else:
+                    logits = np.log(raw[:, i] / (1 - raw[:, i])).reshape(-1, 1)
+                    calibrated.append(calibrator.predict_proba(logits)[:, 1])
+            matrix = np.column_stack(calibrated)
+            return matrix / np.clip(matrix.sum(axis=1, keepdims=True), 1e-9, None)
+        def predict(self, X):
+            return self.classes_[np.argmax(self.predict_proba(X), axis=1)]
+    model = CalibratedMethodModel(model, class_calibrators)
     probabilities = model.predict_proba(test[AUX_METHOD_FEATURES])
     predictions = model.predict(test[AUX_METHOD_FEATURES])
     baseline = DummyClassifier(strategy="prior").fit(train[AUX_METHOD_FEATURES], train["method_target"])
@@ -626,6 +657,7 @@ def _fit_aux_method(frame):
         "available": True, "passed": bool(ll < baseline_ll and bal_acc > base_bal_acc),
         "accuracy": float(accuracy_score(test["method_target"], predictions)),
         "balanced_accuracy": bal_acc, "log_loss": ll,
+        "brier": float(np.mean(np.sum((probabilities - np.eye(len(model.classes_))[np.array([list(model.classes_).index(x) for x in test["method_target"]])]) ** 2, axis=1))),
         "baseline_balanced_accuracy": base_bal_acc, "baseline_log_loss": baseline_ll,
         "test_fights": int(len(test)), "selected_c": float(scores[selected]["C"]),
         "candidate_comparison": scores,
@@ -660,6 +692,18 @@ def _fit_aux_round(frame, line, seconds):
     )
     selected = best if improved else incumbent
     model = candidates[selected]
+    cal_raw = np.clip(model.predict_proba(calibration[AUX_METHOD_FEATURES])[:, 1], 1e-6, 1 - 1e-6)
+    cal_logits = np.log(cal_raw / (1 - cal_raw)).reshape(-1, 1)
+    calibrator = LogisticRegression(C=1e6, max_iter=1000).fit(cal_logits, calibration["target"])
+    class CalibratedRoundModel:
+        def __init__(self, estimator, probability_calibrator):
+            self.estimator, self.probability_calibrator = estimator, probability_calibrator
+        def predict_proba(self, X):
+            raw = np.clip(self.estimator.predict_proba(X)[:, 1], 1e-6, 1 - 1e-6)
+            logits = np.log(raw / (1 - raw)).reshape(-1, 1)
+            over = self.probability_calibrator.predict_proba(logits)[:, 1]
+            return np.column_stack([1 - over, over])
+    model = CalibratedRoundModel(model, calibrator)
     probs = model.predict_proba(test[AUX_METHOD_FEATURES])[:, 1]
     pred = (probs >= .5).astype(int)
     baseline = DummyClassifier(strategy="prior").fit(train[AUX_METHOD_FEATURES], train["target"])

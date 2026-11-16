@@ -8,7 +8,10 @@ HISTORY_COLUMNS = [
     "event_id", "event_name", "event_date", "bout", "fighter1", "fighter2",
     "predicted_winner", "confidence", "predicted_method",
     "predicted_over_1_5", "predicted_over_2_5",
-    "predicted_odds", "odds_bookmaker", "predicted_at",
+    "predicted_odds", "odds_bookmaker",
+    "predicted_over_1_5_side", "over_1_5_odds", "over_1_5_bookmaker", "over_1_5_profit",
+    "predicted_over_2_5_side", "over_2_5_odds", "over_2_5_bookmaker", "over_2_5_profit",
+    "predicted_at",
     "actual_winner", "actual_method", "actual_duration_seconds",
     "status", "method_status", "over_1_5_status", "over_2_5_status",
 ]
@@ -76,6 +79,8 @@ def record_predictions(path, event, predictions, auxiliary_predictions=None, now
             "predicted_method": str(aux.get("Most likely method", "")),
             "predicted_over_1_5": _probability(aux, "Over 1.5 %"),
             "predicted_over_2_5": _probability(aux, "Over 2.5 %"),
+            "predicted_over_1_5_side": ("Over" if _probability(aux, "Over 1.5 %") is not None and _probability(aux, "Over 1.5 %") >= 50 else "Under") if _probability(aux, "Over 1.5 %") is not None else "",
+            "predicted_over_2_5_side": ("Over" if _probability(aux, "Over 2.5 %") is not None and _probability(aux, "Over 2.5 %") >= 50 else "Under") if _probability(aux, "Over 2.5 %") is not None else "",
             "predicted_at": now_utc.isoformat(), "actual_winner": "",
             "actual_method": "", "actual_duration_seconds": pd.NA,
             "status": "Pending", "method_status": "Pending" if aux.get("Most likely method") else "Not tracked",
@@ -96,7 +101,7 @@ def _duration_lookup(fight_stats):
     if fight_stats is None or not required.issubset(fight_stats.columns):
         return {}
     stats = fight_stats.copy()
-    stats["_date"] = pd.to_datetime(stats["Date"], dayfirst=True, errors="coerce").dt.normalize()
+    stats["_date"] = pd.to_datetime(stats["Date"], format="mixed", dayfirst=True, errors="coerce").dt.normalize()
     stats["_fighter"] = stats["Name"].map(fighter_key)
     stats["_seconds"] = pd.to_numeric(stats["Time"], errors="coerce")
     stats = stats[stats["_date"].notna() & stats["_fighter"].ne("") & stats["_seconds"].between(1, 1500)]
@@ -113,7 +118,14 @@ def settle_predictions(path, results, fight_stats=None):
     path = Path(path)
     if not path.exists() or results is None or results.empty:
         return 0
-    history = pd.read_csv(path)
+    history = pd.read_csv(path, dtype={
+        "event_id": "string", "event_name": "string", "bout": "string",
+        "fighter1": "string", "fighter2": "string", "predicted_winner": "string",
+        "predicted_method": "string", "actual_winner": "string",
+        "actual_method": "string", "status": "string", "method_status": "string",
+        "over_1_5_status": "string", "over_2_5_status": "string",
+        "odds_bookmaker": "string",
+    })
     for column in HISTORY_COLUMNS:
         if column not in history.columns:
             history[column] = pd.NA
@@ -122,7 +134,7 @@ def settle_predictions(path, results, fight_stats=None):
         return 0
 
     actual = results.copy()
-    actual["_date"] = pd.to_datetime(actual["Date"], dayfirst=True, errors="coerce")
+    actual["_date"] = pd.to_datetime(actual["Date"], format="mixed", dayfirst=True, errors="coerce")
     actual["_a"] = actual["Fighter 1"].map(fighter_key)
     actual["_b"] = actual["Fighter 2"].map(fighter_key)
     actual["_result"] = pd.to_numeric(actual["Result"], errors="coerce")
@@ -152,7 +164,8 @@ def settle_predictions(path, results, fight_stats=None):
             continue
         fight = candidates.iloc[0]
         result = fight["_result"]
-        if result == 3:
+        if result in (3, 4):
+            # Draws and no-contests are void, not wins or losses.
             for col in ("status", "method_status", "over_1_5_status", "over_2_5_status"):
                 if history.at[idx, col] == "Pending":
                     history.at[idx, col] = "Void"
@@ -186,6 +199,8 @@ def settle_predictions(path, results, fight_stats=None):
                     actual_group = ""
                 if actual_group:
                     history.at[idx, "method_status"] = "Correct" if predicted == actual_group else "Incorrect"
+                else:
+                    history.at[idx, "method_status"] = "Unclassified"
 
         bout_day = pd.to_datetime(fight["Date"], dayfirst=True, errors="coerce")
         if pd.notna(bout_day):
@@ -202,7 +217,12 @@ def settle_predictions(path, results, fight_stats=None):
                         if pd.notna(predicted_over):
                             actual_over = duration > threshold
                             predicted_side = float(predicted_over) >= 50
-                            history.at[idx, column] = "Correct" if predicted_side == actual_over else "Incorrect"
+                            settled = "Correct" if predicted_side == actual_over else "Incorrect"
+                            history.at[idx, column] = settled
+                            prefix = column.replace("_status", "")
+                            history.at[idx, prefix + "_profit"] = one_unit_profit(
+                                settled, prediction.get(prefix + "_odds")
+                            )
         changed += 1
 
     if changed:
@@ -211,46 +231,88 @@ def settle_predictions(path, results, fight_stats=None):
 
 
 def record_best_prices(path, odds_events):
-    """Snapshot best available UK decimal price for each already-logged winner pick."""
+    """Snapshot best available UK decimal prices for logged winner and totals picks."""
     path = Path(path)
     if not path.exists():
         return 0
     history = pd.read_csv(path)
     if history.empty:
         return 0
-    for col in ("predicted_odds", "odds_bookmaker"):
+    for col in HISTORY_COLUMNS:
         if col not in history.columns:
             history[col] = pd.NA
-    prices = {}
+    for col in ("odds_bookmaker", "over_1_5_bookmaker", "over_2_5_bookmaker"):
+        history[col] = history[col].astype("object")
+    winner_prices, total_prices = {}, {}
+    now_utc = pd.Timestamp.now(tz="UTC")
     for event in odds_events or []:
         a, b = str(event.get("home_team", "")).strip(), str(event.get("away_team", "")).strip()
         if not a or not b:
             continue
         pair = frozenset((fighter_key(a), fighter_key(b)))
-        best = {}
+        winners, totals = {}, {}
         for book in event.get("bookmakers", []):
+            title = book.get("title", book.get("key", "UK bookmaker"))
             for market in book.get("markets", []):
-                if market.get("key") != "h2h":
-                    continue
-                for outcome in market.get("outcomes", []):
-                    name = fighter_key(outcome.get("name", ""))
-                    try:
-                        price = float(outcome.get("price", 0))
-                    except (TypeError, ValueError):
-                        continue
-                    if price > best.get(name, (0, ""))[0]:
-                        best[name] = (price, book.get("title", book.get("key", "UK bookmaker")))
-        prices[pair] = best
+                if market.get("key") == "h2h":
+                    for outcome in market.get("outcomes", []):
+                        name = fighter_key(outcome.get("name", ""))
+                        try:
+                            price = float(outcome.get("price", 0))
+                        except (TypeError, ValueError):
+                            continue
+                        if price > winners.get(name, (0, ""))[0]:
+                            winners[name] = (price, title)
+                elif market.get("key") == "totals":
+                    for outcome in market.get("outcomes", []):
+                        try:
+                            price, point = float(outcome.get("price", 0)), float(outcome.get("point"))
+                        except (TypeError, ValueError):
+                            continue
+                        side = str(outcome.get("name", "")).strip().title()
+                        if side not in ("Over", "Under") or price <= 1:
+                            continue
+                        slot = (str(point), side)
+                        if price > totals.get(slot, (0, ""))[0]:
+                            totals[slot] = (price, title)
+        winner_prices[pair], total_prices[pair] = winners, totals
     changed = 0
     for idx, row in history.iterrows():
-        if pd.notna(row.get("predicted_odds")) and str(row.get("predicted_odds")).strip():
+        # Never backfill a missing quote after the scheduled event has started.
+        event_date = pd.to_datetime(row.get("event_date"), utc=True, errors="coerce")
+        if pd.isna(event_date) or event_date <= now_utc:
             continue
         pair = frozenset((fighter_key(row.get("fighter1")), fighter_key(row.get("fighter2"))))
-        quote = prices.get(pair, {}).get(fighter_key(row.get("predicted_winner")))
-        if quote:
-            history.at[idx, "predicted_odds"] = quote[0]
-            history.at[idx, "odds_bookmaker"] = quote[1]
-            changed += 1
+        winner = fighter_key(row.get("predicted_winner"))
+        old_price = row.get("predicted_odds")
+        if pd.isna(old_price) or not str(old_price).strip():
+            quote = winner_prices.get(pair, {}).get(winner)
+            if quote:
+                history.at[idx, "predicted_odds"], history.at[idx, "odds_bookmaker"] = quote
+                changed += 1
+        for line, prefix in (("1.5", "over_1_5"), ("2.5", "over_2_5")):
+            side = str(row.get("predicted_" + prefix + "_side", "")).strip()
+            if side not in ("Over", "Under"):
+                continue
+            current = row.get(prefix + "_odds")
+            if pd.notna(current) and str(current).strip():
+                continue
+            quote = total_prices.get(pair, {}).get((line, side))
+            if quote:
+                history.at[idx, prefix + "_odds"] = quote[0]
+                history.at[idx, prefix + "_bookmaker"] = quote[1]
+                changed += 1
     if changed:
-        history.to_csv(path, index=False)
+        history[HISTORY_COLUMNS].to_csv(path, index=False)
     return changed
+
+
+def one_unit_profit(status, odds):
+    """Return net profit for a settled one-unit selection at captured decimal odds."""
+    try:
+        price = float(odds)
+    except (TypeError, ValueError):
+        return None
+    if price <= 1 or status not in ("Correct", "Incorrect"):
+        return None
+    return round(price - 1, 4) if status == "Correct" else -1.0

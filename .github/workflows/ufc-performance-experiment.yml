@@ -1,0 +1,23 @@
+name: UFC performance feature experiment
+on:
+  workflow_dispatch:
+  push:
+    branches: [ufc-data-audit-improvements]
+    paths:
+      - 'scripts/experiment_ufc_performance.py'
+      - 'ufc_model.py'
+      - '.github/workflows/ufc-performance-experiment.yml'
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pandas numpy scikit-learn requests
+      - run: python scripts/experiment_ufc_performance.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ufc-performance-feature-experiment
+          path: artifacts/ufc_performance_experiment.json

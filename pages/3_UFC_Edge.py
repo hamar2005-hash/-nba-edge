@@ -250,7 +250,7 @@ st.divider()
 def load_uk_ufc_odds(api_key):
     endpoint = "https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds/"
     response = requests.get(endpoint, params={
-        "apiKey": api_key, "regions": "uk", "markets": "h2h",
+        "apiKey": api_key, "regions": "uk", "markets": "h2h,totals",
         "oddsFormat": "decimal",
     }, timeout=25)
     response.raise_for_status()
@@ -271,7 +271,7 @@ elif not upcoming_cards or not upcoming_cards[0].get("bouts") or not st.session_
     st.info("Best bets will appear when the next card has published bouts and the winner model is trained.")
 else:
     _metrics = st.session_state.get("ufc_metrics", {})
-    _beats_benchmarks = (
+    _winner_model_passed = (
         _metrics
         and _metrics.get("brier") is not None
         and _metrics.get("log_loss") is not None
@@ -282,8 +282,11 @@ else:
         and _metrics["brier"] < min(_metrics["elo_brier"], _metrics["baseline_brier"])
         and _metrics["log_loss"] < min(_metrics["elo_log_loss"], _metrics["baseline_log_loss"])
     )
+    _round_gate_metrics = st.session_state.get("ufc_aux_metrics", {}).get("rounds", {})
+    _round_model_passed = any(_round_gate_metrics.get(line, {}).get("passed") for line in ("1.5", "2.5"))
+    _beats_benchmarks = bool(_winner_model_passed or _round_model_passed)
     if not _beats_benchmarks:
-        st.warning("Best bets are paused: the calibrated model must beat both the Elo-only and training-prior benchmarks on the untouched test set for Brier score and log loss before its prices are treated as betting signals.")
+        st.warning("Best bets are paused because neither the winner nor round-duration model has passed its required untouched-test benchmarks.")
     else:
         try:
             with st.spinner("Comparing the upcoming card with current UK bookmaker prices…"):
@@ -318,7 +321,7 @@ else:
                     continue
                 _pair_key = tuple(sorted((_fighter_key(_home), _fighter_key(_away))))
                 _model_row = _prediction_lookup.get(_pair_key)
-                if _model_row is None:
+                if not _winner_model_passed or _model_row is None:
                     continue
 
                 # Avoid betting recommendations where either fighter has no historical profile.
@@ -394,6 +397,7 @@ else:
                     # Require a meaningful edge as well as positive expected value at the best price.
                     if _edge >= 0.05 and _ev > 0:
                         _value_rows.append({
+                            "Market": "Moneyline",
                             "Fight": f"{_home} vs {_away}",
                             "Pick": _fighter,
                             "Model win %": round(_model_probability * 100, 1),
@@ -404,6 +408,99 @@ else:
                             "Expected value / £1": round(_ev, 3),
                         })
 
+            if not _winner_model_passed:
+                st.info("Moneyline bets are paused because the winner model has not beaten both required benchmarks. Independently validated round totals can still qualify below.")
+
+            # Round totals: compare calibrated Over/Under probabilities with matching UK totals lines.
+            _round_metrics = st.session_state.get("ufc_aux_metrics", {}).get("rounds", {})
+            _aux_ready = bool(st.session_state.get("ufc_aux_trained"))
+            if _aux_ready:
+                from ufc_model import predict_auxiliary_matchups
+                _aux_card_predictions = predict_auxiliary_matchups(
+                    st.session_state["ufc_aux_models"],
+                    st.session_state["ufc_aux_snapshot"],
+                    _card["bouts"],
+                )
+                _aux_lookup = {}
+                for _, _aux_row in _aux_card_predictions.iterrows():
+                    _parts = str(_aux_row.get("Bout", "")).split(" vs ", 1)
+                    if len(_parts) == 2:
+                        _aux_pair = tuple(sorted((_fighter_key(_parts[0]), _fighter_key(_parts[1]))))
+                        _aux_lookup[_aux_pair] = _aux_row
+
+                for _event in _odds_events:
+                    _home = str(_event.get("home_team", "")).strip()
+                    _away = str(_event.get("away_team", "")).strip()
+                    if not _home or not _away:
+                        continue
+                    _pair_key = tuple(sorted((_fighter_key(_home), _fighter_key(_away))))
+                    _aux_row = _aux_lookup.get(_pair_key)
+                    if _aux_row is None:
+                        continue
+                    for _line in ("1.5", "2.5"):
+                        _line_metrics = _round_metrics.get(_line, {})
+                        _model_col = f"Over {_line} %"
+                        if not _line_metrics.get("passed") or _model_col not in _aux_row.index:
+                            continue
+                        _model_over = float(_aux_row[_model_col]) / 100.0
+                        _best_total_prices, _total_books, _total_book_probs = {}, {}, []
+                        for _book in _event.get("bookmakers", []):
+                            _over_price = _under_price = None
+                            for _market in _book.get("markets", []):
+                                if _market.get("key") != "totals":
+                                    continue
+                                for _outcome in _market.get("outcomes", []):
+                                    try:
+                                        _price = float(_outcome.get("price", 0))
+                                        _points = float(_outcome.get("point"))
+                                    except (TypeError, ValueError):
+                                        continue
+                                    if abs(_points - float(_line)) > 0.001 or _price <= 1:
+                                        continue
+                                    _name = str(_outcome.get("name", "")).casefold()
+                                    if _name == "over":
+                                        _over_price = _price
+                                    elif _name == "under":
+                                        _under_price = _price
+                            if not _over_price or not _under_price:
+                                continue
+                            _over_imp, _under_imp = 1 / _over_price, 1 / _under_price
+                            _total_sum = _over_imp + _under_imp
+                            if _total_sum <= 0:
+                                continue
+                            _total_book_probs.append((_over_imp / _total_sum, _under_imp / _total_sum))
+                            _book_title = _book.get("title", _book.get("key", "UK bookmaker"))
+                            for _side, _price in (("Over", _over_price), ("Under", _under_price)):
+                                _side_key = (_line, _side)
+                                if _price > _best_total_prices.get(_side_key, 0):
+                                    _best_total_prices[_side_key] = _price
+                                    _total_books[_side_key] = _book_title
+                        if not _total_book_probs:
+                            continue
+                        _market_over = sum(x[0] for x in _total_book_probs) / len(_total_book_probs)
+                        for _side, _probability, _market_probability in (
+                            ("Over", _model_over, _market_over),
+                            ("Under", 1 - _model_over, 1 - _market_over),
+                        ):
+                            _side_key = (_line, _side)
+                            _price = _best_total_prices.get(_side_key)
+                            if not _price:
+                                continue
+                            _edge = _probability - _market_probability
+                            _ev = (_probability * (_price - 1)) - (1 - _probability)
+                            if _edge >= 0.05 and _ev > 0:
+                                _value_rows.append({
+                                    "Market": f"Total rounds {_line}",
+                                    "Fight": f"{_home} vs {_away}",
+                                    "Pick": f"{_side} {_line}",
+                                    "Model win %": round(_probability * 100, 1),
+                                    "Market win %": round(_market_probability * 100, 1),
+                                    "Edge": round(_edge * 100, 1),
+                                    "Best odds": round(_price, 2),
+                                    "Bookmaker": _total_books[_side_key],
+                                    "Expected value / £1": round(_ev, 3),
+                                })
+
             if _value_rows:
                 _best_bets = (
                     pd.DataFrame(_value_rows)
@@ -412,7 +509,7 @@ else:
                     .head(10)
                 )
                 st.dataframe(_best_bets, width="stretch", hide_index=True)
-                st.caption("Top 10 qualifying moneyline bets. Market probability is the average no-vig UK bookmaker consensus; best odds are selected separately. Each pick needs at least a 5 percentage-point edge and positive expected value. No stake sizing is implied.")
+                st.caption("Top 10 qualifying moneyline and round-total bets. Market probability is the average no-vig UK bookmaker consensus; best odds are selected separately. Each pick needs at least a 5 percentage-point edge and positive expected value. No stake sizing is implied.")
 
                 st.markdown("### Suggested parlay")
                 # Use at most one selection per fight to avoid contradictory legs.
@@ -514,7 +611,7 @@ if st.button("Refresh latest results and retrain UFC model", key="refresh_retrai
 # an unambiguous matching result in the historical feed.
 st.divider()
 st.subheader("Live prediction accuracy")
-st.caption("Tracks winner, method-of-victory and Over/Under 1.5 and 2.5 round predictions saved before fight night. Results are matched by fighter names and event date; ambiguous matches are left pending, while draws/no-contests are void.")
+st.caption("Tracks winner, method-of-victory and Over/Under 1.5 and 2.5 round predictions saved before fight night. Results are matched by fighter names and event date; ambiguous matches stay pending, while draws and no-contests are void. Odds are only captured before the scheduled event start.")
 _UFC_HISTORY = DATA / "ufc_prediction_history.csv"
 
 _refresh_accuracy = st.button("Refresh UFC results and settle tracker", key="refresh_ufc_accuracy", width="stretch")
@@ -577,8 +674,27 @@ if _UFC_HISTORY.exists():
                         "Market": _label, "Record": f"{_wins}-{len(_sample) - _wins}",
                         "Accuracy": f"{_wins / len(_sample) * 100:.1f}%",
                     })
+        for _label, _status_col, _profit_col in (
+            ("Over/Under 1.5", "over_1_5_status", "over_1_5_profit"),
+            ("Over/Under 2.5", "over_2_5_status", "over_2_5_profit"),
+        ):
+            if _status_col in _live_history.columns and _profit_col in _live_history.columns:
+                _market_rows = _live_history[
+                    _live_history[_status_col].isin(["Correct", "Incorrect"])
+                    & pd.to_numeric(_live_history[_profit_col], errors="coerce").notna()
+                ].copy()
+                if len(_market_rows):
+                    _market_profit = pd.to_numeric(_market_rows[_profit_col], errors="coerce")
+                    _market_staked = len(_market_rows)
+                    _market_metrics.append({
+                        "Market": _label,
+                        "Record": f"{int((_market_rows[_status_col] == 'Correct').sum())}-{int((_market_rows[_status_col] == 'Incorrect').sum())}",
+                        "Accuracy": f"{(_market_rows[_status_col] == 'Correct').mean() * 100:.1f}%",
+                        "1u P/L": f"{_market_profit.sum():+.2f}u",
+                        "Yield": f"{_market_profit.sum() / _market_staked * 100:+.1f}%",
+                    })
         if _market_metrics:
-            st.markdown("**Accuracy by prediction market**")
+            st.markdown("**Accuracy and one-unit profit by prediction market**")
             st.dataframe(pd.DataFrame(_market_metrics), width="stretch", hide_index=True)
 
         # Event-level summaries make it possible to see whether performance is
@@ -793,7 +909,7 @@ if st.session_state.get("ufc_trained"):
         _mc2.metric("Balanced accuracy", f"{_method_metrics['balanced_accuracy']*100:.1f}%")
         _mc3.metric("Log loss", f"{_method_metrics['log_loss']:.3f}", f"{_method_metrics['log_loss']-_method_metrics['baseline_log_loss']:+.3f} vs prior")
         _mc4.metric("Test fights", f"{_method_metrics['test_fights']:,}")
-        st.caption(f"Chronological test period: {_method_metrics['test_start']} to {_method_metrics['test_end']}. Classes: KO/TKO, submission and decision. The model must beat the prior baseline on log loss and balanced accuracy before being treated as validated.")
+        st.caption(f"Multiclass Brier {_method_metrics.get('brier', float('nan')):.3f} · log loss {_method_metrics['log_loss']:.3f} vs prior {_method_metrics['baseline_log_loss']:.3f}. Chronological test period: {_method_metrics['test_start']} to {_method_metrics['test_end']}. Classes: KO/TKO, submission and decision. Probabilities are calibrated on the earlier calibration period, never the final test period.")
         if not _method_metrics.get("passed"):
             st.warning("Method probabilities are displayed for research, but this model has not passed both baseline checks. Do not treat its most likely method as a betting edge.")
     else:
@@ -862,7 +978,7 @@ steps = [
     ("Probability calibration", "Evaluate Brier score, log loss and reliability on later unseen events.", True),
     ("Method model", "Predict KO/TKO, submission or decision from each fighter's previous method and performance profile.", True),
     ("Round-duration model", "Predict Over/Under 1.5 and 2.5 rounds; higher lines wait for reliable scheduled-round labels.", True),
-    ("Fight-card predictions and tracking", "Show full-card winner, method and round estimates; live settlement currently tracks winner picks.", True),
+    ("Fight-card predictions and tracking", "Show full-card winner, method and round estimates; settle winner, method and round markets with pre-fight odds and one-unit profit tracking.", True),
 ]
 for title, detail, complete in steps:
     icon = "✅" if complete else "◯"
@@ -885,6 +1001,6 @@ with right:
     st.write("- Test on later events not used for training")
     st.write("- Keep a permanent prediction history")
 
-st.warning("Research model only. A good historical score does not prove a profitable betting edge. No betting recommendations are shown at this stage.")
+st.warning("Research model only. Best Bets require validated model benchmarks, a meaningful edge and positive expected value. Historical results do not guarantee future profit.")
 
 st.caption("Historical dataset: UFC-Almanac, sourced from UFCStats. Dataset and source attribution are retained for this project.")
