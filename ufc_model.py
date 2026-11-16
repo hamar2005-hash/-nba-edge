@@ -24,7 +24,7 @@ def audit_results(results):
     missing = sorted(required - set(results.columns))
     if missing:
         return {"missing_columns": missing}
-    dates = pd.to_datetime(results["Date"], dayfirst=True, errors="coerce")
+    dates = pd.to_datetime(results["Date"], format="mixed", dayfirst=True, errors="coerce")
     outcomes = pd.to_numeric(results["Result"], errors="coerce")
     a = results["Fighter 1"].fillna("").astype(str).str.strip().map(_fighter_key)
     b = results["Fighter 2"].fillna("").astype(str).str.strip().map(_fighter_key)
@@ -85,7 +85,7 @@ def build_chronological_rows(results):
     if not required.issubset(results.columns):
         raise ValueError(f"Results data missing columns: {sorted(required - set(results.columns))}")
     df = results.copy()
-    df["date"] = pd.to_datetime(df["Date"], dayfirst=True, errors="coerce")
+    df["date"] = pd.to_datetime(df["Date"], format="mixed", dayfirst=True, errors="coerce")
     df["result"] = pd.to_numeric(df["Result"], errors="coerce")
     df["fighter1"] = df["Fighter 1"].astype(str).str.strip()
     df["fighter2"] = df["Fighter 2"].astype(str).str.strip()
@@ -455,7 +455,7 @@ def _aux_duration_lookup(results, fight_stats):
     if fight_stats is None or not required.issubset(fight_stats.columns):
         return {}
     stats = fight_stats.copy()
-    stats["_date"] = pd.to_datetime(stats["Date"], dayfirst=True, errors="coerce").dt.normalize()
+    stats["_date"] = pd.to_datetime(stats["Date"], format="mixed", dayfirst=True, errors="coerce").dt.normalize()
     stats["_fighter"] = stats["Name"].map(_fighter_key)
     stats["_seconds"] = pd.to_numeric(stats["Time"], errors="coerce")
     numeric_columns = (
