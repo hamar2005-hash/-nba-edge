@@ -15,7 +15,7 @@ ALIASES = {
     "points": {"points", "point", "pts", "playerpoints", "pointsprop", "playerpointsprop"},
     "rebounds": {"rebounds", "rebound", "reb", "playerrebounds", "reboundsprop", "playerreboundsprop"},
     "assists": {"assists", "assist", "ast", "playerassists", "assistsprop", "playerassistsprop"},
-    "threes": {"threes", "threepointers", "threepointersmade", "3pm", "3ptm", "made threes", "playerthrees", "player3pm", "threepointersmadeprop"},
+    "threes": {"threes", "threepointers", "threepointersmade", "3pm", "3ptm", "madethrees", "3pointers", "playerthrees", "player3pm", "threepointersmadeprop"},
     "points + rebounds": {"points+rebounds", "pts+reb", "pr", "pointsrebounds", "playerpointsrebounds"},
     "points + assists": {"points+assists", "pts+ast", "pa", "pointsassists", "playerpointsassists"},
     "rebounds + assists": {"rebounds+assists", "reb+ast", "ra", "reboundsassists", "playerreboundsassists"},
@@ -236,7 +236,7 @@ def fetch_current_lines(player_names=None):
         top_keys = ", ".join(sorted(slate.keys())[:30]) if isinstance(slate, dict) else type(slate).__name__
         detail = "; ".join(errors[:4])
         raise RuntimeError(
-            "Stat Pick responded, but no PTS/REB/AST line fields could be read. "
+            "Stat Pick responded, but no supported PTS/REB/AST/3PM line fields could be read. "
             f"Top-level response keys: {top_keys}. {detail}"
         )
 
