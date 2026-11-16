@@ -14,7 +14,7 @@ Automated NBA player projections built with Streamlit and the existing trained m
 - Archives daily slates and compares them with completed ESPN box scores.
 - Tracks mean absolute error by market and by date.
 - Refreshes projections and settles completed games through GitHub Actions.
-- Retrains points, rebounds and assists weekly from updated historical game logs, but only promotes a candidate model when it beats the current model on the same chronological holdout.
+- Retrains points with a dedicated minutes forecast multiplied by a separately learned scoring-rate forecast; rebounds and assists retain their existing model architecture. Candidates are promoted only when they beat the incumbent on the same chronological holdout.
 
 ## No bookmaker data
 
@@ -58,7 +58,7 @@ The Streamlit sidebar includes a **Retrain points model** action. It dispatches 
 
 To enable the in-app action, configure an app deployment secret named `NBA_EDGE_GITHUB_TOKEN` with a fine-grained GitHub personal access token scoped to this repository and **Actions: Read and write** permission. The app sends the token only to GitHub's workflow-dispatch API and never displays it. Without this secret, the button explains that setup is required.
 
-The points-only run collects the latest player game logs, trains the points candidate, compares candidate and incumbent on the same chronological holdout, and only replaces the points model when its holdout MAE is lower. Rebounds and assists models are left untouched. The workflow packages the accepted models and report back into `NBA_Trained_Models.zip`.
+The points-only run collects the latest player game logs, trains separate minutes and points-per-minute estimators, combines them into a points forecast, and compares that candidate with the incumbent on the same chronological holdout. It only replaces the points model when holdout MAE is lower. The report also records minutes MAE/RMSE. Rebounds and assists models are left untouched. The daily dashboard shows forecast minutes and a heuristic points-confidence tier; the tier is not a calibrated probability. The workflow packages accepted models and the report into `NBA_Trained_Models.zip`.
 
 
 ## Same-player NBA Bet Builders
