@@ -13,12 +13,14 @@ on:
         options:
           - all
           - points
+          - threes
   push:
     branches: [points-v2-minutes-model]
     paths:
       - "weekly_retrain.py"
       - "audit_models.py"
       - "points_v2.py"
+      - "train_threes.py"
       - "train_models.py"
       - "collect_nba_data.py"
       - ".github/workflows/weekly-retrain.yml"
@@ -71,8 +73,11 @@ jobs:
       - name: Run paired production-vs-Points-V2 comparison
         if: github.event_name == 'push'
         run: python weekly_retrain.py --market points
+      - name: Train the dedicated three-pointers-made model
+        if: github.event_name == 'workflow_dispatch' && inputs.market == 'threes'
+        run: python train_threes.py
       - name: Audit development markets or retrain candidates
-        if: github.event_name != 'push'
+        if: github.event_name != 'push' && !(github.event_name == 'workflow_dispatch' && inputs.market == 'threes')
         run: |
           if [ "${{ inputs.market }}" = "points" ]; then
             python weekly_retrain.py --market points
