@@ -2,6 +2,8 @@ name: UFC live-source data audit
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ufc-data-audit-improvements]
 
 permissions:
   contents: read
