@@ -17,6 +17,7 @@ on:
     branches: [points-v2-minutes-model]
     paths:
       - "weekly_retrain.py"
+      - "audit_models.py"
       - "points_v2.py"
       - "train_models.py"
       - "collect_nba_data.py"
@@ -79,7 +80,7 @@ jobs:
       - name: Train and validate candidates
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.market }}" = "points" ]; then
-            python weekly_retrain.py --market points
+            python audit_models.py
           else
             python weekly_retrain.py --market all
           fi
@@ -87,8 +88,10 @@ jobs:
         if: always() && (github.event_name == 'pull_request' || github.event_name == 'push')
         uses: actions/upload-artifact@v4
         with:
-          name: points-v2-backtest-report
-          path: models/weekly_retrain_report.json
+          name: multi-market-model-audit
+          path: |
+            models/multi_market_audit.json
+            models/multi_market_audit_errors.csv
           if-no-files-found: warn
           retention-days: 14
       - name: Package current accepted models
