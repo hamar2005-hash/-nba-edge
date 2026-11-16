@@ -92,6 +92,8 @@ class UFCTrackingTests(unittest.TestCase):
             row = pd.read_csv(path).iloc[0]
             self.assertEqual(row["over_1_5_odds"], 1.8)
             self.assertEqual(row["over_2_5_odds"], 1.6)
+            self.assertEqual(row["over_1_5_bookmaker"], "Test Book")
+            self.assertEqual(row["over_2_5_bookmaker"], "Test Book")
             self.assertAlmostEqual(row["over_1_5_profit"], 0.8)
             self.assertAlmostEqual(row["over_2_5_profit"], -1.0)
 
