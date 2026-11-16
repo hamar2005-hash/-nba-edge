@@ -106,17 +106,34 @@ with st.sidebar:
             except requests.RequestException as exc:
                 st.error(f"Could not contact GitHub to start training: {exc}")
     if st.button("Refresh today's projections", type="primary", disabled=not models_ready, width="stretch"):
-        with st.spinner("Fetching today's NBA schedule and rosters, then generating projections…"):
-            run = subprocess.run(
-                [sys.executable, str(ROOT / "auto_daily.py"), "--models", str(MODELS), "--out", str(PREDICTIONS)],
-                cwd=ROOT, capture_output=True, text=True, timeout=300
-            )
-        if run.returncode == 0:
-            st.success(run.stdout.strip() or "Projections refreshed.")
-            st.rerun()
-        else:
-            st.error("Refresh failed. The schedule/roster feed may be temporarily unavailable.")
-            st.code((run.stderr or run.stdout)[-8000:])
+        with st.spinner("Reloading the latest trained models, then generating projections…"):
+            try:
+                # Always restore the committed bundle before a manual refresh. This
+                # prevents a long-lived Streamlit instance from using stale model files.
+                if BUNDLE.exists():
+                    with zipfile.ZipFile(BUNDLE) as archive:
+                        archive.extractall(ROOT)
+                threes_model = MODELS / "threes_model.joblib"
+                if not threes_model.exists():
+                    st.error("The latest model bundle does not contain models/threes_model.joblib. The 3PM model cannot be used yet.")
+                else:
+                    run = subprocess.run(
+                        [sys.executable, str(ROOT / "auto_daily.py"), "--models", str(MODELS), "--out", str(PREDICTIONS)],
+                        cwd=ROOT, capture_output=True, text=True, timeout=300
+                    )
+                    if run.returncode == 0:
+                        refreshed = pd.read_csv(PREDICTIONS)
+                        if "threes_projection" not in refreshed.columns:
+                            st.error("Daily refresh completed, but threes_projection is still missing. The model loaded, but the prediction generator did not emit the 3PM column.")
+                            st.code(run.stdout[-4000:])
+                        else:
+                            st.success(run.stdout.strip() or "Projections refreshed, including dedicated 3PM forecasts.")
+                            st.rerun()
+                    else:
+                        st.error("Refresh failed. The schedule/roster feed may be temporarily unavailable.")
+                        st.code((run.stderr or run.stdout)[-8000:])
+            except Exception as exc:
+                st.error(f"Could not reload the latest model bundle or refresh projections: {exc}")
     if st.button("Update yesterday's accuracy", width="stretch"):
         with st.spinner("Checking completed NBA box scores…"):
             settle = subprocess.run(
