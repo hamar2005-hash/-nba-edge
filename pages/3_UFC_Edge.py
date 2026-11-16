@@ -404,6 +404,96 @@ else:
                             "Expected value / £1": round(_ev, 3),
                         })
 
+            # Round totals: compare calibrated Over/Under probabilities with matching UK totals lines.
+            _round_metrics = _metrics.get("rounds", {})
+            _aux_ready = bool(st.session_state.get("ufc_aux_trained"))
+            if _aux_ready:
+                from ufc_model import predict_auxiliary_matchups
+                _aux_card_predictions = predict_auxiliary_matchups(
+                    st.session_state["ufc_aux_models"],
+                    st.session_state["ufc_aux_snapshot"],
+                    _card["bouts"],
+                )
+                _aux_lookup = {}
+                for _, _aux_row in _aux_card_predictions.iterrows():
+                    _parts = str(_aux_row.get("Bout", "")).split(" vs ", 1)
+                    if len(_parts) == 2:
+                        _aux_pair = tuple(sorted((_fighter_key(_parts[0]), _fighter_key(_parts[1]))))
+                        _aux_lookup[_aux_pair] = _aux_row
+
+                for _event in _odds_events:
+                    _home = str(_event.get("home_team", "")).strip()
+                    _away = str(_event.get("away_team", "")).strip()
+                    if not _home or not _away:
+                        continue
+                    _pair_key = tuple(sorted((_fighter_key(_home), _fighter_key(_away))))
+                    _aux_row = _aux_lookup.get(_pair_key)
+                    if _aux_row is None:
+                        continue
+                    for _line in ("1.5", "2.5"):
+                        _line_metrics = _round_metrics.get(_line, {})
+                        _model_col = f"Over {_line} %"
+                        if not _line_metrics.get("passed") or _model_col not in _aux_row.index:
+                            continue
+                        _model_over = float(_aux_row[_model_col]) / 100.0
+                        _best_total_prices, _total_books, _total_book_probs = {}, {}, []
+                        for _book in _event.get("bookmakers", []):
+                            _over_price = _under_price = None
+                            for _market in _book.get("markets", []):
+                                if _market.get("key") != "totals":
+                                    continue
+                                for _outcome in _market.get("outcomes", []):
+                                    try:
+                                        _price = float(_outcome.get("price", 0))
+                                        _points = float(_outcome.get("point"))
+                                    except (TypeError, ValueError):
+                                        continue
+                                    if abs(_points - float(_line)) > 0.001 or _price <= 1:
+                                        continue
+                                    _name = str(_outcome.get("name", "")).casefold()
+                                    if _name == "over":
+                                        _over_price = _price
+                                    elif _name == "under":
+                                        _under_price = _price
+                            if not _over_price or not _under_price:
+                                continue
+                            _over_imp, _under_imp = 1 / _over_price, 1 / _under_price
+                            _total_sum = _over_imp + _under_imp
+                            if _total_sum <= 0:
+                                continue
+                            _total_book_probs.append((_over_imp / _total_sum, _under_imp / _total_sum))
+                            _book_title = _book.get("title", _book.get("key", "UK bookmaker"))
+                            for _side, _price in (("Over", _over_price), ("Under", _under_price)):
+                                _side_key = (_line, _side)
+                                if _price > _best_total_prices.get(_side_key, 0):
+                                    _best_total_prices[_side_key] = _price
+                                    _total_books[_side_key] = _book_title
+                        if not _total_book_probs:
+                            continue
+                        _market_over = sum(x[0] for x in _total_book_probs) / len(_total_book_probs)
+                        for _side, _probability, _market_probability in (
+                            ("Over", _model_over, _market_over),
+                            ("Under", 1 - _model_over, 1 - _market_over),
+                        ):
+                            _side_key = (_line, _side)
+                            _price = _best_total_prices.get(_side_key)
+                            if not _price:
+                                continue
+                            _edge = _probability - _market_probability
+                            _ev = (_probability * (_price - 1)) - (1 - _probability)
+                            if _edge >= 0.05 and _ev > 0:
+                                _value_rows.append({
+                                    "Market": f"Total rounds {_line}",
+                                    "Fight": f"{_home} vs {_away}",
+                                    "Pick": f"{_side} {_line}",
+                                    "Model win %": round(_probability * 100, 1),
+                                    "Market win %": round(_market_probability * 100, 1),
+                                    "Edge": round(_edge * 100, 1),
+                                    "Best odds": round(_price, 2),
+                                    "Bookmaker": _total_books[_side_key],
+                                    "Expected value / £1": round(_ev, 3),
+                                })
+
             if _value_rows:
                 _best_bets = (
                     pd.DataFrame(_value_rows)
