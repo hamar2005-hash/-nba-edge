@@ -25,6 +25,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - "audit_models.py"
       - "weekly_retrain.py"
       - "points_v2.py"
       - "train_models.py"
