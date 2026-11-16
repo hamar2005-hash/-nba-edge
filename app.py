@@ -54,7 +54,7 @@ hr { border-color: var(--edge-line); }
 # or if a previous extraction left only part of the required files behind.
 model_files = [MODELS / f"{market}_model.joblib" for market in ("points", "rebounds", "assists")]
 required_bundle_files = model_files + [MODELS / "latest_player_features.csv"]
-if BUNDLE.exists() and not all(path.exists() for path in required_bundle_files):
+if BUNDLE.exists() and (not all(path.exists() for path in required_bundle_files) or not (MODELS / "threes_model.joblib").exists()):
     try:
         with zipfile.ZipFile(BUNDLE) as archive:
             archive.extractall(ROOT)
