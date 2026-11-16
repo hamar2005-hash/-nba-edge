@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
 MODELS = ROOT / "models"
 FOLDS = 3
+AUDIT_TARGETS = {**TARGETS, "threes_made": "FG3M"}
 
 
 def market_features(df, market):
@@ -28,6 +29,18 @@ def market_features(df, market):
                   "MIN_TREND_5V10", "MIN_SEASON_PRE"]
         for stat in ("REB", "MIN", "FGA", "FG3A", "FTA", "BLK", "STL"):
             extras += [f"{stat}_L5", f"{stat}_L10", f"{stat}_SEASON_PRE"]
+    elif market == "threes_made":
+        # Dedicated 3PM model: opportunity, conversion, minutes and role.
+        extras = ["MIN_LAST", "MIN_L3", "MIN_STD_L5", "MIN_STD_L10",
+                  "MIN_TREND_5V10", "MIN_SEASON_PRE",
+                  "FG3M_L5", "FG3M_L10", "FG3M_SEASON_PRE",
+                  "FG3A_L5", "FG3A_L10", "FG3A_SEASON_PRE",
+                  "THREE_PCT_L5", "THREE_PCT_L10", "THREE_PCT_SEASON_PRE",
+                  "THREE_PA_RATE_L5", "THREE_PA_RATE_L10", "THREE_PA_RATE_SEASON_PRE",
+                  "USAGE_PROXY_L5", "USAGE_PROXY_L10", "USAGE_PROXY_SEASON_PRE",
+                  "PTS_PER_MIN_L5", "PTS_PER_MIN_L10", "PTS_PER_MIN_SEASON_PRE",
+                  "OPP_ALLOWED_3PA_L5", "OPP_ALLOWED_3PA_L10", "OPP_ALLOWED_3PA_SEASON_PRE",
+                  "OPP_ALLOWED_3P_PCT_L5", "OPP_ALLOWED_3P_PCT_L10", "OPP_ALLOWED_3P_PCT_SEASON_PRE"]
     elif market == "assists":
         extras = ["MIN_LAST", "MIN_L3", "MIN_STD_L5", "MIN_STD_L10",
                   "MIN_TREND_5V10", "MIN_SEASON_PRE"]
@@ -54,6 +67,8 @@ def main():
     # Three expanding-window, forward-only test periods. No random shuffling.
     boundaries = [int(len(dates) * x) for x in (0.55, 0.70, 0.85, 1.0)]
     report = {"audit_type": "three_fold_expanding_chronological",
+              "markets_included": list(AUDIT_TARGETS),
+              "threes_made_model": "dedicated FG3M regressor using lagged 3PA, 3P%, minutes, role and opponent 3-point defense features",
               "folds": [], "markets": {}, "data": {
                   "rows": int(len(df)), "players": int(df.PLAYER_ID.nunique()),
                   "first_date": str(pd.Timestamp(dates[0]).date()),
@@ -72,15 +87,15 @@ def main():
                      "test_start": str(pd.Timestamp(test_dates[0]).date()),
                      "test_end": str(pd.Timestamp(test_dates[-1]).date())}
         report["folds"].append(fold_info)
-        for market, target in TARGETS.items():
+        for market, target in AUDIT_TARGETS.items():
             features = market_features(df, market)
             tr = train.dropna(subset=[target]).copy()
             te = test.dropna(subset=[target]).copy()
             tr = tr[tr.GAMES_PLAYED_BEFORE >= 2]
             te = te[te.GAMES_PLAYED_BEFORE >= 2]
-            if market == "points":
-                tr = tr[(tr.MIN > 0) & tr.PTS.notna()]
-                te = te[(te.MIN > 0) & te.PTS.notna()]
+            if market in ("points", "threes_made"):
+                tr = tr[(tr.MIN > 0) & tr[target].notna()]
+                te = te[(te.MIN > 0) & te[target].notna()]
             if len(tr) < 1000 or len(te) < 100:
                 raise RuntimeError(f"{market} fold {fold_no+1}: insufficient rows train={len(tr)} test={len(te)}")
             if market == "points":
@@ -136,6 +151,9 @@ def main():
     for market, entries in report["markets"].items():
         report["markets"][market] = {
             "folds": len(entries),
+            "pooled_test_rows": int(sum(e["candidate"]["rows"] for e in entries)),
+            "pooled_candidate_mae": float(sum(e["candidate"]["mae"] * e["candidate"]["rows"] for e in entries) / sum(e["candidate"]["rows"] for e in entries)),
+            "pooled_candidate_rmse": float(np.sqrt(sum((e["candidate"]["rmse"] ** 2) * e["candidate"]["rows"] for e in entries) / sum(e["candidate"]["rows"] for e in entries))),
             "mean_candidate_mae": float(np.mean([e["candidate"]["mae"] for e in entries])),
             "mean_candidate_rmse": float(np.mean([e["candidate"]["rmse"] for e in entries])),
             "mean_last5_baseline_mae": float(np.mean([e["naive_baselines"]["last5_or_season"]["mae"] for e in entries])),
