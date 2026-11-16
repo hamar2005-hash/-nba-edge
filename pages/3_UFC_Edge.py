@@ -394,6 +394,7 @@ else:
                     # Require a meaningful edge as well as positive expected value at the best price.
                     if _edge >= 0.05 and _ev > 0:
                         _value_rows.append({
+                            "Market": "Moneyline",
                             "Fight": f"{_home} vs {_away}",
                             "Pick": _fighter,
                             "Model win %": round(_model_probability * 100, 1),
@@ -405,7 +406,7 @@ else:
                         })
 
             # Round totals: compare calibrated Over/Under probabilities with matching UK totals lines.
-            _round_metrics = _metrics.get("rounds", {})
+            _round_metrics = st.session_state.get("ufc_aux_metrics", {}).get("rounds", {})
             _aux_ready = bool(st.session_state.get("ufc_aux_trained"))
             if _aux_ready:
                 from ufc_model import predict_auxiliary_matchups
@@ -502,7 +503,7 @@ else:
                     .head(10)
                 )
                 st.dataframe(_best_bets, width="stretch", hide_index=True)
-                st.caption("Top 10 qualifying moneyline bets. Market probability is the average no-vig UK bookmaker consensus; best odds are selected separately. Each pick needs at least a 5 percentage-point edge and positive expected value. No stake sizing is implied.")
+                st.caption("Top 10 qualifying moneyline and round-total bets. Market probability is the average no-vig UK bookmaker consensus; best odds are selected separately. Each pick needs at least a 5 percentage-point edge and positive expected value. No stake sizing is implied.")
 
                 st.markdown("### Suggested parlay")
                 # Use at most one selection per fight to avoid contradictory legs.
