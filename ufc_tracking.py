@@ -113,7 +113,14 @@ def settle_predictions(path, results, fight_stats=None):
     path = Path(path)
     if not path.exists() or results is None or results.empty:
         return 0
-    history = pd.read_csv(path)
+    history = pd.read_csv(path, dtype={
+        "event_id": "string", "event_name": "string", "bout": "string",
+        "fighter1": "string", "fighter2": "string", "predicted_winner": "string",
+        "predicted_method": "string", "actual_winner": "string",
+        "actual_method": "string", "status": "string", "method_status": "string",
+        "over_1_5_status": "string", "over_2_5_status": "string",
+        "odds_bookmaker": "string",
+    })
     for column in HISTORY_COLUMNS:
         if column not in history.columns:
             history[column] = pd.NA
