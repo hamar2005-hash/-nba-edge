@@ -70,6 +70,9 @@ jobs:
           PY
       - name: Collect historical player game logs
         run: python collect_nba_data.py --start-season 2021-22 --end-season 2025-26 --current-season 2026-27 --out data/player_game_logs.csv
+      - name: Train three-pointers-made candidate
+        if: github.event_name == 'push'
+        run: python train_threes.py
       - name: Run paired production-vs-Points-V2 comparison
         if: github.event_name == 'push'
         run: python weekly_retrain.py --market points
@@ -89,7 +92,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: paired-points-v2-comparison
-          path: models/weekly_retrain_report.json
+          path: |
+            models/weekly_retrain_report.json
+            models/threes_model_report.json
           if-no-files-found: error
           retention-days: 14
       - name: Package current accepted models
