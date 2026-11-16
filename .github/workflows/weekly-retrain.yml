@@ -21,6 +21,7 @@ on:
       - "audit_models.py"
       - "points_v2.py"
       - "train_threes.py"
+      - "test_threes_integration.py"
       - "train_models.py"
       - "collect_nba_data.py"
       - ".github/workflows/weekly-retrain.yml"
@@ -76,6 +77,9 @@ jobs:
       - name: Train three-pointers-made candidate
         if: github.event_name == 'push'
         run: python train_threes.py
+      - name: Smoke-test daily prediction, app and settlement integration
+        if: github.event_name == 'push'
+        run: python test_threes_integration.py
       - name: Train the dedicated three-pointers-made model
         if: github.event_name == 'workflow_dispatch' && inputs.market == 'threes'
         run: python train_threes.py
