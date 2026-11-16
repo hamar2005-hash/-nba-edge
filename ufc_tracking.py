@@ -238,6 +238,8 @@ def record_best_prices(path, odds_events):
     for col in HISTORY_COLUMNS:
         if col not in history.columns:
             history[col] = pd.NA
+    for col in ("odds_bookmaker", "over_1_5_bookmaker", "over_2_5_bookmaker"):
+        history[col] = history[col].astype("object")
     winner_prices, total_prices = {}, {}
     for event in odds_events or []:
         a, b = str(event.get("home_team", "")).strip(), str(event.get("away_team", "")).strip()
