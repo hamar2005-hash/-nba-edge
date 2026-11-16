@@ -42,25 +42,58 @@ def fit_candidate(train, test, features, market, target):
 
 
 def fit_points_v2(train, test, features):
-    """Fit role-aware minutes, scoring-rate and direct-points candidates."""
+    """Tune the points blend on an inner chronological validation split, then score untouched holdout."""
     train = train[train.GAMES_PLAYED_BEFORE >= 2].copy()
     test = test[test.GAMES_PLAYED_BEFORE >= 2].copy()
     train = train[(train.MIN > 0) & train.PTS.notna()].copy()
     test = test[(test.MIN > 0) & test.PTS.notna()].copy()
-    if len(train) < 1000 or len(test) < 100:
+    if len(train) < 2000 or len(test) < 100:
         raise RuntimeError(f'Insufficient points-v2 rows: train={len(train)}, holdout={len(test)}')
 
-    minutes_model = Pipeline([
-        ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
-        ('regressor', ExtraTreesRegressor(n_estimators=350, min_samples_leaf=5, max_features=0.85, n_jobs=-1, random_state=43))
-    ])
-    rate_model = make_regressor(seed=44)
-    direct_model = make_regressor(seed=45)
-    rate_train = train['PTS'] / train['MIN'].clip(lower=1)
-    minutes_model.fit(train[features], train['MIN'])
-    rate_model.fit(train[features], rate_train)
-    direct_model.fit(train[features], train['PTS'])
-    predictor = PointsV2Predictor(minutes_model, rate_model, features, direct_model=direct_model, direct_weight=0.25)
+    train_dates = np.sort(train.GAME_DATE.dropna().unique())
+    inner_cutoff = train_dates[max(1, int(len(train_dates) * 0.82))]
+    inner_fit = train[train.GAME_DATE < inner_cutoff]
+    inner_val = train[train.GAME_DATE >= inner_cutoff]
+    if len(inner_fit) < 1000 or len(inner_val) < 200:
+        raise RuntimeError(f'Insufficient inner validation rows: fit={len(inner_fit)}, validation={len(inner_val)}')
+
+    def fit_components(fit):
+        minutes = Pipeline([
+            ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
+            ('regressor', ExtraTreesRegressor(
+                n_estimators=350, min_samples_leaf=5, max_features=0.85,
+                n_jobs=-1, random_state=43
+            ))
+        ])
+        rate = make_regressor(seed=44)
+        direct = make_regressor(seed=45)
+        rate_target = fit['PTS'] / fit['MIN'].clip(lower=1)
+        minutes.fit(fit[features], fit['MIN'])
+        rate.fit(fit[features], rate_target)
+        direct.fit(fit[features], fit['PTS'])
+        return minutes, rate, direct
+
+    # Select blend weight only on data earlier than the final holdout.
+    val_minutes, val_rate, val_direct = fit_components(inner_fit)
+    val_min = np.clip(val_minutes.predict(inner_val[features]), 0, 48)
+    val_ppm = np.clip(val_rate.predict(inner_val[features]), 0, 1.5)
+    val_rate_points = np.maximum(0, val_min * val_ppm)
+    val_direct_points = np.maximum(0, val_direct.predict(inner_val[features]))
+    weights = np.round(np.arange(0.0, 0.751, 0.05), 2)
+    validation_maes = {
+        str(float(w)): float(mean_absolute_error(
+            inner_val['PTS'], (1.0 - w) * val_rate_points + w * val_direct_points
+        )) for w in weights
+    }
+    # Prefer the lower direct-model weight when validation MAE is tied.
+    best_weight = min(weights, key=lambda w: (validation_maes[str(float(w))], w))
+
+    # Refit components on all permitted training data, keeping the final holdout untouched.
+    minutes_model, rate_model, direct_model = fit_components(train)
+    predictor = PointsV2Predictor(
+        minutes_model, rate_model, features,
+        direct_model=direct_model, direct_weight=float(best_weight)
+    )
     details = predictor.predict_with_details(test[features])
     pred = details['points']
     direct_pred = details['direct_points']
@@ -72,6 +105,10 @@ def fit_points_v2(train, test, features):
     rate_actual = test['PTS'].to_numpy() / test['MIN'].clip(lower=1).to_numpy()
     score = {
         'train_rows': int(len(train)), 'test_rows': int(len(test)),
+        'inner_validation_rows': int(len(inner_val)),
+        'inner_validation_start': str(pd.Timestamp(inner_cutoff).date()),
+        'selected_direct_weight': float(best_weight),
+        'inner_validation_mae_by_weight': validation_maes,
         'mae': float(mean_absolute_error(test['PTS'], pred)),
         'rmse': float(np.sqrt(mean_squared_error(test['PTS'], pred))),
         'direct_points_mae': float(mean_absolute_error(test['PTS'], direct_pred)),
@@ -82,10 +119,15 @@ def fit_points_v2(train, test, features):
         'points_l5_baseline_mae': float(mean_absolute_error(test['PTS'], baseline_points)),
         'rate_mae': float(mean_absolute_error(rate_actual, details['points_per_minute'])),
     }
-    pack = {'model': predictor, 'feature_cols': features, 'target': 'PTS', 'market': 'points',
-            'model_version': 'points_v2_role_aware_blend', 'residual_std': float(np.std(residual, ddof=1)),
-            'minutes_residual_std': float(np.std(minute_residual, ddof=1)),
-            'points_per_minute_residual_std': float(np.std(rate_actual - details['points_per_minute'], ddof=1))}
+    pack = {
+        'model': predictor, 'feature_cols': features, 'target': 'PTS', 'market': 'points',
+        'model_version': 'points_v2_shooting_features_tuned_blend',
+        'residual_std': float(np.std(residual, ddof=1)),
+        'minutes_residual_std': float(np.std(minute_residual, ddof=1)),
+        'points_per_minute_residual_std': float(np.std(
+            rate_actual - details['points_per_minute'], ddof=1
+        )),
+    }
     return pack, score, test
 
 def main():
@@ -143,6 +185,9 @@ def main():
                 'candidate_minutes_l5_baseline_mae':score['minutes_l5_baseline_mae'],
                 'candidate_points_l5_baseline_mae':score['points_l5_baseline_mae'],
                 'candidate_rate_mae':score['rate_mae'],
+                'selected_direct_weight':score['selected_direct_weight'],
+                'inner_validation_start':score['inner_validation_start'],
+                'inner_validation_mae_by_weight':score['inner_validation_mae_by_weight'],
                 'promotion_threshold_mae_improvement_pct':1.0,
                 'candidate_accepted':bool(accept),
                 'train_rows':score['train_rows'],
@@ -150,7 +195,7 @@ def main():
                 'model_version':candidate['model_version'],
                 'confidence_tier_note':'Heuristic tiers use holdout point/minute residual spread and forecast-vs-recent-minutes deviation; not calibrated probabilities.'
             }
-            print(f"points-v2: incumbent MAE={incumbent_mae}; candidate MAE={score['mae']:.4f}; direct MAE={score['direct_points_mae']:.4f}; minutes ML/baseline MAE={score['minutes_mae']:.3f}/{score['minutes_l5_baseline_mae']:.3f}; accepted={accept}")
+            print(f"points-v2: incumbent MAE={incumbent_mae}; candidate MAE={score['mae']:.4f}; tuned direct weight={score['selected_direct_weight']:.2f}; direct MAE={score['direct_points_mae']:.4f}; minutes ML/baseline MAE={score['minutes_mae']:.3f}/{score['minutes_l5_baseline_mae']:.3f}; accepted={accept}")
             continue
 
         features=base
