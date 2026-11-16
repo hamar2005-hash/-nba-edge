@@ -793,7 +793,7 @@ if st.session_state.get("ufc_trained"):
         _mc2.metric("Balanced accuracy", f"{_method_metrics['balanced_accuracy']*100:.1f}%")
         _mc3.metric("Log loss", f"{_method_metrics['log_loss']:.3f}", f"{_method_metrics['log_loss']-_method_metrics['baseline_log_loss']:+.3f} vs prior")
         _mc4.metric("Test fights", f"{_method_metrics['test_fights']:,}")
-        st.caption(f"Chronological test period: {_method_metrics['test_start']} to {_method_metrics['test_end']}. Classes: KO/TKO, submission and decision. The model must beat the prior baseline on log loss and balanced accuracy before being treated as validated.")
+        st.caption(f"Multiclass Brier {_method_metrics.get('brier', float('nan')):.3f} · log loss {_method_metrics['log_loss']:.3f} vs prior {_method_metrics['baseline_log_loss']:.3f}. Chronological test period: {_method_metrics['test_start']} to {_method_metrics['test_end']}. Classes: KO/TKO, submission and decision. Probabilities are calibrated on the earlier calibration period, never the final test period.")
         if not _method_metrics.get("passed"):
             st.warning("Method probabilities are displayed for research, but this model has not passed both baseline checks. Do not treat its most likely method as a betting edge.")
     else:
