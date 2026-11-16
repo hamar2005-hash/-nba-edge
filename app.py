@@ -4,6 +4,7 @@ import requests
 import joblib
 import pandas as pd
 import streamlit as st
+from probability_utils import probability_at_least
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
@@ -224,8 +225,24 @@ else:
             })
             threes_view["Projected made threes"] = pd.to_numeric(
                 threes_view["Projected made threes"], errors="coerce"
-            ).round(1)
-            threes_view = threes_view.sort_values("Projected made threes", ascending=False, na_position="last")
+            )
+            threes_pack = joblib.load(MODELS / "threes_model.joblib")
+            threes_sd = max(float(threes_pack.get("residual_std", 1.23)), 1.23)
+            threes_view["Estimated 2+ probability"] = threes_view["Projected made threes"].apply(
+                lambda x: f"{probability_at_least(x, threes_sd, 2) * 100:.1f}%" if pd.notna(x) else None
+            )
+            threes_view["Estimated 3+ probability"] = threes_view["Projected made threes"].apply(
+                lambda x: f"{probability_at_least(x, threes_sd, 3) * 100:.1f}%" if pd.notna(x) else None
+            )
+            threes_view["Estimated 4+ probability"] = threes_view["Projected made threes"].apply(
+                lambda x: f"{probability_at_least(x, threes_sd, 4) * 100:.1f}%" if pd.notna(x) else None
+            )
+            threes_view["Projected made threes"] = threes_view["Projected made threes"].round(1)
+            threes_view["_p3"] = threes_view["Estimated 3+ probability"].str.rstrip("%").astype(float)
+            threes_view = threes_view.sort_values("_p3", ascending=False, na_position="last").drop(columns="_p3")
+            st.caption(
+                f"Ranked by estimated chance of 3+ made threes. Uses the dedicated model's holdout residual SD ({threes_sd:.2f}) with a continuity-corrected normal approximation. These are ranking estimates, not calibrated probabilities."
+            )
             st.dataframe(threes_view, width="stretch", hide_index=True)
             st.download_button(
                 "Download 3-point projections",
@@ -360,6 +377,7 @@ else:
                 "points": ("points_projection",),
                 "rebounds": ("rebounds_projection",),
                 "assists": ("assists_projection",),
+                "threes": ("threes_projection",),
                 "points + rebounds": ("points_projection", "rebounds_projection"),
                 "points + assists": ("points_projection", "assists_projection"),
                 "rebounds + assists": ("rebounds_projection", "assists_projection"),
@@ -393,14 +411,14 @@ else:
                 # and the player's own model projection. This prevents a bad
                 # feed mapping (e.g. 11.5 assists for a 1.3-assist projection)
                 # from being presented as a high-confidence pick.
-                hard_max = {"points": 60.0, "rebounds": 30.0, "assists": 25.0,
+                hard_max = {"points": 60.0, "rebounds": 30.0, "assists": 25.0, "threes": 15.0,
                             "points + rebounds": 85.0, "points + assists": 85.0,
                             "rebounds + assists": 55.0, "points + rebounds + assists": 110.0}
                 # Reject lines that are too far from the projection to be
                 # credible same-market comparisons. The previous relative
                 # limits admitted extreme mismatches (e.g. 20.5 REB vs 11.0).
                 max_gap = {
-                    "points": 10.0, "rebounds": 4.0, "assists": 3.5,
+                    "points": 10.0, "rebounds": 4.0, "assists": 3.5, "threes": 5.0,
                     "points + rebounds": 12.0, "points + assists": 12.0,
                     "rebounds + assists": 7.5, "points + rebounds + assists": 15.0,
                 }
@@ -412,7 +430,7 @@ else:
                 # Guard against degenerate residual estimates. A tiny or
                 # missing spread must never turn a projection into 99-100%
                 # certainty. These are conservative minimum error scales.
-                minimum_sd = {"points": 5.0, "rebounds": 2.5, "assists": 2.0}
+                minimum_sd = {"points": 5.0, "rebounds": 2.5, "assists": 2.0, "threes": 1.23}
                 if market in minimum_sd:
                     sd = max(residual_spreads.get(market, minimum_sd[market]), minimum_sd[market])
                 else:
@@ -420,7 +438,11 @@ else:
                                          if key in market.replace(" + ", "|").split("|")]
                     sd = math.sqrt(sum(max(residual_spreads.get(key, minimum_sd[key]), minimum_sd[key]) ** 2
                                          for key in component_markets))
-                z = (float(line) + 0.5 - float(projection)) / sd
+                # For made-threes half-point lines, the line itself is the
+                # continuity-corrected boundary (e.g. 2.5 means 3+ made).
+                # Retain the existing threshold convention for other markets.
+                boundary = float(line) if market == "threes" else float(line) + 0.5
+                z = (boundary - float(projection)) / sd
                 p_over = 1 - (0.5 * (1 + math.erf(z / math.sqrt(2))))
                 # Keep probabilities away from false certainty; this is an
                 # estimate from a simple residual model, not a calibrated market.
@@ -458,7 +480,7 @@ else:
                 else:
                     comparisons["_sort"] = comparisons["Under probability"].str.rstrip("%").astype(float)
                 comparisons = comparisons.sort_values("_sort", ascending=False).drop(columns="_sort")
-                market_filter = st.multiselect("Markets", ["Points", "Rebounds", "Assists"], default=["Points", "Rebounds", "Assists"], key="line_markets")
+                market_filter = st.multiselect("Markets", ["Points", "Rebounds", "Assists", "Threes"], default=["Points", "Rebounds", "Assists", "Threes"], key="line_markets")
                 comparisons = comparisons[comparisons["Market"].isin(market_filter)]
                 st.dataframe(comparisons, width="stretch", hide_index=True)
                 st.download_button("Download prop line comparisons", comparisons.to_csv(index=False), "nba_edge_prop_line_comparisons.csv", "text/csv")
