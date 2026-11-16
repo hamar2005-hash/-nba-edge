@@ -64,6 +64,11 @@ def prepare(path):
         g=df.groupby('PLAYER_ID',sort=False)[stat]
         for n in (5,10): df[f'{stat}_L{n}']=g.transform(lambda s:s.shift(1).rolling(n,min_periods=2).mean())
         df[f'{stat}_SEASON_PRE']=g.transform(lambda s:s.shift(1).expanding(min_periods=2).mean())
+    # Three-pointers made history for the dedicated 3PM research model.
+    g3m=df.groupby('PLAYER_ID',sort=False)['FG3M']
+    for n in (5,10):
+        df[f'FG3M_L{n}']=g3m.transform(lambda s:s.shift(1).rolling(n,min_periods=2).mean())
+    df['FG3M_SEASON_PRE']=g3m.transform(lambda s:s.shift(1).expanding(min_periods=2).mean())
     df['MIN_LAST']=df.groupby('PLAYER_ID')['MIN'].shift(1)
     gmin=df.groupby('PLAYER_ID',sort=False)['MIN']
     df['MIN_L3']=gmin.transform(lambda s:s.shift(1).rolling(3,min_periods=2).mean())
