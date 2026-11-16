@@ -22,16 +22,6 @@ on:
       - "train_models.py"
       - "collect_nba_data.py"
       - ".github/workflows/weekly-retrain.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "audit_models.py"
-      - "weekly_retrain.py"
-      - "points_v2.py"
-      - "train_models.py"
-      - "collect_nba_data.py"
-      - ".github/workflows/weekly-retrain.yml"
-
 permissions:
   contents: write
 
@@ -88,7 +78,7 @@ jobs:
             python weekly_retrain.py --market all
           fi
       - name: Upload Points V2 backtest report
-        if: always() && (github.event_name == 'pull_request' || github.event_name == 'push')
+        if: always() && github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: multi-market-model-audit
