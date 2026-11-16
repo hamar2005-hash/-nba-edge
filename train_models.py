@@ -11,6 +11,7 @@ from sklearn.pipeline import Pipeline
 
 TARGETS = {'points':'PTS', 'rebounds':'REB', 'assists':'AST'}
 STATS = ['PTS','REB','AST','MIN','FGA','FG3A','FTA','TOV','STL','BLK']
+POINT_SHOOTING_STATS = ['FGM','FG3M','FTM']
 BASE_FEATURES = [f'{s}_L{n}' for s in STATS for n in (5,10)] + [f'{s}_SEASON_PRE' for s in STATS] + ['REST_DAYS','HOME','GAMES_PLAYED_BEFORE']
 # Points-only features. Keep BASE_FEATURES untouched so rebounds and assists do not change.
 POINT_EXTRA = [
@@ -22,6 +23,12 @@ POINT_EXTRA = [
     'MIN_LAST','MIN_L3','MIN_STD_L5','MIN_STD_L10',
     'MIN_TREND_5V10','MIN_SEASON_PRE',
     'PTS_PER_MIN_L3','PTS_PER_MIN_STD_L5',
+    'EFG_PCT_L5','EFG_PCT_L10','EFG_PCT_SEASON_PRE',
+    'THREE_PA_RATE_L5','THREE_PA_RATE_L10','THREE_PA_RATE_SEASON_PRE',
+    'FT_RATE_L5','FT_RATE_L10','FT_RATE_SEASON_PRE',
+    'THREE_PCT_L5','THREE_PCT_L10','THREE_PCT_SEASON_PRE',
+    'FT_PCT_L5','FT_PCT_L10','FT_PCT_SEASON_PRE',
+    'POINTS_PER_FGA_L5','POINTS_PER_FGA_L10','POINTS_PER_FGA_SEASON_PRE',
 ]
 
 def prepare(path):
@@ -32,7 +39,7 @@ def prepare(path):
     if 'GAME_ID' not in df: df['GAME_ID']=np.arange(len(df)).astype(str)
     df['GAME_DATE']=pd.to_datetime(df['GAME_DATE'],errors='coerce')
     df=df.dropna(subset=['GAME_DATE','PLAYER_ID']).copy()
-    for c in STATS:
+    for c in STATS + POINT_SHOOTING_STATS:
         if c not in df: df[c]=np.nan
         df[c]=pd.to_numeric(df[c],errors='coerce')
     df=df.sort_values(['PLAYER_ID','GAME_DATE','GAME_ID']).reset_index(drop=True)
@@ -63,6 +70,22 @@ def prepare(path):
     g=df.groupby('PLAYER_ID',sort=False)['PTS']
     for n in (5,10): df[f'PTS_STD_L{n}']=g.transform(lambda s:s.shift(1).rolling(n,min_periods=3).std())
     df['PTS_TREND_5V10']=df['PTS_L5']-df['PTS_L10']
+    # Shooting-profile features are points-only. Every rolling/season feature is
+    # shifted one game to avoid using the game being predicted.
+    fga=df['FGA'].replace(0,np.nan)
+    fg3a=df['FG3A'].replace(0,np.nan)
+    fta=df['FTA'].replace(0,np.nan)
+    df['EFG_PCT']=(df['FGM']+0.5*df['FG3M'])/fga
+    df['THREE_PA_RATE']=df['FG3A']/fga
+    df['FT_RATE']=df['FTA']/fga
+    df['THREE_PCT']=df['FG3M']/fg3a
+    df['FT_PCT']=df['FTM']/fta
+    df['POINTS_PER_FGA']=df['PTS']/fga
+    for stat in ['EFG_PCT','THREE_PA_RATE','FT_RATE','THREE_PCT','FT_PCT','POINTS_PER_FGA']:
+        g=df.groupby('PLAYER_ID',sort=False)[stat]
+        for n in (5,10):
+            df[f'{stat}_L{n}']=g.transform(lambda s:s.shift(1).rolling(n,min_periods=2).mean())
+        df[f'{stat}_SEASON_PRE']=g.transform(lambda s:s.shift(1).expanding(min_periods=2).mean())
     return df
 
 def main():
