@@ -674,8 +674,27 @@ if _UFC_HISTORY.exists():
                         "Market": _label, "Record": f"{_wins}-{len(_sample) - _wins}",
                         "Accuracy": f"{_wins / len(_sample) * 100:.1f}%",
                     })
+        for _label, _status_col, _profit_col in (
+            ("Over/Under 1.5", "over_1_5_status", "over_1_5_profit"),
+            ("Over/Under 2.5", "over_2_5_status", "over_2_5_profit"),
+        ):
+            if _status_col in _live_history.columns and _profit_col in _live_history.columns:
+                _market_rows = _live_history[
+                    _live_history[_status_col].isin(["Correct", "Incorrect"])
+                    & pd.to_numeric(_live_history[_profit_col], errors="coerce").notna()
+                ].copy()
+                if len(_market_rows):
+                    _market_profit = pd.to_numeric(_market_rows[_profit_col], errors="coerce")
+                    _market_staked = len(_market_rows)
+                    _market_metrics.append({
+                        "Market": _label,
+                        "Record": f"{int((_market_rows[_status_col] == 'Correct').sum())}-{int((_market_rows[_status_col] == 'Incorrect').sum())}",
+                        "Accuracy": f"{(_market_rows[_status_col] == 'Correct').mean() * 100:.1f}%",
+                        "1u P/L": f"{_market_profit.sum():+.2f}u",
+                        "Yield": f"{_market_profit.sum() / _market_staked * 100:+.1f}%",
+                    })
         if _market_metrics:
-            st.markdown("**Accuracy by prediction market**")
+            st.markdown("**Accuracy and one-unit profit by prediction market**")
             st.dataframe(pd.DataFrame(_market_metrics), width="stretch", hide_index=True)
 
         # Event-level summaries make it possible to see whether performance is
