@@ -128,7 +128,12 @@ class UFCTrackingTests(unittest.TestCase):
                 "Date": "20/11/2026", "Fighter 1": "Fighter A",
                 "Fighter 2": "Fighter B", "Result": 4, "Method": "Overturned",
             }])
-            changed = settle_predictions(path, results, pd.DataFrame())
+            # Even if duration data exists, a no-contest must void every market.
+            stats = pd.DataFrame([
+                {"Date": "20/11/2026", "Name": "Fighter A", "Time": 900},
+                {"Date": "20/11/2026", "Name": "Fighter B", "Time": 900},
+            ])
+            changed = settle_predictions(path, results, stats)
             self.assertEqual(changed, 1)
             row = pd.read_csv(path).iloc[0]
             self.assertEqual(row["status"], "Void")
@@ -136,6 +141,8 @@ class UFCTrackingTests(unittest.TestCase):
             self.assertEqual(row["over_1_5_status"], "Void")
             self.assertEqual(row["over_2_5_status"], "Void")
             self.assertTrue(pd.isna(row["over_1_5_profit"]))
+            self.assertTrue(pd.isna(row["over_2_5_profit"]))
+            self.assertTrue(pd.isna(row["actual_duration_seconds"]))
 
     def test_does_not_capture_odds_after_event_start(self):
         with tempfile.TemporaryDirectory() as folder:
