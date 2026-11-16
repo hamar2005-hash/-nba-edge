@@ -657,7 +657,7 @@ def _fit_aux_method(frame):
         "available": True, "passed": bool(ll < baseline_ll and bal_acc > base_bal_acc),
         "accuracy": float(accuracy_score(test["method_target"], predictions)),
         "balanced_accuracy": bal_acc, "log_loss": ll,
-        "brier": float(brier_score_loss(test["method_target"].map({label: i for i, label in enumerate(model.classes_)}), np.eye(len(model.classes_))[np.array([list(model.classes_).index(x) for x in test["method_target"]])] if False else np.array([probabilities[i, list(model.classes_).index(label)] for i, label in enumerate(test["method_target"])])),
+        "brier": float(np.mean(np.sum((probabilities - np.eye(len(model.classes_))[np.array([list(model.classes_).index(x) for x in test["method_target"]])]) ** 2, axis=1))),
         "baseline_balanced_accuracy": base_bal_acc, "baseline_log_loss": baseline_ll,
         "test_fights": int(len(test)), "selected_c": float(scores[selected]["C"]),
         "candidate_comparison": scores,
