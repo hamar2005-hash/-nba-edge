@@ -271,7 +271,7 @@ elif not upcoming_cards or not upcoming_cards[0].get("bouts") or not st.session_
     st.info("Best bets will appear when the next card has published bouts and the winner model is trained.")
 else:
     _metrics = st.session_state.get("ufc_metrics", {})
-    _beats_benchmarks = (
+    _winner_model_passed = (
         _metrics
         and _metrics.get("brier") is not None
         and _metrics.get("log_loss") is not None
@@ -282,8 +282,11 @@ else:
         and _metrics["brier"] < min(_metrics["elo_brier"], _metrics["baseline_brier"])
         and _metrics["log_loss"] < min(_metrics["elo_log_loss"], _metrics["baseline_log_loss"])
     )
+    _round_gate_metrics = st.session_state.get("ufc_aux_metrics", {}).get("rounds", {})
+    _round_model_passed = any(_round_gate_metrics.get(line, {}).get("passed") for line in ("1.5", "2.5"))
+    _beats_benchmarks = bool(_winner_model_passed or _round_model_passed)
     if not _beats_benchmarks:
-        st.warning("Best bets are paused: the calibrated model must beat both the Elo-only and training-prior benchmarks on the untouched test set for Brier score and log loss before its prices are treated as betting signals.")
+        st.warning("Best bets are paused because neither the winner nor round-duration model has passed its required untouched-test benchmarks.")
     else:
         try:
             with st.spinner("Comparing the upcoming card with current UK bookmaker prices…"):
@@ -318,7 +321,7 @@ else:
                     continue
                 _pair_key = tuple(sorted((_fighter_key(_home), _fighter_key(_away))))
                 _model_row = _prediction_lookup.get(_pair_key)
-                if _model_row is None:
+                if not _winner_model_passed or _model_row is None:
                     continue
 
                 # Avoid betting recommendations where either fighter has no historical profile.
@@ -404,6 +407,9 @@ else:
                             "Bookmaker": _book_names[_key],
                             "Expected value / £1": round(_ev, 3),
                         })
+
+            if not _winner_model_passed:
+                st.info("Moneyline bets are paused because the winner model has not beaten both required benchmarks. Independently validated round totals can still qualify below.")
 
             # Round totals: compare calibrated Over/Under probabilities with matching UK totals lines.
             _round_metrics = st.session_state.get("ufc_aux_metrics", {}).get("rounds", {})
