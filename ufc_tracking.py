@@ -96,7 +96,7 @@ def _duration_lookup(fight_stats):
     if fight_stats is None or not required.issubset(fight_stats.columns):
         return {}
     stats = fight_stats.copy()
-    stats["_date"] = pd.to_datetime(stats["Date"], dayfirst=True, errors="coerce").dt.normalize()
+    stats["_date"] = pd.to_datetime(stats["Date"], format="mixed", dayfirst=True, errors="coerce").dt.normalize()
     stats["_fighter"] = stats["Name"].map(fighter_key)
     stats["_seconds"] = pd.to_numeric(stats["Time"], errors="coerce")
     stats = stats[stats["_date"].notna() & stats["_fighter"].ne("") & stats["_seconds"].between(1, 1500)]
@@ -129,7 +129,7 @@ def settle_predictions(path, results, fight_stats=None):
         return 0
 
     actual = results.copy()
-    actual["_date"] = pd.to_datetime(actual["Date"], dayfirst=True, errors="coerce")
+    actual["_date"] = pd.to_datetime(actual["Date"], format="mixed", dayfirst=True, errors="coerce")
     actual["_a"] = actual["Fighter 1"].map(fighter_key)
     actual["_b"] = actual["Fighter 2"].map(fighter_key)
     actual["_result"] = pd.to_numeric(actual["Result"], errors="coerce")
