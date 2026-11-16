@@ -13,6 +13,14 @@ on:
         options:
           - all
           - points
+  pull_request:
+    branches: [main]
+    paths:
+      - "weekly_retrain.py"
+      - "points_v2.py"
+      - "train_models.py"
+      - "collect_nba_data.py"
+      - ".github/workflows/weekly-retrain.yml"
 
 permissions:
   contents: write
@@ -62,12 +70,21 @@ jobs:
         run: python collect_nba_data.py --start-season 2021-22 --end-season 2026-27 --out data/player_game_logs.csv --sleep 1.5 --retries 2
       - name: Train and validate candidates
         run: |
-          if [ "${{ inputs.market }}" = "points" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ inputs.market }}" = "points" ]; then
             python weekly_retrain.py --market points
           else
             python weekly_retrain.py --market all
           fi
+      - name: Upload Points V2 backtest report
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: points-v2-backtest-report
+          path: models/weekly_retrain_report.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Package current accepted models
+        if: github.event_name != 'pull_request'
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -85,6 +102,7 @@ jobs:
                   archive.write(path, path)
           PY
       - name: Commit updated data, models and report
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
