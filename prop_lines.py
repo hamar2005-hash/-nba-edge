@@ -15,7 +15,7 @@ ALIASES = {
     "points": {"points", "point", "pts", "playerpoints", "pointsprop", "playerpointsprop"},
     "rebounds": {"rebounds", "rebound", "reb", "playerrebounds", "reboundsprop", "playerreboundsprop"},
     "assists": {"assists", "assist", "ast", "playerassists", "assistsprop", "playerassistsprop"},
-    "threes": {"threes", "threepointers", "threepointersmade", "3pm", "3ptm", "madethrees", "3pointers", "playerthrees", "player3pm", "threepointersmadeprop"},
+    "threes": {"threes", "threepointers", "threepointersmade", "3pm", "3ptm", "3madethrees", "madethrees", "made3pointers", "3pointers", "playerthrees", "player3pm", "threepointersmadeprop"},
     "points + rebounds": {"points+rebounds", "pts+reb", "pr", "pointsrebounds", "playerpointsrebounds"},
     "points + assists": {"points+assists", "pts+ast", "pa", "pointsassists", "playerpointsassists"},
     "rebounds + assists": {"rebounds+assists", "reb+ast", "ra", "reboundsassists", "playerreboundsassists"},
