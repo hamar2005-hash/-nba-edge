@@ -77,10 +77,12 @@ jobs:
           PY
       - name: Collect historical player game logs
         run: python collect_nba_data.py --start-season 2021-22 --end-season 2025-26 --current-season 2026-27 --out data/player_game_logs.csv
-      - name: Train and validate candidates
+      - name: Audit development models or retrain candidates
         run: |
-          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.market }}" = "points" ]; then
+          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event_name }}" = "push" ]; then
             python audit_models.py
+          elif [ "${{ inputs.market }}" = "points" ]; then
+            python weekly_retrain.py --market points
           else
             python weekly_retrain.py --market all
           fi
