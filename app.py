@@ -73,7 +73,7 @@ hr { border-color:var(--edge-line); margin:1.65rem 0; }
 .edge-subtitle { color:#b1bdca; font-size:.96rem; max-width:720px; }
 .edge-mobile-card-list { display:none; }\n.edge-pill { display:inline-block; padding:5px 10px; margin:12px 5px 0 0; border-radius:999px; background:rgba(255,138,50,.12); border:1px solid rgba(255,138,50,.25); color:#ffc18f; font-size:.7rem; font-weight:750; letter-spacing:.04em; }
 [data-testid="stStatusWidget"] { border-radius:12px; }
-@media (max-width:800px) { .st-key-desktop-projections,.st-key-desktop-threes { display:none !important; } .edge-mobile-card-list { display:grid; gap:10px; } .edge-mobile-card { background:linear-gradient(145deg,#172230,#111923); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px 13px; } .edge-mobile-card-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:#f5f7fa; font-size:.92rem; } .edge-mobile-card-head span { color:#aeb9c7; font-size:.76rem; } .edge-mobile-matchup { color:#9ca9b8; font-size:.72rem; margin-top:4px; } .edge-mobile-status { color:#ffbd83; font-size:.7rem; margin-top:3px; } .edge-mobile-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:10px; } .edge-mobile-stat { background:rgba(255,255,255,.045); border-radius:9px; padding:7px 5px; text-align:center; min-width:0; } .edge-mobile-stat span { display:block; color:#9ca9b8; font-size:.63rem; white-space:nowrap; } .edge-mobile-stat strong { display:block; color:#fff; font-size:.95rem; margin-top:2px; } .block-container { padding:1rem .85rem 2.5rem; } .edge-hero { padding:21px 19px; border-radius:18px; } [data-testid="stMetric"] { padding:12px; min-height:94px; } [data-testid="stMetricValue"] { font-size:1.55rem; } }
+@media (max-width:800px) { .st-key-desktop-projections,.st-key-desktop-threes { display:none !important; } .edge-mobile-card-list { display:grid; gap:10px; } .edge-mobile-card { background:linear-gradient(145deg,#172230,#111923); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px 13px; } .edge-mobile-card-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:#f5f7fa; font-size:.92rem; } .edge-mobile-card-head span { color:#aeb9c7; font-size:.76rem; } .edge-mobile-matchup { color:#9ca9b8; font-size:.72rem; margin-top:4px; } .edge-mobile-status { color:#ffbd83; font-size:.7rem; margin-top:3px; } .edge-mobile-stats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:10px; } .edge-mobile-stat { background:rgba(255,255,255,.045); border-radius:9px; padding:7px 5px; text-align:center; min-width:0; } .edge-mobile-stat span { display:block; color:#9ca9b8; font-size:.63rem; white-space:nowrap; } .edge-mobile-stat strong { display:block; color:#fff; font-size:.95rem; margin-top:2px; } .block-container { padding:1rem .85rem 2.5rem; } .edge-hero { padding:21px 19px; border-radius:18px; } [data-testid="stMetric"] { padding:12px; min-height:94px; } [data-testid="stMetricValue"] { font-size:1.55rem; } }
 </style>
 <div class="edge-hero">
   <div class="edge-kicker">Basketball intelligence</div>
@@ -234,11 +234,26 @@ else:
         cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Forecast minutes", "Points confidence", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
         with st.container(key="desktop-projections"):
             st.dataframe(display[[c for c in cols if c in display]], width="stretch", hide_index=True)
-        mobile_player_cards(
-            view,
-            [("PTS", "points_projection"), ("REB", "rebounds_projection"),
-             ("AST", "assists_projection"), ("3PM", "threes_projection")],
-        )
+        st.subheader("Teams playing today")
+        st.caption("Open a team to see its five highest-minute projected players plus key rotation options. Starting lineups are not confirmed in this feed, so this is a role-based estimate, not a confirmed starters list.")
+        rotation_source = view.copy()
+        rotation_minutes_col = "expected_minutes" if "expected_minutes" in rotation_source.columns else "minutes_baseline"
+        if rotation_minutes_col in rotation_source.columns:
+            rotation_source[rotation_minutes_col] = pd.to_numeric(rotation_source[rotation_minutes_col], errors="coerce")
+        for team_name in sorted(rotation_source["team"].dropna().astype(str).unique()):
+            team_rows = rotation_source[rotation_source["team"].astype(str) == team_name].copy()
+            team_rows = team_rows.sort_values(rotation_minutes_col, ascending=False, na_position="last")
+            team_rows = team_rows.head(8)
+            opponent_name = str(team_rows["opponent"].iloc[0]) if "opponent" in team_rows.columns and not team_rows.empty else ""
+            matchup_name = str(team_rows["game"].iloc[0]) if "game" in team_rows.columns and not team_rows.empty else ""
+            with st.expander(f"{team_name} · {len(team_rows)} players · vs {opponent_name}", expanded=False):
+                st.caption(f"{matchup_name} | Top five are the likely starting group; next three are key rotation options, ranked by {rotation_minutes_col.replace('_', ' ')}.")
+                mobile_player_cards(
+                    team_rows,
+                    [("MIN", rotation_minutes_col), ("PTS", "points_projection"),
+                     ("REB", "rebounds_projection"), ("AST", "assists_projection"),
+                     ("3PM", "threes_projection")],
+                )
 
         # Keep the dedicated three-pointers model visible in its own focused table.
         st.divider()
