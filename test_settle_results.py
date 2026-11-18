@@ -45,7 +45,22 @@ def test_update_pick_history_grades_threes_over_under_and_push():
         assert result["Actual result"].tolist() == ["Win","Win","Push"]
         assert result["Benchmark result"].tolist() == ["Win","Win","Push"]
 
+
+def test_update_pick_history_preserves_other_dates():
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "picks.csv"
+        pd.DataFrame([
+            {"game_date":"2026-11-17","player":"Earlier Shooter","team":"BOS","market":"threes","side":"Over","line":2.5,"Actual result":"Win","Benchmark result":"Win"},
+            {"game_date":"2026-11-18","player":"Tonight Shooter","team":"NYK","market":"threes","side":"Under","line":2.5,"Actual result":"Pending","Benchmark result":"Pending"},
+        ]).to_csv(path,index=False)
+        settled = pd.DataFrame([
+            {"game_date":"2026-11-18","player":"Tonight Shooter","team":"NYK","actual_threes":1},
+        ])
+        assert update_pick_history(settled,path) == 1
+        result = pd.read_csv(path)
+        assert result["Actual result"].tolist() == ["Win","Win"]
+
 if __name__ == "__main__":
     test_grade_pick_win_loss_push_pending()
-    test_update_pick_history_matches_team_and_grades()\n    test_update_pick_history_grades_threes_over_under_and_push()
+    test_update_pick_history_matches_team_and_grades()\n    test_update_pick_history_grades_threes_over_under_and_push()\n    test_update_pick_history_preserves_other_dates()
     print("Settlement tests passed.")
