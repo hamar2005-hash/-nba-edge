@@ -15,7 +15,7 @@ on:
           - points
           - threes
   push:
-    branches: [points-v2-minutes-model]
+    branches: [points-v2-minutes-model, points-accuracy-and-over-under-tracking]
     paths:
       - "weekly_retrain.py"
       - "audit_models.py"
