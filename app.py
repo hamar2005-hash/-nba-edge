@@ -75,7 +75,7 @@ st.markdown("""
 [data-testid="stSidebar"] { background:rgba(15,21,28,.96); }
 .block-container { position:relative; z-index:1; }
 :root { --edge-orange:#e87524; --edge-line:#303944; --edge-muted:#a5afb9; }
-.stApp { background:#10151b; color:#e7ebef; }
+.stApp { background:transparent !important; color:#e7ebef; }
 .block-container { max-width:1440px; padding:1.2rem 1.8rem 3rem; }
 [data-testid="stHeader"] { background:#10151b; }
 h1,h2,h3 { color:#f0f2f4; letter-spacing:-.015em; font-weight:650; }
