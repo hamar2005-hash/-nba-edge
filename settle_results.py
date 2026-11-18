@@ -85,7 +85,9 @@ def main():
         return
     actuals = pd.DataFrame(actual_rows).drop_duplicates(["game_date", "player_key", "team"], keep="last")
     history["player_key"] = history["player"].map(norm)
-    merged = history.merge(actuals, on=["game_date", "player_key"], how="inner", suffixes=("", "_actual"))
+    # Match on team as well as player and date. This prevents same-name players
+    # or duplicate roster entries from being settled against the wrong box score.
+    merged = history.merge(actuals, on=["game_date", "player_key", "team"], how="inner", suffixes=("", "_actual"))
     if merged.empty:
         print(f"No player names matched ESPN box scores for {target}.")
         return
