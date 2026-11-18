@@ -46,6 +46,19 @@ jobs:
               importlib.import_module(name)
               print("Import OK:", name)
 
+          from train_models import latest_team_defense_snapshot
+          defense_fixture = pd.DataFrame({
+              "OPPONENT_ABBREVIATION": ["BOS", "BOS", "NYK"],
+              "GAME_DATE": pd.to_datetime(["2026-11-01", "2026-11-02", "2026-11-02"]),
+              "GAME_ID": ["1", "2", "3"],
+              "OPP_ALLOWED_EFG_L5": [0.50, 0.54, 0.49],
+          })
+          defense_snapshot = latest_team_defense_snapshot(defense_fixture, ["OPP_ALLOWED_EFG_L5"])
+          defense_values = defense_snapshot.set_index("TEAM_ABBREVIATION")["OPP_ALLOWED_EFG_L5"]
+          assert len(defense_snapshot) == 2 and abs(defense_values["BOS"] - 0.54) < 1e-9
+          assert abs(defense_values["NYK"] - 0.49) < 1e-9
+          print("Latest opponent-defence snapshot test OK.")
+
           from prop_lines import discover_players, extract_rows, parse_slate
           payload = {
               "games": [{
