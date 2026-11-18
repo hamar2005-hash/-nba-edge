@@ -567,7 +567,7 @@ else:
                 # Archive only single-stat, pre-game recommendations. Composite markets
                 # are excluded until their exact settlement rules are implemented.
                 _pick_history_path = DATA / "prop_pick_history.csv"
-                _pick_markets = {"Points", "Rebounds", "Assists"}
+                _pick_markets = {"Points", "Rebounds", "Assists", "Threes"}
                 _new_picks = confidence_pool[confidence_pool["Market"].isin(_pick_markets)].copy()
                 if not _new_picks.empty:
                     _now_utc = pd.Timestamp.now(tz="UTC")
@@ -733,7 +733,7 @@ if picks.empty:
     st.info("No pre-game prop picks have been archived yet. New eligible recommendations will be saved automatically before tip-off.")
 else:
     if not settled.empty:
-        _actual_map = {"Points":"actual_points","Rebounds":"actual_rebounds","Assists":"actual_assists"}
+        _actual_map = {"Points":"actual_points","Rebounds":"actual_rebounds","Assists":"actual_assists","Threes":"actual_threes"}
         for _market_name, _actual_col in _actual_map.items():
             _mask = picks["market"].astype(str).str.lower().eq(_market_name.lower())
             _day = settled[["game_date","player","team",_actual_col]].copy() if _actual_col in settled.columns else pd.DataFrame()
@@ -786,7 +786,7 @@ else:
     _y1.metric("1.91 benchmark yield",f"{_fixed_yield:+.1f}%")
     _y2.metric("Sky Bet yield",f"{_actual_yield:+.1f}%" if _actual_yield is not None else "Not available")
     _market_rows=[]
-    for _market_name in ["Points","Rebounds","Assists"]:
+    for _market_name in ["Points","Rebounds","Assists","Threes"]:
         _subset=_graded[_graded["market"].astype(str).str.lower().eq(_market_name.lower())]
         _mw=int((_subset["Actual result"]=="Win").sum())
         _ml=int((_subset["Actual result"]=="Loss").sum())
