@@ -122,7 +122,6 @@ hr { border-color:var(--edge-line); margin:1.35rem 0; }
 <div class="edge-video-backdrop" aria-hidden="true">
   <div class="edge-video-shade"></div>
 </div>
-</div>
 <div class="edge-hero">
   <div class="edge-kicker">Player prop analytics</div>
   <div class="edge-title">NBA EDGE</div>
