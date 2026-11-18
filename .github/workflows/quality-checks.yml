@@ -2,7 +2,7 @@ name: NBA Edge code and bundle checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, points-accuracy-and-over-under-tracking]
   workflow_dispatch:
 
 permissions:
