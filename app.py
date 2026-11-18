@@ -62,20 +62,20 @@ st.markdown("""
 }
 .edge-video-backdrop iframe {
  position:absolute; top:50%; left:50%;
- width: max(100vw, 177.78vh); height:max(100vh, 56.25vw);
+ width: max(100vw, 177.78vh); height:max(100vh, 56.25vw); min-width:100%; min-height:100%;
  transform:translate(-50%,-50%);
- border:0; opacity:.27; pointer-events:none;
+ border:0; opacity:.32; pointer-events:none;
 }
-.edge-video-shade {
+.edge-video-shade { z-index:1; pointer-events:none;
  position:absolute; inset:0;
  background:linear-gradient(180deg,rgba(8,12,17,.78),rgba(8,12,17,.84) 45%,rgba(8,12,17,.93));
 }
-.stApp { position:relative; background:transparent !important; }
+.stApp { position:relative; background:#080c11 !important; }
 .stApp > header, .stApp [data-testid="stAppViewContainer"] { position:relative; z-index:1; background:transparent; }
 [data-testid="stSidebar"] { background:rgba(15,21,28,.96); }
 .block-container { position:relative; z-index:1; }
 :root { --edge-orange:#e87524; --edge-line:#303944; --edge-muted:#a5afb9; }
-.stApp { background:transparent !important; color:#e7ebef; }
+.stApp { background:#080c11 !important; color:#e7ebef; }
 .block-container { max-width:1440px; padding:1.2rem 1.8rem 3rem; }
 [data-testid="stHeader"] { background:#10151b; }
 h1,h2,h3 { color:#f0f2f4; letter-spacing:-.015em; font-weight:650; }
@@ -124,7 +124,7 @@ hr { border-color:var(--edge-line); margin:1.35rem 0; }
 </style>
 <div class="edge-video-backdrop" aria-hidden="true">
   <iframe
-    src="https://www.youtube-nocookie.com/embed/pkBfvNiuQuk?autoplay=1&mute=1&controls=0&loop=1&playlist=pkBfvNiuQuk&playsinline=1&rel=0&modestbranding=1"
+    src="https://www.youtube-nocookie.com/embed/OSkone_vFFk?autoplay=1&mute=1&controls=0&loop=1&playlist=pkBfvNiuQuk&playsinline=1&rel=0&modestbranding=1"
     title="Muted looping LeBron James highlights"
     allow="autoplay; encrypted-media; picture-in-picture"
     tabindex="-1">
