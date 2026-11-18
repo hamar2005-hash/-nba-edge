@@ -54,6 +54,26 @@ st.set_page_config(page_title="NBA Edge", page_icon="🏀", layout="wide")
 # Restrained sports-data dashboard styling: flat surfaces, clear hierarchy, minimal decoration.
 st.markdown("""
 <style>
+
+/* Muted official LeBron highlight reel behind the dashboard. */
+.edge-video-backdrop {
+ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+ background:#080c11;
+}
+.edge-video-backdrop iframe {
+ position:absolute; top:50%; left:50%;
+ width: max(100vw, 177.78vh); height:max(100vh, 56.25vw);
+ transform:translate(-50%,-50%);
+ border:0; opacity:.27; pointer-events:none;
+}
+.edge-video-shade {
+ position:absolute; inset:0;
+ background:linear-gradient(180deg,rgba(8,12,17,.78),rgba(8,12,17,.84) 45%,rgba(8,12,17,.93));
+}
+.stApp { position:relative; background:transparent !important; }
+.stApp > header, .stApp [data-testid="stAppViewContainer"] { position:relative; z-index:1; background:transparent; }
+[data-testid="stSidebar"] { background:rgba(15,21,28,.96); }
+.block-container { position:relative; z-index:1; }
 :root { --edge-orange:#e87524; --edge-line:#303944; --edge-muted:#a5afb9; }
 .stApp { background:#10151b; color:#e7ebef; }
 .block-container { max-width:1440px; padding:1.2rem 1.8rem 3rem; }
@@ -102,6 +122,15 @@ hr { border-color:var(--edge-line); margin:1.35rem 0; }
  [data-testid="stMetricValue"] { font-size:1.4rem; }
 }
 </style>
+<div class="edge-video-backdrop" aria-hidden="true">
+  <iframe
+    src="https://www.youtube-nocookie.com/embed/pkBfvNiuQuk?autoplay=1&mute=1&controls=0&loop=1&playlist=pkBfvNiuQuk&playsinline=1&rel=0&modestbranding=1"
+    title="Muted looping LeBron James highlights"
+    allow="autoplay; encrypted-media; picture-in-picture"
+    tabindex="-1">
+  </iframe>
+  <div class="edge-video-shade"></div>
+</div>
 <div class="edge-hero">
   <div class="edge-kicker">Player prop analytics</div>
   <div class="edge-title">NBA EDGE</div>
