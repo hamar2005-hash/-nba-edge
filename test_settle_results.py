@@ -26,7 +26,26 @@ def test_update_pick_history_matches_team_and_grades():
         assert result.loc[0,"Actual result"] == "Win"
         assert result.loc[1,"Actual result"] == "Pending"
 
+
+def test_update_pick_history_grades_threes_over_under_and_push():
+    with tempfile.TemporaryDirectory() as directory:
+        path = Path(directory) / "picks.csv"
+        pd.DataFrame([
+            {"game_date":"2026-11-18","player":"Shooter One","team":"BOS","market":"threes","side":"Over","line":2.5,"Actual result":"Pending","Benchmark result":"Pending"},
+            {"game_date":"2026-11-18","player":"Shooter Two","team":"NYK","market":"threes","side":"Under","line":2.5,"Actual result":"Pending","Benchmark result":"Pending"},
+            {"game_date":"2026-11-18","player":"Shooter Three","team":"MIA","market":"threes","side":"Over","line":3.0,"Actual result":"Pending","Benchmark result":"Pending"},
+        ]).to_csv(path,index=False)
+        settled = pd.DataFrame([
+            {"game_date":"2026-11-18","player":"Shooter One","team":"BOS","actual_threes":4},
+            {"game_date":"2026-11-18","player":"Shooter Two","team":"NYK","actual_threes":1},
+            {"game_date":"2026-11-18","player":"Shooter Three","team":"MIA","actual_threes":3},
+        ])
+        assert update_pick_history(settled,path) == 3
+        result = pd.read_csv(path)
+        assert result["Actual result"].tolist() == ["Win","Win","Push"]
+        assert result["Benchmark result"].tolist() == ["Win","Win","Push"]
+
 if __name__ == "__main__":
     test_grade_pick_win_loss_push_pending()
-    test_update_pick_history_matches_team_and_grades()
+    test_update_pick_history_matches_team_and_grades()\n    test_update_pick_history_grades_threes_over_under_and_push()
     print("Settlement tests passed.")
