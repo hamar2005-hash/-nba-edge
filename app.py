@@ -793,7 +793,15 @@ else:
         _mp=int((_subset["Actual result"]=="Push").sum())
         # Count-based calculation avoids dtype/coercion failures in older persisted pick-history CSVs.
         _benchmark=(_mw * 0.91) - _ml
-        _market_rows.append({"Market":_market_name,"Record":f"{_mw}-{_ml}-{_mp}","1.91 P/L":f"{_benchmark:+.2f}u"})
+        _decided = _mw + _ml
+        _hit_rate = (_mw / _decided * 100) if _decided else None
+        _market_rows.append({
+            "Market":_market_name,
+            "Settled":_mw + _ml + _mp,
+            "Record":f"{_mw}-{_ml}-{_mp}",
+            "Hit rate":f"{_hit_rate:.1f}%" if _hit_rate is not None else "Awaiting results",
+            "1.91 P/L":f"{_benchmark:+.2f}u",
+        })
     st.markdown("**Performance by market**")
     st.dataframe(pd.DataFrame(_market_rows),hide_index=True,width="stretch")
     st.download_button("Download NBA betting history",picks.to_csv(index=False),"nba_edge_betting_history.csv","text/csv")
