@@ -55,21 +55,18 @@ st.set_page_config(page_title="NBA Edge", page_icon="🏀", layout="wide")
 st.markdown("""
 <style>
 
-/* Muted official LeBron highlight reel behind the dashboard. */
+/* Static NBA-hosted LeBron image background. Avoids third-party iframe/autoplay issues. */
 .edge-video-backdrop {
  position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
- background:#080c11;
+ background-color:#080c11;
+ background-image:
+  linear-gradient(180deg,rgba(8,12,17,.78),rgba(8,12,17,.86) 48%,rgba(8,12,17,.96)),
+  url("https://cdn.nba.com/headshots/nba/latest/1040x760/2544.png");
+ background-position:center 18%;
+ background-repeat:no-repeat;
+ background-size:cover;
 }
-.edge-video-backdrop iframe {
- position:absolute; top:50%; left:50%;
- width: max(100vw, 177.78vh); height:max(100vh, 56.25vw); min-width:100%; min-height:100%;
- transform:translate(-50%,-50%);
- border:0; opacity:.32; pointer-events:none;
-}
-.edge-video-shade { z-index:1; pointer-events:none;
- position:absolute; inset:0;
- background:linear-gradient(180deg,rgba(8,12,17,.78),rgba(8,12,17,.84) 45%,rgba(8,12,17,.93));
-}
+.edge-video-shade { position:absolute; inset:0; pointer-events:none; }
 .stApp { position:relative; background:#080c11 !important; }
 .stApp > header, .stApp [data-testid="stAppViewContainer"] { position:relative; z-index:1; background:transparent; }
 [data-testid="stSidebar"] { background:rgba(15,21,28,.96); }
@@ -123,12 +120,6 @@ hr { border-color:var(--edge-line); margin:1.35rem 0; }
 }
 </style>
 <div class="edge-video-backdrop" aria-hidden="true">
-  <iframe
-    src="https://www.youtube-nocookie.com/embed/OSkone_vFFk?autoplay=1&mute=1&controls=0&loop=1&playlist=pkBfvNiuQuk&playsinline=1&rel=0&modestbranding=1"
-    title="Muted looping LeBron James highlights"
-    allow="autoplay; encrypted-media; picture-in-picture"
-    tabindex="-1">
-  </iframe>
   <div class="edge-video-shade"></div>
 </div>
 <div class="edge-hero">
