@@ -370,6 +370,47 @@ else:
                 (compare["team_key_line"] == compare["team_key_projection"])
             ].copy()
             compare = compare.drop_duplicates(["player_key", "market", "line"])
+
+            # Compact three-market board: show each player's listed PTS/REB/AST
+            # line beside the matching model projection in one row.
+            core_markets = {
+                "points": ("points_projection", "Points"),
+                "rebounds": ("rebounds_projection", "Rebounds"),
+                "assists": ("assists_projection", "Assists"),
+            }
+            core = compare[compare["market"].isin(core_markets)].copy()
+            if not core.empty:
+                core["Player"] = core.get("player_line", core.get("player"))
+                core["Team"] = core.get("team_line", core.get("team"))
+                core["Opponent"] = core.get("opponent_line", core.get("opponent"))
+                core["Projection"] = core.apply(
+                    lambda item: pd.to_numeric(item.get(core_markets[item["market"]][0]), errors="coerce"),
+                    axis=1,
+                )
+                core["Line"] = pd.to_numeric(core["line"], errors="coerce")
+                core = core.dropna(subset=["Projection", "Line"])
+                if not core.empty:
+                    def display_values(values):
+                        unique = sorted({float(value) for value in values if pd.notna(value)})
+                        return ", ".join(f"{value:g}" for value in unique) if unique else "—"
+                    board_rows = []
+                    for keys, player_rows in core.groupby(["Player", "Team", "Opponent"], dropna=False):
+                        board = {"Player": keys[0], "Team": keys[1], "Opponent": keys[2]}
+                        for market_key, (_, label) in core_markets.items():
+                            market_rows = player_rows[player_rows["market"] == market_key]
+                            board[f"{label} line"] = display_values(market_rows["Line"])
+                            board[f"{label} projection"] = (
+                                round(float(market_rows["Projection"].iloc[0]), 1)
+                                if not market_rows.empty else "—"
+                            )
+                        board_rows.append(board)
+                    st.subheader("📋 Points, rebounds & assists: lines vs projections")
+                    st.caption("Each listed prop line is shown beside NBA Edge's projection. Multiple available lines are listed together; a dash means the feed did not provide that market.")
+                    st.dataframe(
+                        pd.DataFrame(board_rows).sort_values(["Team", "Player"]),
+                        width="stretch", hide_index=True,
+                    )
+
             if compare.empty:
                 st.warning("No prop lines passed the player-and-team identity check. The app will not force a match.")
             # Use the model's residual spread to estimate over/under probabilities.
