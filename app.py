@@ -724,6 +724,34 @@ else:
         _market_rows.append({"Market":_market_name,"Record":f"{_mw}-{_ml}-{_mp}","1.91 P/L":f"{_benchmark:+.2f}u"})
     st.markdown("**Performance by market**")
     st.dataframe(pd.DataFrame(_market_rows),hide_index=True,width="stretch")
+
+    # Explicitly split settled recommendations by direction so the dashboard
+    # shows how many Over and Under calls actually landed.
+    st.markdown("**Over / Under hit breakdown**")
+    _ou_rows = []
+    for _market_name in ["All markets", "Points", "Rebounds", "Assists"]:
+        _subset = _graded if _market_name == "All markets" else _graded[
+            _graded["market"].astype(str).str.lower().eq(_market_name.lower())
+        ]
+        _over = _subset[_subset["side"].astype(str).str.strip().str.lower().eq("over")]
+        _under = _subset[_subset["side"].astype(str).str.strip().str.lower().eq("under")]
+        _over_w = int((_over["Actual result"] == "Win").sum())
+        _over_l = int((_over["Actual result"] == "Loss").sum())
+        _over_p = int((_over["Actual result"] == "Push").sum())
+        _under_w = int((_under["Actual result"] == "Win").sum())
+        _under_l = int((_under["Actual result"] == "Loss").sum())
+        _under_p = int((_under["Actual result"] == "Push").sum())
+        _decisions = _over_w + _over_l + _under_w + _under_l
+        _hit_rate = ((_over_w + _under_w) / _decisions * 100) if _decisions else 0.0
+        _ou_rows.append({
+            "Market": _market_name,
+            "Over (W-L-P)": f"{_over_w}-{_over_l}-{_over_p}",
+            "Under (W-L-P)": f"{_under_w}-{_under_l}-{_under_p}",
+            "Total hit rate": f"{_hit_rate:.1f}%" if _decisions else "N/A",
+            "Settled picks": len(_subset),
+        })
+    st.dataframe(pd.DataFrame(_ou_rows), hide_index=True, width="stretch")
+    st.caption("W = hit, L = missed, P = push. Hit rate excludes pushes and pending picks.")
     st.download_button("Download NBA betting history",picks.to_csv(index=False),"nba_edge_betting_history.csv","text/csv")
 
 if "predictions" in locals() and isinstance(predictions, pd.DataFrame) and not predictions.empty:
