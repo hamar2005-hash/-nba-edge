@@ -13,7 +13,7 @@ SETTLED = DATA / "settled_results.csv"
 PICK_HISTORY = DATA / "prop_pick_history.csv"
 HEADERS = {"User-Agent": "Mozilla/5.0 (compatible; NBAEdge/1.0)"}
 MARKETS = {"points": "PTS", "rebounds": "REB", "assists": "AST", "threes": "FG3M"}
-PICK_ACTUALS = {"points": "actual_points", "rebounds": "actual_rebounds", "assists": "actual_assists"}
+PICK_ACTUALS = {"points": "actual_points", "rebounds": "actual_rebounds", "assists": "actual_assists", "threes": "actual_threes"}
 
 def norm(value):
     return re.sub(r"[^a-z0-9]", "", str(value).lower())
