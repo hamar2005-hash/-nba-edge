@@ -142,6 +142,23 @@ def prepare(path):
     df=df.drop(columns=['DEF_TEAM'])
     return df
 
+
+def latest_team_defense_snapshot(df, feature_cols):
+    """Return each opponent's latest pre-game defensive profile for upcoming fixtures."""
+    defense_cols = [c for c in feature_cols if c.startswith("OPP_ALLOWED_")]
+    required = {"OPPONENT_ABBREVIATION", "GAME_DATE", "GAME_ID"}
+    if not required.issubset(df.columns) or not defense_cols:
+        return pd.DataFrame(columns=["TEAM_ABBREVIATION"] + defense_cols)
+    snapshot = (
+        df.dropna(subset=["OPPONENT_ABBREVIATION"])
+          .sort_values(["GAME_DATE", "GAME_ID"])
+          .groupby("OPPONENT_ABBREVIATION", sort=False)
+          .tail(1)
+    )
+    snapshot = snapshot[["OPPONENT_ABBREVIATION"] + defense_cols].copy()
+    snapshot = snapshot.rename(columns={"OPPONENT_ABBREVIATION": "TEAM_ABBREVIATION"})
+    return snapshot.drop_duplicates("TEAM_ABBREVIATION", keep="last").reset_index(drop=True)
+
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument('--input',default='data/player_game_logs.csv')
@@ -177,7 +194,7 @@ def main():
     latest=df.sort_values('GAME_DATE').groupby('PLAYER_ID',as_index=False).tail(1)
     identity=['PLAYER_ID','PLAYER_NAME']+(['TEAM_ABBREVIATION'] if 'TEAM_ABBREVIATION' in latest else [])+['GAME_DATE']
     latest[list(dict.fromkeys(identity+base+point))].to_csv(out/'latest_player_features.csv',index=False)
-    pd.DataFrame(columns=['TEAM_ABBREVIATION']).to_csv(out/'latest_team_defense.csv',index=False)
+    latest_team_defense_snapshot(df, point).to_csv(out/'latest_team_defense.csv',index=False)
     print(f'Models, metrics and feature snapshots saved to {out}/')
 
 if __name__=='__main__': main()
