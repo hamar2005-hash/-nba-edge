@@ -45,7 +45,9 @@ def update_pick_history(settled, path=PICK_HISTORY):
     for market, actual_col in PICK_ACTUALS.items():
         if actual_col not in settled.columns:
             continue
-        mask = picks["market"].astype(str).str.lower().eq(market)
+        market_mask = picks["market"].astype(str).str.lower().eq(market)
+        target_dates = set(settled["game_date"].astype(str))
+        mask = market_mask & picks["game_date"].astype(str).isin(target_dates)
         if not mask.any():
             continue
         actuals = settled[["game_date", "player_key", "team", actual_col]].drop_duplicates(
