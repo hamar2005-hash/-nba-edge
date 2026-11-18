@@ -27,6 +27,6 @@ def test_update_pick_history_matches_team_and_grades():
         assert result.loc[1,"Actual result"] == "Pending"
 
 if __name__ == "__main__":
-    test_grade_pick_win_loss_push()
+    test_grade_pick_win_loss_push_pending()
     test_update_pick_history_matches_team_and_grades()
     print("Settlement tests passed.")
