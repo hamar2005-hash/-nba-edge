@@ -169,7 +169,7 @@ jobs:
                   assert {"TEAM_ABBREVIATION"}.issubset(defense.columns) and not defense.empty, "Opponent defence snapshot is empty or missing team keys"
                   for market in ("points", "rebounds", "assists"):
                       pack = joblib.load(model_dir / f"{market}_model.joblib")
-                      assert any(c.startswith("OPP_ALLOW_") for c in pack["feature_cols"]), f"{market} model does not use opponent defensive features"
+                      assert any(c.startswith("OPP_ALLOWED_") for c in pack["feature_cols"]), f"{market} model does not use opponent defensive features"
                   print(f"Opponent defence snapshot OK: {len(defense)} teams, {len(defense.columns)-1} defensive features")
               else:
                   print("Legacy model bundle detected; opponent defence will activate after weekly retraining.")
