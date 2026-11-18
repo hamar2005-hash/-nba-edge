@@ -1,5 +1,5 @@
 from pathlib import Path
-import math, os, subprocess, sys, zipfile, html
+import math, os, subprocess, sys, zipfile, html, re
 import requests
 import joblib
 import pandas as pd
@@ -15,7 +15,7 @@ BUNDLE = ROOT / "NBA_Trained_Models.zip"
 PREDICTIONS = DATA / "daily_predictions.csv"
 
 
-def mobile_player_cards(frame, market_columns, title_column="player"):
+def mobile_player_cards(frame, market_columns, title_column="player", line_lookup=None):
     """Render compact, readable player cards for narrow screens."""
     cards = []
     for _, row in frame.iterrows():
@@ -33,7 +33,13 @@ def mobile_player_cards(frame, market_columns, title_column="player"):
                     value = str(value)
             else:
                 value = "—"
-            metrics.append('<div class="edge-mobile-stat"><span>' + html.escape(label) + '</span><strong>' + html.escape(str(value)) + '</strong></div>')
+            line_value = None
+            if line_lookup is not None:
+                player_key = re.sub(r"[^a-z0-9]", "", str(row.get("player", "")).lower())
+                market_key = {"PTS": "points", "REB": "rebounds", "AST": "assists", "3PM": "threes"}.get(label)
+                line_value = line_lookup.get((player_key, market_key)) if market_key else None
+            line_text = f'<small>Line: {html.escape(str(line_value))}</small>' if line_value is not None else '<small>Line: —</small>'
+            metrics.append('<div class="edge-mobile-stat"><span>' + html.escape(label) + '</span><strong>' + html.escape(str(value)) + '</strong>' + line_text + '</div>')
         cards.append(
             '<article class="edge-mobile-card">'
             + '<div class="edge-mobile-card-head"><strong>' + player + '</strong><span>' + team + '</span></div>'
@@ -73,7 +79,7 @@ hr { border-color:var(--edge-line); margin:1.65rem 0; }
 .edge-subtitle { color:#b1bdca; font-size:.96rem; max-width:720px; }
 .edge-mobile-card-list { display:none; }\n.edge-pill { display:inline-block; padding:5px 10px; margin:12px 5px 0 0; border-radius:999px; background:rgba(255,138,50,.12); border:1px solid rgba(255,138,50,.25); color:#ffc18f; font-size:.7rem; font-weight:750; letter-spacing:.04em; }
 [data-testid="stStatusWidget"] { border-radius:12px; }
-@media (max-width:800px) { .st-key-desktop-projections,.st-key-desktop-threes { display:none !important; } .edge-mobile-card-list { display:grid; gap:10px; } .edge-mobile-card { background:linear-gradient(145deg,#172230,#111923); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px 13px; } .edge-mobile-card-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:#f5f7fa; font-size:.92rem; } .edge-mobile-card-head span { color:#aeb9c7; font-size:.76rem; } .edge-mobile-matchup { color:#9ca9b8; font-size:.72rem; margin-top:4px; } .edge-mobile-status { color:#ffbd83; font-size:.7rem; margin-top:3px; } .edge-mobile-stats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:10px; } .edge-mobile-stat { background:rgba(255,255,255,.045); border-radius:9px; padding:7px 5px; text-align:center; min-width:0; } .edge-mobile-stat span { display:block; color:#9ca9b8; font-size:.63rem; white-space:nowrap; } .edge-mobile-stat strong { display:block; color:#fff; font-size:.95rem; margin-top:2px; } .block-container { padding:1rem .85rem 2.5rem; } .edge-hero { padding:21px 19px; border-radius:18px; } [data-testid="stMetric"] { padding:12px; min-height:94px; } [data-testid="stMetricValue"] { font-size:1.55rem; } }
+@media (max-width:800px) { .st-key-desktop-projections,.st-key-desktop-threes { display:none !important; } .edge-mobile-card-list { display:grid; gap:10px; } .edge-mobile-card { background:linear-gradient(145deg,#172230,#111923); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px 13px; } .edge-mobile-card-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:#f5f7fa; font-size:.92rem; } .edge-mobile-card-head span { color:#aeb9c7; font-size:.76rem; } .edge-mobile-matchup { color:#9ca9b8; font-size:.72rem; margin-top:4px; } .edge-mobile-status { color:#ffbd83; font-size:.7rem; margin-top:3px; } .edge-mobile-stats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:10px; } .edge-mobile-stat { background:rgba(255,255,255,.045); border-radius:9px; padding:7px 5px; text-align:center; min-width:0; } .edge-mobile-stat span { display:block; color:#9ca9b8; font-size:.63rem; white-space:nowrap; } .edge-mobile-stat strong { display:block; color:#fff; font-size:.95rem; margin-top:2px; } .edge-mobile-stat small { display:block; color:#aeb9c7; font-size:.58rem; margin-top:3px; white-space:nowrap; } .block-container { padding:1rem .85rem 2.5rem; } .edge-hero { padding:21px 19px; border-radius:18px; } [data-testid="stMetric"] { padding:12px; min-height:94px; } [data-testid="stMetricValue"] { font-size:1.55rem; } }
 </style>
 <div class="edge-hero">
   <div class="edge-kicker">Basketball intelligence</div>
@@ -234,8 +240,27 @@ else:
         cols = ["Matchup", "Player", "Team", "Opponent", "Availability", "Recent avg minutes", "Forecast minutes", "Points confidence", "Projected points", "Projected rebounds", "Projected assists", "Projected threes", "Projected steals", "Projected blocks", "Projected turnovers"]
         with st.container(key="desktop-projections"):
             st.dataframe(display[[c for c in cols if c in display]], width="stretch", hide_index=True)
+        @st.cache_data(ttl=300, show_spinner=False)
+        def fetch_card_prop_lines(player_names):
+            import importlib
+            import prop_lines as prop_lines_module
+            importlib.reload(prop_lines_module)
+            return prop_lines_module.fetch_current_lines(player_names)
+
+        card_line_lookup = {}
+        try:
+            card_lines = fetch_card_prop_lines(tuple(predictions["player"].dropna().astype(str).unique()))
+            if not card_lines.empty:
+                for _, line_row in card_lines.iterrows():
+                    player_key = re.sub(r"[^a-z0-9]", "", str(line_row.get("player", "")).lower())
+                    market_key = str(line_row.get("market", "")).lower()
+                    if market_key in {"points", "rebounds", "assists", "threes"}:
+                        card_line_lookup[(player_key, market_key)] = line_row.get("line")
+        except Exception as line_exc:
+            st.caption(f"Live prop lines are temporarily unavailable: {line_exc}")
+
         st.subheader("Teams playing today")
-        st.caption("Open a team to see its five highest-minute projected players plus key rotation options. Starting lineups are not confirmed in this feed, so this is a role-based estimate, not a confirmed starters list.")
+        st.caption("Open a team to see its five highest-minute projected players plus key rotation options. Starting lineups are not confirmed in this feed, so this is a role-based estimate, not a confirmed starters list. Each stat shows the model projection and current prop line.")
         rotation_source = view.copy()
         rotation_minutes_col = "expected_minutes" if "expected_minutes" in rotation_source.columns else "minutes_baseline"
         if rotation_minutes_col in rotation_source.columns:
@@ -253,64 +278,11 @@ else:
                     [("MIN", rotation_minutes_col), ("PTS", "points_projection"),
                      ("REB", "rebounds_projection"), ("AST", "assists_projection"),
                      ("3PM", "threes_projection")],
+                    line_lookup=card_line_lookup,
                 )
 
-        # Keep the dedicated three-pointers model visible in its own focused table.
-        st.divider()
-        st.subheader("Three-pointers made projections")
-        st.caption("Separate view for the dedicated 3PM model. Projections are expected made threes, not over/under recommendations.")
-        if "threes_projection" in view.columns:
-            threes_cols = [
-                c for c in [
-                    "game", "player", "team", "opponent", "player_status",
-                    "minutes_baseline", "expected_minutes", "threes_projection",
-                ] if c in view.columns
-            ]
-            threes_view = view[threes_cols].copy().rename(columns={
-                "game": "Matchup",
-                "player": "Player",
-                "team": "Team",
-                "opponent": "Opponent",
-                "player_status": "Availability",
-                "minutes_baseline": "Recent avg minutes",
-                "expected_minutes": "Forecast minutes",
-                "threes_projection": "Projected made threes",
-            })
-            threes_view["Projected made threes"] = pd.to_numeric(
-                threes_view["Projected made threes"], errors="coerce"
-            )
-            threes_pack = joblib.load(MODELS / "threes_model.joblib")
-            threes_sd = max(float(threes_pack.get("residual_std", 1.23)), 1.23)
-            threes_view["Estimated 2+ probability"] = threes_view["Projected made threes"].apply(
-                lambda x: f"{probability_at_least(x, threes_sd, 2) * 100:.1f}%" if pd.notna(x) else None
-            )
-            threes_view["Estimated 3+ probability"] = threes_view["Projected made threes"].apply(
-                lambda x: f"{probability_at_least(x, threes_sd, 3) * 100:.1f}%" if pd.notna(x) else None
-            )
-            threes_view["Estimated 4+ probability"] = threes_view["Projected made threes"].apply(
-                lambda x: f"{probability_at_least(x, threes_sd, 4) * 100:.1f}%" if pd.notna(x) else None
-            )
-            threes_view["Projected made threes"] = threes_view["Projected made threes"].round(1)
-            threes_view["_p3"] = threes_view["Estimated 3+ probability"].str.rstrip("%").astype(float)
-            threes_view = threes_view.sort_values("_p3", ascending=False, na_position="last").drop(columns="_p3")
-            st.caption(
-                f"Ranked by estimated chance of 3+ made threes. Uses the dedicated model's holdout residual SD ({threes_sd:.2f}) with a continuity-corrected normal approximation. These are ranking estimates, not calibrated probabilities."
-            )
-            with st.container(key="desktop-threes"):
-                st.dataframe(threes_view, width="stretch", hide_index=True)
-            mobile_player_cards(
-                view.sort_values("threes_projection", ascending=False, na_position="last"),
-                [("3PM", "threes_projection"), ("2+ chance", "Estimated 2+ probability"),
-                 ("3+ chance", "Estimated 3+ probability"), ("4+ chance", "Estimated 4+ probability")],
-            )
-            st.download_button(
-                "Download 3-point projections",
-                threes_view.to_csv(index=False),
-                "nba_edge_three_point_projections.csv",
-                "text/csv",
-            )
-        else:
-            st.warning("The dedicated 3PM model is not present in today's prediction file. Refresh today's projections after the updated model bundle is available.")
+        # Made threes now live in the standard projections table and team cards.
+        # The standalone section is removed to avoid duplicating the same players.
 
         st.download_button("Download today's projections", predictions.to_csv(index=False), "nba_edge_daily_projections.csv", "text/csv")
         trend_cols = [c for c in ["pts_last5", "pts_last10", "pts_trend", "reb_last5", "reb_last10", "reb_trend", "ast_last5", "ast_last10", "ast_trend"] if c in predictions.columns]
