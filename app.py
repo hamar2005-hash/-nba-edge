@@ -259,27 +259,29 @@ else:
         except Exception as line_exc:
             st.caption(f"Live prop lines are temporarily unavailable: {line_exc}")
 
-        st.subheader("Teams playing today")
-        st.caption("Open a team to see its five highest-minute projected players plus key rotation options. Starting lineups are not confirmed in this feed, so this is a role-based estimate, not a confirmed starters list. Each stat shows the model projection and current prop line.")
+        st.subheader("Games playing today")
+        st.caption("Open a game to see both teams together. Each team shows its five highest-minute projected players plus up to three key rotation options. Starting lineups are not confirmed in this feed, so this is a role-based estimate. Each stat shows the model projection and current prop line.")
         rotation_source = view.copy()
         rotation_minutes_col = "expected_minutes" if "expected_minutes" in rotation_source.columns else "minutes_baseline"
         if rotation_minutes_col in rotation_source.columns:
             rotation_source[rotation_minutes_col] = pd.to_numeric(rotation_source[rotation_minutes_col], errors="coerce")
-        for team_name in sorted(rotation_source["team"].dropna().astype(str).unique()):
-            team_rows = rotation_source[rotation_source["team"].astype(str) == team_name].copy()
-            team_rows = team_rows.sort_values(rotation_minutes_col, ascending=False, na_position="last")
-            team_rows = team_rows.head(8)
-            opponent_name = str(team_rows["opponent"].iloc[0]) if "opponent" in team_rows.columns and not team_rows.empty else ""
-            matchup_name = str(team_rows["game"].iloc[0]) if "game" in team_rows.columns and not team_rows.empty else ""
-            with st.expander(f"{team_name} · {len(team_rows)} players · vs {opponent_name}", expanded=False):
-                st.caption(f"{matchup_name} | Top five are the likely starting group; next three are key rotation options, ranked by {rotation_minutes_col.replace('_', ' ')}.")
-                mobile_player_cards(
-                    team_rows,
-                    [("MIN", rotation_minutes_col), ("PTS", "points_projection"),
-                     ("REB", "rebounds_projection"), ("AST", "assists_projection"),
-                     ("3PM", "threes_projection")],
-                    line_lookup=card_line_lookup,
-                )
+        for matchup_name in sorted(rotation_source["game"].dropna().astype(str).unique()):
+            game_rows = rotation_source[rotation_source["game"].astype(str) == matchup_name].copy()
+            team_names = sorted(game_rows["team"].dropna().astype(str).unique())
+            with st.expander(f"{matchup_name} · {len(team_names)} teams", expanded=False):
+                for team_name in team_names:
+                    team_rows = game_rows[game_rows["team"].astype(str) == team_name].copy()
+                    team_rows = team_rows.sort_values(rotation_minutes_col, ascending=False, na_position="last").head(8)
+                    opponent_name = str(team_rows["opponent"].iloc[0]) if "opponent" in team_rows.columns and not team_rows.empty else ""
+                    st.markdown(f"**{team_name} vs {opponent_name}**")
+                    st.caption(f"Top five are the likely starting group; next three are key rotation options, ranked by {rotation_minutes_col.replace('_', ' ')}.")
+                    mobile_player_cards(
+                        team_rows,
+                        [("MIN", rotation_minutes_col), ("PTS", "points_projection"),
+                         ("REB", "rebounds_projection"), ("AST", "assists_projection"),
+                         ("3PM", "threes_projection")],
+                        line_lookup=card_line_lookup,
+                    )
 
         # Made threes now live in the standard projections table and team cards.
         # The standalone section is removed to avoid duplicating the same players.
