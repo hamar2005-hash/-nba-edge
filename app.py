@@ -567,7 +567,7 @@ else:
                 # Archive only single-stat, pre-game recommendations. Composite markets
                 # are excluded until their exact settlement rules are implemented.
                 _pick_history_path = DATA / "prop_pick_history.csv"
-                _pick_markets = {"Points", "Rebounds", "Assists"}
+                _pick_markets = {"Points", "Rebounds", "Assists", "Threes"}
                 _new_picks = confidence_pool[confidence_pool["Market"].isin(_pick_markets)].copy()
                 if not _new_picks.empty:
                     _now_utc = pd.Timestamp.now(tz="UTC")
@@ -733,7 +733,7 @@ if picks.empty:
     st.info("No pre-game prop picks have been archived yet. New eligible recommendations will be saved automatically before tip-off.")
 else:
     if not settled.empty:
-        _actual_map = {"Points":"actual_points","Rebounds":"actual_rebounds","Assists":"actual_assists"}
+        _actual_map = {"Points":"actual_points","Rebounds":"actual_rebounds","Assists":"actual_assists","Threes":"actual_threes"}
         for _market_name, _actual_col in _actual_map.items():
             _mask = picks["market"].astype(str).str.lower().eq(_market_name.lower())
             _day = settled[["game_date","player","team",_actual_col]].copy() if _actual_col in settled.columns else pd.DataFrame()
@@ -786,14 +786,22 @@ else:
     _y1.metric("1.91 benchmark yield",f"{_fixed_yield:+.1f}%")
     _y2.metric("Sky Bet yield",f"{_actual_yield:+.1f}%" if _actual_yield is not None else "Not available")
     _market_rows=[]
-    for _market_name in ["Points","Rebounds","Assists"]:
+    for _market_name in ["Points","Rebounds","Assists","Threes"]:
         _subset=_graded[_graded["market"].astype(str).str.lower().eq(_market_name.lower())]
         _mw=int((_subset["Actual result"]=="Win").sum())
         _ml=int((_subset["Actual result"]=="Loss").sum())
         _mp=int((_subset["Actual result"]=="Push").sum())
         # Count-based calculation avoids dtype/coercion failures in older persisted pick-history CSVs.
         _benchmark=(_mw * 0.91) - _ml
-        _market_rows.append({"Market":_market_name,"Record":f"{_mw}-{_ml}-{_mp}","1.91 P/L":f"{_benchmark:+.2f}u"})
+        _decided = _mw + _ml
+        _hit_rate = (_mw / _decided * 100) if _decided else None
+        _market_rows.append({
+            "Market":_market_name,
+            "Settled":_mw + _ml + _mp,
+            "Record":f"{_mw}-{_ml}-{_mp}",
+            "Hit rate":f"{_hit_rate:.1f}%" if _hit_rate is not None else "Awaiting results",
+            "1.91 P/L":f"{_benchmark:+.2f}u",
+        })
     st.markdown("**Performance by market**")
     st.dataframe(pd.DataFrame(_market_rows),hide_index=True,width="stretch")
     st.download_button("Download NBA betting history",picks.to_csv(index=False),"nba_edge_betting_history.csv","text/csv")
