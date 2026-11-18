@@ -57,9 +57,17 @@ st.markdown("""
 <style>
 
 /* Dedicated Streamlit component hosts the full-screen video layer. */
-div[data-testid="stIFrame"] {
- position:fixed !important; inset:0 !important;
+/* Streamlit renders components as iframe elements, not divs.
+   Pin the component iframe to the viewport so its 1px layout placeholder
+   does not clip the full-screen video inside it. */
+iframe[data-testid="stIFrame"],
+[data-testid="stIFrame"] {
+ position:fixed !important;
+ top:0 !important; left:0 !important; right:0 !important; bottom:0 !important;
+ display:block !important;
  width:100vw !important; height:100vh !important;
+ min-width:100vw !important; min-height:100vh !important;
+ max-width:none !important; max-height:none !important;
  z-index:0 !important; pointer-events:none !important;
  border:0 !important; overflow:hidden !important;
 }
