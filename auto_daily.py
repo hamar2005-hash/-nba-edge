@@ -135,7 +135,7 @@ def main():
                             value = max(0, min(14, (pd.Timestamp(game_date) - last_date).days)) if pd.notna(last_date) else base.get(column, 0)
                         elif column == "GAMES_PLAYED_BEFORE":
                             value = base.get(column, 0)
-                        elif column.startswith("OPP_ALLOW_"):
+                        elif column.startswith("OPP_ALLOWED_"):
                             value = opponent_defense.get(column, 0) if opponent_defense is not None else 0
                         else:
                             value = base.get(column, 0)
