@@ -27,6 +27,7 @@ on:
       - "team_defense_snapshot.py"
       - "test_team_defense_snapshot.py"
       - "train_models.py"
+      - "app.py"
       - "collect_nba_data.py"
       - ".github/workflows/weekly-retrain.yml"
 permissions:
