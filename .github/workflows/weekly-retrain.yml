@@ -15,13 +15,15 @@ on:
           - points
           - threes
   push:
-    branches: [points-v2-minutes-model]
+    branches: [points-v2-minutes-model, points-v3-defence-snapshot]
     paths:
       - "weekly_retrain.py"
       - "audit_models.py"
       - "points_v2.py"
       - "train_threes.py"
       - "test_threes_integration.py"
+      - "team_defense_snapshot.py"
+      - "test_team_defense_snapshot.py"
       - "train_models.py"
       - "collect_nba_data.py"
       - ".github/workflows/weekly-retrain.yml"
