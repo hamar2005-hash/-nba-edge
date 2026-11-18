@@ -8,6 +8,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor, ExtraTreesRegressor,
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
+from team_defense_snapshot import save_latest_team_defense_snapshot
 
 TARGETS = {'points':'PTS', 'rebounds':'REB', 'assists':'AST'}
 STATS = ['PTS','REB','AST','MIN','FGA','FG3A','FTA','TOV','STL','BLK']
@@ -177,7 +178,8 @@ def main():
     latest=df.sort_values('GAME_DATE').groupby('PLAYER_ID',as_index=False).tail(1)
     identity=['PLAYER_ID','PLAYER_NAME']+(['TEAM_ABBREVIATION'] if 'TEAM_ABBREVIATION' in latest else [])+['GAME_DATE']
     latest[list(dict.fromkeys(identity+base+point))].to_csv(out/'latest_player_features.csv',index=False)
-    pd.DataFrame(columns=['TEAM_ABBREVIATION']).to_csv(out/'latest_team_defense.csv',index=False)
+    defense_snapshot = save_latest_team_defense_snapshot(df, out/'latest_team_defense.csv')
+    print(f'Updated opponent-defense snapshot for {len(defense_snapshot)} teams.')
     print(f'Models, metrics and feature snapshots saved to {out}/')
 
 if __name__=='__main__': main()

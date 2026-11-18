@@ -9,6 +9,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
 from train_models import prepare, TARGETS, BASE_FEATURES, POINT_EXTRA
 from points_v2 import PointsV2Predictor
+from team_defense_snapshot import save_latest_team_defense_snapshot
 
 ROOT=Path(__file__).resolve().parent
 DATA=ROOT/'data'; MODELS=ROOT/'models'
@@ -257,7 +258,8 @@ def main():
     latest=df.sort_values('GAME_DATE').groupby('PLAYER_ID',as_index=False).tail(1)
     identity=['PLAYER_ID','PLAYER_NAME']+(['TEAM_ABBREVIATION'] if 'TEAM_ABBREVIATION' in latest else [])+['GAME_DATE']
     latest[list(dict.fromkeys(identity+base+points_features))].to_csv(MODELS/'latest_player_features.csv',index=False)
-    pd.DataFrame(columns=['TEAM_ABBREVIATION']).to_csv(MODELS/'latest_team_defense.csv',index=False)
+    defense_snapshot = save_latest_team_defense_snapshot(df, MODELS/'latest_team_defense.csv')
+    print(f'Updated opponent-defense snapshot for {len(defense_snapshot)} teams.')
     report['any_model_updated']=accepted_any
     (MODELS/'weekly_retrain_report.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2))

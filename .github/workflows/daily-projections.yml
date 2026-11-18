@@ -61,7 +61,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/daily_predictions.csv
-          for file in data/first_basket_predictions.csv data/prediction_history.csv data/settled_results.csv; do
+          for file in data/first_basket_predictions.csv data/prediction_history.csv data/settled_results.csv data/prop_pick_history.csv; do
             if [ -f "$file" ]; then git add "$file"; fi
           done
           git diff --cached --quiet || git commit -m "Update NBA projections and accuracy history"

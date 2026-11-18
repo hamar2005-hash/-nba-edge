@@ -19,29 +19,32 @@ st.set_page_config(page_title="NBA Edge", page_icon="🏀", layout="wide")
 # NBA Edge visual identity: dark court, warm orange accent, compact mobile-friendly cards.
 st.markdown("""
 <style>
-:root { --edge-orange: #ff8a32; --edge-amber: #ffb15c; --edge-line: rgba(255,255,255,.09); }
-.stApp { background: radial-gradient(ellipse at 12% 0%, rgba(255,138,50,.11), transparent 34%), #0c1016; }
-.block-container { max-width: 1440px; padding-top: 1.5rem; padding-bottom: 3rem; }
-[data-testid="stHeader"] { background: rgba(12,16,22,.72); }
-h1, h2, h3 { letter-spacing: -.035em; }
-h2 { padding-top: .3rem; }
-[data-testid="stMetric"] { background: linear-gradient(145deg, rgba(255,255,255,.065), rgba(255,255,255,.025)); border: 1px solid var(--edge-line); border-radius: 16px; padding: 16px 18px; }
-[data-testid="stMetricLabel"] { color: #aeb7c4; font-size: .82rem; }
-[data-testid="stMetricValue"] { color: #fff; font-weight: 750; }
-[data-testid="stDataFrame"], [data-testid="stTable"] { border: 1px solid var(--edge-line); border-radius: 14px; overflow: hidden; }
-.stButton > button, .stDownloadButton > button { border-radius: 11px; border: 1px solid rgba(255,138,50,.45); transition: all .15s ease; font-weight: 650; }
-.stButton > button[kind="primary"] { background: linear-gradient(100deg,#f47721,#ff9a45); color: #111; border: 0; }
-.stButton > button:hover, .stDownloadButton > button:hover { border-color: var(--edge-orange); transform: translateY(-1px); }
-[data-testid="stTextInput"] input, [data-testid="stSelectbox"] > div, [data-testid="stMultiSelect"] > div { border-radius: 11px; }
-[data-testid="stExpander"] { border: 1px solid var(--edge-line); border-radius: 14px; background: rgba(255,255,255,.025); }
-[data-testid="stSidebar"] { background: #111720; border-right: 1px solid var(--edge-line); }
-hr { border-color: var(--edge-line); }
-.edge-hero { border: 1px solid rgba(255,138,50,.22); border-radius: 22px; padding: 25px 28px; margin: 0 0 24px; background: linear-gradient(112deg, rgba(255,138,50,.17), rgba(255,255,255,.035) 58%, rgba(255,138,50,.06)); }
-.edge-kicker { color: #ffad68; text-transform: uppercase; letter-spacing: .16em; font-size: .72rem; font-weight: 800; }
-.edge-title { color: #fff; font-size: clamp(2rem,5vw,3.15rem); font-weight: 850; letter-spacing: -.055em; line-height: 1.05; margin: 8px 0; }
-.edge-subtitle { color: #aeb7c4; font-size: .98rem; }
-.edge-pill { display:inline-block; padding:5px 10px; margin:4px 5px 0 0; border-radius:999px; background:rgba(255,138,50,.13); border:1px solid rgba(255,138,50,.25); color:#ffc18f; font-size:.76rem; font-weight:650; }
-@media (max-width: 640px) { .block-container { padding-left: .8rem; padding-right: .8rem; } .edge-hero { padding: 20px 18px; border-radius: 17px; } [data-testid="stMetric"] { padding: 12px; } }
+:root { --edge-orange:#ff8a32; --edge-amber:#ffb15c; --edge-line:rgba(255,255,255,.09); --edge-muted:#9ca9b8; }
+.stApp { background:radial-gradient(ellipse at 8% -8%,rgba(255,138,50,.16),transparent 32%),radial-gradient(ellipse at 95% 10%,rgba(54,104,151,.10),transparent 28%),#0b1017; color:#edf2f7; }
+.block-container { max-width:1480px; padding:1.35rem 2rem 3.5rem; }
+[data-testid="stHeader"] { background:rgba(11,16,23,.82); backdrop-filter:blur(14px); }
+h1,h2,h3 { letter-spacing:-.035em; color:#f7f9fc; } h2 { padding-top:.35rem; font-size:1.55rem; } h3 { font-size:1.18rem; }
+p,[data-testid="stCaptionContainer"] { color:var(--edge-muted); }
+[data-testid="stMetric"] { background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025)); border:1px solid var(--edge-line); border-radius:17px; padding:17px 19px; box-shadow:0 8px 24px rgba(0,0,0,.12); min-height:112px; }
+[data-testid="stMetricLabel"] { color:#aeb9c7; font-size:.78rem; font-weight:650; } [data-testid="stMetricValue"] { color:#fff; font-size:1.9rem; font-weight:800; letter-spacing:-.04em; }
+[data-testid="stDataFrame"],[data-testid="stTable"] { border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; background:rgba(17,25,35,.72); }
+[data-testid="stDataFrame"] [role="columnheader"] { background:#1b2735; } [data-testid="stDataFrame"] [role="gridcell"] { font-size:.86rem; }
+.stButton > button,.stDownloadButton > button,[data-testid="stLinkButton"] a { border-radius:11px; border:1px solid rgba(255,138,50,.38); transition:all .16s ease; font-weight:700; min-height:2.65rem; }
+.stButton > button[kind="primary"] { background:linear-gradient(105deg,#f47721,#ffab59); color:#17120d; border:0; box-shadow:0 5px 18px rgba(244,119,33,.18); }
+.stButton > button:hover,.stDownloadButton > button:hover { border-color:var(--edge-orange); transform:translateY(-1px); }
+[data-testid="stTextInput"] input,[data-testid="stSelectbox"] > div,[data-testid="stMultiSelect"] > div,[data-testid="stDateInput"] input { border-radius:11px; background:#121b26; }
+[data-testid="stExpander"] { border:1px solid var(--edge-line); border-radius:14px; background:rgba(255,255,255,.025); }
+[data-testid="stSidebar"] { background:linear-gradient(180deg,#111a25,#0e151e); border-right:1px solid var(--edge-line); }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#aeb9c7; } [data-testid="stSidebar"] [data-testid="stButton"] button { width:100%; }
+hr { border-color:var(--edge-line); margin:1.65rem 0; }
+.edge-hero { position:relative; overflow:hidden; border:1px solid rgba(255,138,50,.25); border-radius:23px; padding:27px 30px; margin:0 0 25px; background:linear-gradient(112deg,rgba(255,138,50,.18),rgba(255,255,255,.035) 58%,rgba(255,138,50,.055)); box-shadow:0 14px 42px rgba(0,0,0,.18); }
+.edge-hero:after { content:""; position:absolute; width:240px; height:240px; right:-55px; top:-115px; border:1px solid rgba(255,177,92,.15); border-radius:50%; box-shadow:0 0 0 22px rgba(255,177,92,.025),0 0 0 48px rgba(255,177,92,.02); pointer-events:none; }
+.edge-kicker { color:#ffad68; text-transform:uppercase; letter-spacing:.17em; font-size:.7rem; font-weight:850; }
+.edge-title { color:#fff; font-size:clamp(2.05rem,5vw,3.25rem); font-weight:900; letter-spacing:-.06em; line-height:1.02; margin:9px 0; }
+.edge-subtitle { color:#b1bdca; font-size:.96rem; max-width:720px; }
+.edge-pill { display:inline-block; padding:5px 10px; margin:12px 5px 0 0; border-radius:999px; background:rgba(255,138,50,.12); border:1px solid rgba(255,138,50,.25); color:#ffc18f; font-size:.7rem; font-weight:750; letter-spacing:.04em; }
+[data-testid="stStatusWidget"] { border-radius:12px; }
+@media (max-width:800px) { .block-container { padding:1rem .85rem 2.5rem; } .edge-hero { padding:21px 19px; border-radius:18px; } [data-testid="stMetric"] { padding:12px; min-height:94px; } [data-testid="stMetricValue"] { font-size:1.55rem; } }
 </style>
 <div class="edge-hero">
   <div class="edge-kicker">Basketball intelligence</div>
@@ -370,6 +373,47 @@ else:
                 (compare["team_key_line"] == compare["team_key_projection"])
             ].copy()
             compare = compare.drop_duplicates(["player_key", "market", "line"])
+
+            # Compact three-market board: show each player's listed PTS/REB/AST
+            # line beside the matching model projection in one row.
+            core_markets = {
+                "points": ("points_projection", "Points"),
+                "rebounds": ("rebounds_projection", "Rebounds"),
+                "assists": ("assists_projection", "Assists"),
+            }
+            core = compare[compare["market"].isin(core_markets)].copy()
+            if not core.empty:
+                core["Player"] = core.get("player_line", core.get("player"))
+                core["Team"] = core.get("team_line", core.get("team"))
+                core["Opponent"] = core.get("opponent_line", core.get("opponent"))
+                core["Projection"] = core.apply(
+                    lambda item: pd.to_numeric(item.get(core_markets[item["market"]][0]), errors="coerce"),
+                    axis=1,
+                )
+                core["Line"] = pd.to_numeric(core["line"], errors="coerce")
+                core = core.dropna(subset=["Projection", "Line"])
+                if not core.empty:
+                    def display_values(values):
+                        unique = sorted({float(value) for value in values if pd.notna(value)})
+                        return ", ".join(f"{value:g}" for value in unique) if unique else "—"
+                    board_rows = []
+                    for keys, player_rows in core.groupby(["Player", "Team", "Opponent"], dropna=False):
+                        board = {"Player": keys[0], "Team": keys[1], "Opponent": keys[2]}
+                        for market_key, (_, label) in core_markets.items():
+                            market_rows = player_rows[player_rows["market"] == market_key]
+                            board[f"{label} line"] = display_values(market_rows["Line"])
+                            board[f"{label} projection"] = (
+                                round(float(market_rows["Projection"].iloc[0]), 1)
+                                if not market_rows.empty else "—"
+                            )
+                        board_rows.append(board)
+                    st.subheader("📋 Points, rebounds & assists: lines vs projections")
+                    st.caption("Each listed prop line is shown beside NBA Edge's projection. Multiple available lines are listed together; a dash means the feed did not provide that market.")
+                    st.dataframe(
+                        pd.DataFrame(board_rows).sort_values(["Team", "Player"]),
+                        width="stretch", hide_index=True,
+                    )
+
             if compare.empty:
                 st.warning("No prop lines passed the player-and-team identity check. The app will not force a match.")
             # Use the model's residual spread to estimate over/under probabilities.

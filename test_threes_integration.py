@@ -28,6 +28,7 @@ daily = (ROOT / "auto_daily.py").read_text()
 app = (ROOT / "app.py").read_text()
 settle = (ROOT / "settle_results.py").read_text()
 assert '"threes"' in daily and 'f"{market}_projection"' in daily
+assert 'column.startswith("OPP_ALLOWED_")' in daily, "Daily inference must apply the team-keyed opponent-defense snapshot"
 assert '"threes_projection"' in app and "Three-pointers made" in app
 assert '"actual_threes"' in settle and '"threes": "FG3M"' in settle
 
