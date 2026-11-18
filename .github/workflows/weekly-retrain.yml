@@ -22,6 +22,8 @@ on:
       - "points_v2.py"
       - "train_threes.py"
       - "test_threes_integration.py"
+      - "settle_results.py"
+      - "test_settle_results.py"
       - "team_defense_snapshot.py"
       - "test_team_defense_snapshot.py"
       - "train_models.py"
@@ -79,6 +81,9 @@ jobs:
       - name: Train three-pointers-made candidate
         if: github.event_name == 'push'
         run: python train_threes.py
+      - name: Test prop-pick settlement logic
+        if: github.event_name == 'push'
+        run: python test_settle_results.py
       - name: Smoke-test daily prediction, app and settlement integration
         if: github.event_name == 'push'
         run: python test_threes_integration.py
