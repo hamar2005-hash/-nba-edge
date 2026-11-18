@@ -4,6 +4,7 @@ import requests
 import joblib
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from probability_utils import probability_at_least
 
 ROOT = Path(__file__).resolve().parent
@@ -55,18 +56,14 @@ st.set_page_config(page_title="NBA Edge", page_icon="🏀", layout="wide")
 st.markdown("""
 <style>
 
-/* Static NBA-hosted LeBron image background. Avoids third-party iframe/autoplay issues. */
-.edge-video-backdrop {
- position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
- background-color:#080c11;
- background-image:
-  linear-gradient(180deg,rgba(8,12,17,.78),rgba(8,12,17,.86) 48%,rgba(8,12,17,.96)),
-  url("https://cdn.nba.com/headshots/nba/latest/1040x760/2544.png");
- background-position:center 18%;
- background-repeat:no-repeat;
- background-size:cover;
+/* Dedicated Streamlit component hosts the full-screen video layer. */
+div[data-testid="stIFrame"] {
+ position:fixed !important; inset:0 !important;
+ width:100vw !important; height:100vh !important;
+ z-index:0 !important; pointer-events:none !important;
+ border:0 !important; overflow:hidden !important;
 }
-.edge-video-shade { position:absolute; inset:0; pointer-events:none; }
+.stApp { position:relative; background:#080c11 !important; }
 .stApp { position:relative; background:#080c11 !important; }
 .stApp > header, .stApp [data-testid="stAppViewContainer"] { position:relative; z-index:1; background:transparent; }
 [data-testid="stSidebar"] { background:rgba(15,21,28,.96); }
@@ -119,9 +116,6 @@ hr { border-color:var(--edge-line); margin:1.35rem 0; }
  [data-testid="stMetricValue"] { font-size:1.4rem; }
 }
 </style>
-<div class="edge-video-backdrop" aria-hidden="true">
-  <div class="edge-video-shade"></div>
-</div>
 <div class="edge-hero">
   <div class="edge-kicker">Player prop analytics</div>
   <div class="edge-title">NBA EDGE</div>
@@ -129,6 +123,23 @@ hr { border-color:var(--edge-line); margin:1.35rem 0; }
   <span class="edge-pill">PTS</span><span class="edge-pill">REB</span><span class="edge-pill">AST</span><span class="edge-pill">3PM</span>
 </div>
 """, unsafe_allow_html=True)
+
+
+# Render the YouTube highlight reel in its own Streamlit iframe component.
+# Keeping the iframe separate from st.markdown avoids HTML sanitisation issues.
+components.html("""
+<!doctype html>
+<html><head><style>
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
+iframe{position:fixed;top:50%;left:50%;width:max(100vw,177.78vh);height:max(100vh,56.25vw);
+transform:translate(-50%,-50%);border:0;opacity:.30;pointer-events:none}
+.shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(8,12,17,.78),rgba(8,12,17,.86) 48%,rgba(8,12,17,.96));pointer-events:none}
+</style></head><body>
+<iframe src="https://www.youtube-nocookie.com/embed/pkBfvNiuQuk?autoplay=1&mute=1&controls=0&loop=1&playlist=pkBfvNiuQuk&playsinline=1&rel=0&modestbranding=1"
+title="LeBron James highlights" allow="autoplay; encrypted-media; picture-in-picture" tabindex="-1"></iframe>
+<div class="shade"></div>
+</body></html>
+""", height=1, width=1, scrolling=False)
 
 # Restore the committed trained model bundle if Streamlit's instance starts clean
 # or if a previous extraction left only part of the required files behind.
