@@ -51,41 +51,62 @@ def mobile_player_cards(frame, market_columns, title_column="player", line_looku
 
 st.set_page_config(page_title="NBA Edge", page_icon="🏀", layout="wide")
 
-# NBA Edge visual identity: dark court, warm orange accent, compact mobile-friendly cards.
+# Restrained sports-data dashboard styling: flat surfaces, clear hierarchy, minimal decoration.
 st.markdown("""
 <style>
-:root { --edge-orange:#ff8a32; --edge-amber:#ffb15c; --edge-line:rgba(255,255,255,.09); --edge-muted:#9ca9b8; }
-.stApp { background:radial-gradient(ellipse at 8% -8%,rgba(255,138,50,.16),transparent 32%),radial-gradient(ellipse at 95% 10%,rgba(54,104,151,.10),transparent 28%),#0b1017; color:#edf2f7; }
-.block-container { max-width:1480px; padding:1.35rem 2rem 3.5rem; }
-[data-testid="stHeader"] { background:rgba(11,16,23,.82); backdrop-filter:blur(14px); }
-h1,h2,h3 { letter-spacing:-.035em; color:#f7f9fc; } h2 { padding-top:.35rem; font-size:1.55rem; } h3 { font-size:1.18rem; }
+:root { --edge-orange:#e87524; --edge-line:#303944; --edge-muted:#a5afb9; }
+.stApp { background:#10151b; color:#e7ebef; }
+.block-container { max-width:1440px; padding:1.2rem 1.8rem 3rem; }
+[data-testid="stHeader"] { background:#10151b; }
+h1,h2,h3 { color:#f0f2f4; letter-spacing:-.015em; font-weight:650; }
+h2 { padding-top:.3rem; font-size:1.4rem; } h3 { font-size:1.08rem; }
 p,[data-testid="stCaptionContainer"] { color:var(--edge-muted); }
-[data-testid="stMetric"] { background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.025)); border:1px solid var(--edge-line); border-radius:17px; padding:17px 19px; box-shadow:0 8px 24px rgba(0,0,0,.12); min-height:112px; }
-[data-testid="stMetricLabel"] { color:#aeb9c7; font-size:.78rem; font-weight:650; } [data-testid="stMetricValue"] { color:#fff; font-size:1.9rem; font-weight:800; letter-spacing:-.04em; }
-[data-testid="stDataFrame"],[data-testid="stTable"] { border:1px solid rgba(255,255,255,.10); border-radius:14px; overflow:hidden; background:rgba(17,25,35,.72); }
-[data-testid="stDataFrame"] [role="columnheader"] { background:#1b2735; } [data-testid="stDataFrame"] [role="gridcell"] { font-size:.86rem; }
-.stButton > button,.stDownloadButton > button,[data-testid="stLinkButton"] a { border-radius:11px; border:1px solid rgba(255,138,50,.38); transition:all .16s ease; font-weight:700; min-height:2.65rem; }
-.stButton > button[kind="primary"] { background:linear-gradient(105deg,#f47721,#ffab59); color:#17120d; border:0; box-shadow:0 5px 18px rgba(244,119,33,.18); }
-.stButton > button:hover,.stDownloadButton > button:hover { border-color:var(--edge-orange); transform:translateY(-1px); }
-[data-testid="stTextInput"] input,[data-testid="stSelectbox"] > div,[data-testid="stMultiSelect"] > div,[data-testid="stDateInput"] input { border-radius:11px; background:#121b26; }
-[data-testid="stExpander"] { border:1px solid var(--edge-line); border-radius:14px; background:rgba(255,255,255,.025); }
-[data-testid="stSidebar"] { background:linear-gradient(180deg,#111a25,#0e151e); border-right:1px solid var(--edge-line); }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#aeb9c7; } [data-testid="stSidebar"] [data-testid="stButton"] button { width:100%; }
-hr { border-color:var(--edge-line); margin:1.65rem 0; }
-.edge-hero { position:relative; overflow:hidden; border:1px solid rgba(255,138,50,.25); border-radius:23px; padding:27px 30px; margin:0 0 25px; background:linear-gradient(112deg,rgba(255,138,50,.18),rgba(255,255,255,.035) 58%,rgba(255,138,50,.055)); box-shadow:0 14px 42px rgba(0,0,0,.18); }
-.edge-hero:after { content:""; position:absolute; width:240px; height:240px; right:-55px; top:-115px; border:1px solid rgba(255,177,92,.15); border-radius:50%; box-shadow:0 0 0 22px rgba(255,177,92,.025),0 0 0 48px rgba(255,177,92,.02); pointer-events:none; }
-.edge-kicker { color:#ffad68; text-transform:uppercase; letter-spacing:.17em; font-size:.7rem; font-weight:850; }
-.edge-title { color:#fff; font-size:clamp(2.05rem,5vw,3.25rem); font-weight:900; letter-spacing:-.06em; line-height:1.02; margin:9px 0; }
-.edge-subtitle { color:#b1bdca; font-size:.96rem; max-width:720px; }
-.edge-mobile-card-list { display:none; }\n.edge-pill { display:inline-block; padding:5px 10px; margin:12px 5px 0 0; border-radius:999px; background:rgba(255,138,50,.12); border:1px solid rgba(255,138,50,.25); color:#ffc18f; font-size:.7rem; font-weight:750; letter-spacing:.04em; }
-[data-testid="stStatusWidget"] { border-radius:12px; }
-@media (max-width:800px) { .st-key-desktop-projections,.st-key-desktop-threes { display:none !important; } .edge-mobile-card-list { display:grid; gap:10px; } .edge-mobile-card { background:linear-gradient(145deg,#172230,#111923); border:1px solid rgba(255,255,255,.10); border-radius:14px; padding:12px 13px; } .edge-mobile-card-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:#f5f7fa; font-size:.92rem; } .edge-mobile-card-head span { color:#aeb9c7; font-size:.76rem; } .edge-mobile-matchup { color:#9ca9b8; font-size:.72rem; margin-top:4px; } .edge-mobile-status { color:#ffbd83; font-size:.7rem; margin-top:3px; } .edge-mobile-stats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:6px; margin-top:10px; } .edge-mobile-stat { background:rgba(255,255,255,.045); border-radius:9px; padding:7px 5px; text-align:center; min-width:0; } .edge-mobile-stat span { display:block; color:#9ca9b8; font-size:.63rem; white-space:nowrap; } .edge-mobile-stat strong { display:block; color:#fff; font-size:.95rem; margin-top:2px; } .edge-mobile-stat small { display:block; color:#aeb9c7; font-size:.58rem; margin-top:3px; white-space:nowrap; } .block-container { padding:1rem .85rem 2.5rem; } .edge-hero { padding:21px 19px; border-radius:18px; } [data-testid="stMetric"] { padding:12px; min-height:94px; } [data-testid="stMetricValue"] { font-size:1.55rem; } }
+[data-testid="stMetric"] { background:#171e26; border:1px solid var(--edge-line); border-radius:5px; padding:14px 16px; min-height:96px; box-shadow:none; }
+[data-testid="stMetricLabel"] { color:#a5afb9; font-size:.76rem; font-weight:550; }
+[data-testid="stMetricValue"] { color:#f2f4f6; font-size:1.75rem; font-weight:650; letter-spacing:-.02em; }
+[data-testid="stDataFrame"],[data-testid="stTable"] { border:1px solid var(--edge-line); border-radius:4px; overflow:hidden; background:#171e26; }
+[data-testid="stDataFrame"] [role="columnheader"] { background:#202a35; }
+[data-testid="stDataFrame"] [role="gridcell"] { font-size:.85rem; }
+.stButton > button,.stDownloadButton > button,[data-testid="stLinkButton"] a { border-radius:4px; border:1px solid #46515d; transition:border-color .12s ease; font-weight:600; min-height:2.45rem; }
+.stButton > button[kind="primary"] { background:var(--edge-orange); color:#11151a; border:1px solid var(--edge-orange); box-shadow:none; }
+.stButton > button:hover,.stDownloadButton > button:hover { border-color:var(--edge-orange); transform:none; }
+[data-testid="stTextInput"] input,[data-testid="stSelectbox"] > div,[data-testid="stMultiSelect"] > div,[data-testid="stDateInput"] input { border-radius:4px; background:#171e26; }
+[data-testid="stExpander"] { border:1px solid var(--edge-line); border-radius:4px; background:#141b22; }
+[data-testid="stSidebar"] { background:#141b22; border-right:1px solid var(--edge-line); }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#a5afb9; }
+[data-testid="stSidebar"] [data-testid="stButton"] button { width:100%; }
+hr { border-color:var(--edge-line); margin:1.35rem 0; }
+.edge-hero { border-bottom:2px solid var(--edge-orange); padding:4px 0 15px; margin:0 0 22px; background:transparent; }
+.edge-kicker { color:#c0c7ce; text-transform:uppercase; letter-spacing:.09em; font-size:.68rem; font-weight:650; }
+.edge-title { color:#f3f5f7; font-size:clamp(1.8rem,4vw,2.55rem); font-weight:750; letter-spacing:-.035em; line-height:1.08; margin:5px 0; }
+.edge-subtitle { color:#a5afb9; font-size:.9rem; max-width:720px; }
+.edge-mobile-card-list { display:none; }
+.edge-pill { display:inline-block; padding:2px 7px; margin:8px 5px 0 0; border-radius:3px; background:#202a35; border:1px solid #394552; color:#cbd2d9; font-size:.65rem; font-weight:600; letter-spacing:.02em; }
+[data-testid="stStatusWidget"] { border-radius:4px; }
+@media (max-width:800px) {
+ .st-key-desktop-projections,.st-key-desktop-threes { display:none !important; }
+ .edge-mobile-card-list { display:grid; gap:8px; }
+ .edge-mobile-card { background:#171e26; border:1px solid #303944; border-radius:4px; padding:11px 12px; }
+ .edge-mobile-card-head { display:flex; justify-content:space-between; gap:8px; align-items:center; color:#edf0f3; font-size:.9rem; }
+ .edge-mobile-card-head span { color:#a5afb9; font-size:.75rem; }
+ .edge-mobile-matchup { color:#929eaa; font-size:.7rem; margin-top:3px; }
+ .edge-mobile-status { color:#e99a5e; font-size:.68rem; margin-top:3px; }
+ .edge-mobile-stats { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:5px; margin-top:9px; }
+ .edge-mobile-stat { background:#202a35; border-radius:3px; padding:7px 4px; text-align:center; min-width:0; }
+ .edge-mobile-stat span { display:block; color:#a5afb9; font-size:.62rem; white-space:nowrap; }
+ .edge-mobile-stat strong { display:block; color:#f0f2f4; font-size:.92rem; margin-top:2px; }
+ .edge-mobile-stat small { display:block; color:#a5afb9; font-size:.57rem; margin-top:3px; white-space:nowrap; }
+ .block-container { padding:1rem .8rem 2.2rem; }
+ .edge-hero { padding-bottom:12px; }
+ [data-testid="stMetric"] { padding:10px; min-height:82px; }
+ [data-testid="stMetricValue"] { font-size:1.4rem; }
+}
 </style>
 <div class="edge-hero">
-  <div class="edge-kicker">Basketball intelligence</div>
-  <div class="edge-title">🏀 NBA EDGE</div>
-  <div class="edge-subtitle">Daily player projections, prop-line comparisons and model performance.</div>
-  <span class="edge-pill">POINTS</span><span class="edge-pill">REBOUNDS</span><span class="edge-pill">ASSISTS</span><span class="edge-pill">OPTIONAL SKY BET ODDS TRACKING</span>
+  <div class="edge-kicker">Player prop analytics</div>
+  <div class="edge-title">NBA EDGE</div>
+  <div class="edge-subtitle">Daily projections, market comparisons and results tracking.</div>
+  <span class="edge-pill">PTS</span><span class="edge-pill">REB</span><span class="edge-pill">AST</span><span class="edge-pill">3PM</span>
 </div>
 """, unsafe_allow_html=True)
 
