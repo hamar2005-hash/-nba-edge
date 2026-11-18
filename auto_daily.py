@@ -135,8 +135,10 @@ def main():
                             value = max(0, min(14, (pd.Timestamp(game_date) - last_date).days)) if pd.notna(last_date) else base.get(column, 0)
                         elif column == "GAMES_PLAYED_BEFORE":
                             value = base.get(column, 0)
-                        elif column.startswith("OPP_ALLOW_"):
-                            value = opponent_defense.get(column, 0) if opponent_defense is not None else 0
+                        elif column.startswith("OPP_ALLOWED_"):
+                            # Use the upcoming opponent's latest pre-game defensive profile.
+                            # Fall back to the player snapshot only if that team is unavailable.
+                            value = opponent_defense.get(column, base.get(column, float("nan"))) if opponent_defense is not None else base.get(column, float("nan"))
                         else:
                             value = base.get(column, 0)
                         xrow[column] = value

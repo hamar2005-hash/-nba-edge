@@ -2,6 +2,8 @@ name: NBA Edge code and bundle checks
 
 on:
   push:
+    branches: [main, points-accuracy-and-over-under-tracking]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -43,6 +45,19 @@ jobs:
           for name in modules:
               importlib.import_module(name)
               print("Import OK:", name)
+
+          from train_models import latest_team_defense_snapshot
+          defense_fixture = pd.DataFrame({
+              "OPPONENT_ABBREVIATION": ["BOS", "BOS", "NYK"],
+              "GAME_DATE": pd.to_datetime(["2026-11-01", "2026-11-02", "2026-11-02"]),
+              "GAME_ID": ["1", "2", "3"],
+              "OPP_ALLOWED_EFG_L5": [0.50, 0.54, 0.49],
+          })
+          defense_snapshot = latest_team_defense_snapshot(defense_fixture, ["OPP_ALLOWED_EFG_L5"])
+          defense_values = defense_snapshot.set_index("TEAM_ABBREVIATION")["OPP_ALLOWED_EFG_L5"]
+          assert len(defense_snapshot) == 2 and abs(defense_values["BOS"] - 0.54) < 1e-9
+          assert abs(defense_values["NYK"] - 0.49) < 1e-9
+          print("Latest opponent-defence snapshot test OK.")
 
           from prop_lines import discover_players, extract_rows, parse_slate
           payload = {
@@ -169,7 +184,7 @@ jobs:
                   assert {"TEAM_ABBREVIATION"}.issubset(defense.columns) and not defense.empty, "Opponent defence snapshot is empty or missing team keys"
                   for market in ("points", "rebounds", "assists"):
                       pack = joblib.load(model_dir / f"{market}_model.joblib")
-                      assert any(c.startswith("OPP_ALLOW_") for c in pack["feature_cols"]), f"{market} model does not use opponent defensive features"
+                      assert any(c.startswith("OPP_ALLOWED_") for c in pack["feature_cols"]), f"{market} model does not use opponent defensive features"
                   print(f"Opponent defence snapshot OK: {len(defense)} teams, {len(defense.columns)-1} defensive features")
               else:
                   print("Legacy model bundle detected; opponent defence will activate after weekly retraining.")

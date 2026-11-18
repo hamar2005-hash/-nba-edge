@@ -7,7 +7,7 @@ from sklearn.ensemble import HistGradientBoostingRegressor, ExtraTreesRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
-from train_models import prepare, TARGETS, BASE_FEATURES, POINT_EXTRA
+from train_models import prepare, TARGETS, BASE_FEATURES, POINT_EXTRA, latest_team_defense_snapshot
 from points_v2 import PointsV2Predictor
 
 ROOT=Path(__file__).resolve().parent
@@ -257,7 +257,7 @@ def main():
     latest=df.sort_values('GAME_DATE').groupby('PLAYER_ID',as_index=False).tail(1)
     identity=['PLAYER_ID','PLAYER_NAME']+(['TEAM_ABBREVIATION'] if 'TEAM_ABBREVIATION' in latest else [])+['GAME_DATE']
     latest[list(dict.fromkeys(identity+base+points_features))].to_csv(MODELS/'latest_player_features.csv',index=False)
-    pd.DataFrame(columns=['TEAM_ABBREVIATION']).to_csv(MODELS/'latest_team_defense.csv',index=False)
+    latest_team_defense_snapshot(df, points_features).to_csv(MODELS/'latest_team_defense.csv',index=False)
     report['any_model_updated']=accepted_any
     (MODELS/'weekly_retrain_report.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report,indent=2))
