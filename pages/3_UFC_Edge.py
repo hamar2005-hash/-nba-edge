@@ -22,11 +22,21 @@ st.markdown("""
 .ufc-video-backdrop iframe {
  position:absolute; top:50%; left:50%;
  width:max(100vw,177.78vh); height:max(100vh,56.25vw);
- transform:translate(-50%,-50%); border:0; opacity:.25; pointer-events:none;
+ transform:translate(-50%,-50%); border:0; opacity:.34; pointer-events:none;
 }
 .ufc-video-shade {
  position:absolute; inset:0;
- background:linear-gradient(180deg,rgba(8,10,14,.78),rgba(8,10,14,.84) 45%,rgba(8,10,14,.94));
+ background:linear-gradient(180deg,rgba(8,10,14,.58),rgba(8,10,14,.68) 45%,rgba(8,10,14,.82));
+}
+/* Portrait phones: reframe the wide fight footage so the central action stays in view. */
+@media (max-width:640px) and (orientation:portrait) {
+ .ufc-video-backdrop iframe {
+  left:44%;
+  opacity:.40;
+ }
+ .ufc-video-shade {
+  background:linear-gradient(180deg,rgba(8,10,14,.62),rgba(8,10,14,.70) 48%,rgba(8,10,14,.84));
+ }
 }
 .stApp { position:relative; background:transparent !important; }
 .stApp > header, .stApp [data-testid="stAppViewContainer"] { position:relative; z-index:1; background:transparent; }
