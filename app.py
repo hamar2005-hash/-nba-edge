@@ -140,8 +140,9 @@ components.html("""
 <html><head><style>
 html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
 iframe{position:fixed;top:50%;left:50%;width:max(100vw,177.78vh);height:max(100vh,56.25vw);
-transform:translate(-50%,-50%);border:0;opacity:.30;pointer-events:none}
-.shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(8,12,17,.78),rgba(8,12,17,.86) 48%,rgba(8,12,17,.96));pointer-events:none}
+transform:translate(-50%,-50%);border:0;opacity:.62;filter:brightness(1.22) contrast(1.12) saturate(1.10);pointer-events:none}
+/* Keep the footage visible; use a gentle gradient only where dashboard content needs contrast. */
+.shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(8,12,17,.22) 0%,rgba(8,12,17,.34) 46%,rgba(8,12,17,.62) 100%);pointer-events:none}
 </style></head><body>
 <iframe src="https://www.youtube-nocookie.com/embed/pkBfvNiuQuk?autoplay=1&mute=1&controls=0&loop=1&playlist=pkBfvNiuQuk&playsinline=1&rel=0&modestbranding=1"
 title="LeBron James highlights" allow="autoplay; encrypted-media; picture-in-picture" tabindex="-1"></iframe>
