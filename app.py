@@ -141,6 +141,11 @@ components.html("""
 html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent}
 iframe{position:fixed;top:50%;left:50%;width:max(100vw,177.78vh);height:max(100vh,56.25vw);
 transform:translate(-50%,-50%);border:0;opacity:.62;filter:brightness(1.22) contrast(1.12) saturate(1.10);pointer-events:none}
+/* Portrait phones: shift the crop toward the action and avoid an oversized, off-centre face. */
+@media (max-width:600px) and (orientation:portrait) {
+ iframe{left:56%;width:max(100vw,177.78vh);height:max(100vh,56.25vw);opacity:.54}
+ .shade{background:linear-gradient(180deg,rgba(8,12,17,.28) 0%,rgba(8,12,17,.38) 48%,rgba(8,12,17,.70) 100%)}
+}
 /* Keep the footage visible; use a gentle gradient only where dashboard content needs contrast. */
 .shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(8,12,17,.22) 0%,rgba(8,12,17,.34) 46%,rgba(8,12,17,.62) 100%);pointer-events:none}
 </style></head><body>
