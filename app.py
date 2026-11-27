@@ -364,6 +364,80 @@ else:
                     "ast_last5": "AST L5", "ast_last10": "AST L10", "ast_trend": "AST trend",
                 })
                 st.dataframe(trend_view, width="stretch", hide_index=True)
+        # Last-five and last-ten prop hit rates are calculated from individual completed games.
+        st.divider()
+        st.subheader("Last 5 & Last 10 game prop hits")
+        st.caption("How often each player has cleared common prop milestones in their most recent games. Only appearances with minutes played count; this is historical hit rate, not a prediction.")
+        RECENT_LOGS = DATA / "recent_player_game_logs.csv"
+        if not RECENT_LOGS.exists():
+            st.info("Recent game logs are being prepared by the historical-data workflow. Hit rates will appear after its next successful run.")
+        else:
+            try:
+                recent_logs = pd.read_csv(RECENT_LOGS, parse_dates=["GAME_DATE"])
+                recent_logs["PLAYER_KEY"] = recent_logs["PLAYER_NAME"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
+                recent_logs["MIN"] = pd.to_numeric(recent_logs["MIN"], errors="coerce")
+                recent_logs = recent_logs[recent_logs["MIN"].fillna(0) > 0].copy()
+                recent_logs = recent_logs.sort_values(["PLAYER_KEY", "GAME_DATE", "GAME_ID"], ascending=[True, False, False])
+                current_players = predictions[["player", "team", "opponent", "game"]].copy()
+                current_players["PLAYER_KEY"] = current_players["player"].astype(str).str.lower().str.replace(r"[^a-z0-9]", "", regex=True)
+                market_specs = {"Points": ("PTS", [10, 15, 20, 25, 30, 35]), "Rebounds": ("REB", [3, 5, 7, 10, 12, 15]), "Assists": ("AST", [3, 5, 7, 10, 12, 15]), "Threes made": ("FG3M", [1, 2, 3, 4, 5, 6])}
+                hit_rows = []
+                for _, player_row in current_players.drop_duplicates("PLAYER_KEY").iterrows():
+                    player_games = recent_logs[recent_logs["PLAYER_KEY"] == player_row["PLAYER_KEY"]].head(10)
+                    if player_games.empty:
+                        continue
+                    for market_name, (stat_col, thresholds) in market_specs.items():
+                        if stat_col not in player_games.columns:
+                            continue
+                        values = pd.to_numeric(player_games[stat_col], errors="coerce").fillna(0).tolist()
+                        for threshold in thresholds:
+                            row = {"Player": player_row["player"], "Team": player_row["team"], "Opponent": player_row["opponent"], "Prop": f"{threshold}+"}
+                            for window in (5, 10):
+                                sample = values[:window]
+                                count = sum(value >= threshold for value in sample)
+                                row[f"L{window} Hits"] = f"{count}/{len(sample)}"
+                                row[f"L{window} Rate"] = round(count / len(sample) * 100, 1) if sample else None
+                            for idx in range(10):
+                                row[f"G{idx+1}"] = values[idx] if idx < len(values) else None
+                            hit_rows.append(row)
+                if hit_rows:
+                    hit_frame = pd.DataFrame(hit_rows)
+                    hit_a, hit_b, hit_c = st.columns(3)
+                    market_filter = hit_a.selectbox("Market", list(market_specs), key="recent_hit_market")
+                    min_hits = hit_b.selectbox("Minimum hits", ["Any", "5/5", "4/5+", "3/5+", "10/10", "8/10+", "6/10+"], key="recent_hit_min")
+                    player_filter = hit_c.text_input("Find player", key="recent_hit_player")
+                    filtered_hits = hit_frame[hit_frame["Market"] == market_filter].copy()
+                    if player_filter:
+                        filtered_hits = filtered_hits[filtered_hits["Player"].str.contains(player_filter, case=False, na=False)]
+                    if min_hits == "5/5":
+                        filtered_hits = filtered_hits[pd.to_numeric(filtered_hits["L5 Rate"], errors="coerce") == 100]
+                    elif min_hits == "4/5+":
+                        filtered_hits = filtered_hits[pd.to_numeric(filtered_hits["L5 Rate"], errors="coerce") >= 80]
+                    elif min_hits == "3/5+":
+                        filtered_hits = filtered_hits[pd.to_numeric(filtered_hits["L5 Rate"], errors="coerce") >= 60]
+                    elif min_hits == "10/10":
+                        filtered_hits = filtered_hits[pd.to_numeric(filtered_hits["L10 Rate"], errors="coerce") == 100]
+                    elif min_hits == "8/10+":
+                        filtered_hits = filtered_hits[pd.to_numeric(filtered_hits["L10 Rate"], errors="coerce") >= 80]
+                    elif min_hits == "6/10+":
+                        filtered_hits = filtered_hits[pd.to_numeric(filtered_hits["L10 Rate"], errors="coerce") >= 60]
+                    tab5, tab10 = st.tabs(["Last 5 games", "Last 10 games"])
+                    with tab5:
+                        view5 = filtered_hits[["Player", "Team", "Opponent", "Prop", "L5 Hits", "L5 Rate", "G1", "G2", "G3", "G4", "G5"]].copy()
+                        view5 = view5.rename(columns={"L5 Hits":"Hits", "L5 Rate":"Hit rate (%)", "G1":"Most recent", "G2":"Game 2", "G3":"Game 3", "G4":"Game 4", "G5":"Oldest"})
+                        st.dataframe(view5.sort_values(["Hit rate (%)", "Hits"], ascending=False), width="stretch", hide_index=True)
+                    with tab10:
+                        view10 = filtered_hits[["Player", "Team", "Opponent", "Prop", "L10 Hits", "L10 Rate", "G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "G10"]].copy()
+                        view10 = view10.rename(columns={"L10 Hits":"Hits", "L10 Rate":"Hit rate (%)", "G1":"Most recent", "G10":"Oldest"})
+                        st.dataframe(view10.sort_values(["Hit rate (%)", "Hits"], ascending=False), width="stretch", hide_index=True)
+                    st.caption("Game columns run from most recent to oldest. Hit rates use each player's last available appearances, not calendar days. Historical streaks do not guarantee the next result.")
+                    st.download_button("Download prop hit-rate history", filtered_hits.to_csv(index=False), "nba_edge_last_5_last_10_prop_hits.csv", "text/csv")
+                else:
+                    st.info("No matching recent player game logs were found for today's slate.")
+            except Exception as hit_exc:
+                st.warning("Recent prop hit rates could not be loaded.")
+                st.caption(str(hit_exc))
+
         st.caption("Points V2 forecasts playing time separately from scoring rate. Confidence tiers are heuristic indicators based on historical holdout error and the gap between forecast and recent minutes, not calibrated probabilities. Availability is based on the roster feed and may not reflect late injury news.")
 
         st.divider()
