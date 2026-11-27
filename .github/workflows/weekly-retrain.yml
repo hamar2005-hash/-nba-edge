@@ -76,6 +76,8 @@ jobs:
           PY
       - name: Collect historical player game logs
         run: python collect_nba_data.py --start-season 2021-22 --end-season 2025-26 --current-season 2026-27 --out data/player_game_logs.csv
+      - name: Build compact last-ten player game-log snapshot
+        run: python build_recent_logs.py --input data/player_game_logs.csv --out data/recent_player_game_logs.csv
       - name: Run paired production-vs-Points-V2 comparison
         if: github.event_name == 'push'
         run: python weekly_retrain.py --market points
@@ -143,7 +145,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add models NBA_Trained_Models.zip
-          for file in data/player_game_logs.csv data/first_basket_games.csv data/first_basket_player_history.csv; do
+          for file in data/player_game_logs.csv data/recent_player_game_logs.csv data/first_basket_games.csv data/first_basket_player_history.csv; do
             if [ -f "$file" ]; then git add "$file"; fi
           done
           git diff --cached --quiet || git commit -m "Weekly validated NBA model update"
