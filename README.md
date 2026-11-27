@@ -16,6 +16,10 @@ Automated NBA player projections built with Streamlit and the existing trained m
 - Refreshes projections and settles completed games through GitHub Actions.
 - Retrains points with a dedicated minutes forecast multiplied by a separately learned scoring-rate forecast; rebounds and assists retain their existing model architecture. A dedicated three-pointers-made model uses lagged 3PA, 3P%, minutes, role and opponent 3-point defense features. Candidates are promoted only when they beat the incumbent on the same chronological holdout.
 
+## Recent prop hit rates
+
+The dashboard includes separate Last 5 Games and Last 10 Games hit-rate views for common points, rebounds, assists and threes milestones. It uses each player's most recent completed appearances with minutes played, displays game-by-game stat values, and calculates exact threshold hit counts. The weekly historical-data workflow builds and commits `data/recent_player_game_logs.csv` from the canonical game-log archive. These are descriptive historical rates, not forecasts.
+
 ## No bookmaker data
 
 NBA Edge does not display bookmaker odds, prices or expected value. It retrieves player prop line numbers only, then discards bookmaker prices and source bookmaker details.
