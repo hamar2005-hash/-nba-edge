@@ -391,7 +391,7 @@ else:
                             continue
                         values = pd.to_numeric(player_games[stat_col], errors="coerce").fillna(0).tolist()
                         for threshold in thresholds:
-                            row = {"Player": player_row["player"], "Team": player_row["team"], "Opponent": player_row["opponent"], "Prop": f"{threshold}+"}
+                            row = {"Player": player_row["player"], "Team": player_row["team"], "Opponent": player_row["opponent"], "Market": market_name, "Prop": f"{threshold}+"}
                             for window in (5, 10):
                                 sample = values[:window]
                                 count = sum(value >= threshold for value in sample)
