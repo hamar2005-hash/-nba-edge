@@ -406,6 +406,26 @@ else:
                     market_filter = hit_a.selectbox("Market", list(market_specs), key="recent_hit_market")
                     min_hits = hit_b.selectbox("Minimum hits", ["Any", "5/5", "4/5+", "3/5+", "10/10", "8/10+", "6/10+"], key="recent_hit_min")
                     player_filter = hit_c.text_input("Find player", key="recent_hit_player")
+                    custom_threshold = st.number_input("Custom prop line", min_value=0.5, max_value=100.0, value=18.0, step=0.5, key="recent_hit_custom_line")
+                    # Add a user-defined threshold for every player on the current slate.
+                    custom_stat = market_specs[market_filter][0]
+                    custom_rows = []
+                    for _, player_row in current_players.drop_duplicates("PLAYER_KEY").iterrows():
+                        player_games = recent_logs[recent_logs["PLAYER_KEY"] == player_row["PLAYER_KEY"]].head(10)
+                        if player_games.empty or custom_stat not in player_games.columns:
+                            continue
+                        values = pd.to_numeric(player_games[custom_stat], errors="coerce").fillna(0).tolist()
+                        row = {"Player": player_row["player"], "Team": player_row["team"], "Opponent": player_row["opponent"], "Market": market_filter, "Prop": f"{custom_threshold:g}+"}
+                        for window in (5, 10):
+                            sample = values[:window]
+                            count = sum(value >= custom_threshold for value in sample)
+                            row[f"L{window} Hits"] = f"{count}/{len(sample)}"
+                            row[f"L{window} Rate"] = round(count / len(sample) * 100, 1) if sample else None
+                        for idx in range(10):
+                            row[f"G{idx+1}"] = values[idx] if idx < len(values) else None
+                        custom_rows.append(row)
+                    if custom_rows:
+                        hit_frame = pd.concat([hit_frame, pd.DataFrame(custom_rows)], ignore_index=True)
                     filtered_hits = hit_frame[hit_frame["Market"] == market_filter].copy()
                     if player_filter:
                         filtered_hits = filtered_hits[filtered_hits["Player"].str.contains(player_filter, case=False, na=False)]
