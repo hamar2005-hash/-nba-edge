@@ -795,6 +795,80 @@ else:
                         "nba_edge_most_confident_picks.csv",
                         "text/csv",
                     )
+
+                st.divider()
+                st.subheader("3-Leg Value Parlays")
+                st.caption("Enter the current Sky Bet decimal odds for the legs you would consider. NBA Edge will build up to three 3-leg combinations using different games, rank them by estimated value, and leave the final choice to you. No odds are invented or fetched.")
+                try:
+                    from parlay_builder import build_three_leg_parlays
+                    parlay_source = pd.DataFrame(compare_rows)
+                    parlay_source = parlay_source[parlay_source["Estimated confidence"] >= 55].copy()
+                    parlay_source = parlay_source.sort_values("Estimated confidence", ascending=False).head(20)
+                    parlay_columns = [
+                        "Player", "Team", "Opponent", "Game date", "Game time UTC",
+                        "Market", "Best side", "Prop line", "Projection",
+                        "Estimated confidence",
+                    ]
+                    parlay_input = parlay_source[[c for c in parlay_columns if c in parlay_source.columns]].copy()
+                    parlay_input["Sky Bet odds"] = float("nan")
+                    if parlay_input.empty:
+                        st.info("No player props currently meet the minimum 55% model-confidence filter.")
+                    else:
+                        st.caption("Only edit the Sky Bet odds column. Use the live price shown in your account, not an estimated price.")
+                        edited_parlay_input = st.data_editor(
+                            parlay_input,
+                            key="nba_edge_parlay_odds",
+                            hide_index=True,
+                            width="stretch",
+                            disabled=[c for c in parlay_input.columns if c != "Sky Bet odds"],
+                            column_config={
+                                "Sky Bet odds": st.column_config.NumberColumn(
+                                    "Sky Bet odds",
+                                    min_value=1.01,
+                                    max_value=100.0,
+                                    step=0.01,
+                                    format="%.2f",
+                                    help="Enter the actual decimal price currently available.",
+                                )
+                            },
+                        )
+                        if st.button("Generate today's 3-leg parlays", key="generate_three_leg_parlays", type="primary"):
+                            st.session_state["nba_edge_three_leg_parlays"] = build_three_leg_parlays(
+                                edited_parlay_input, max_parlays=3, min_edge_pct=3.0
+                            )
+                        daily_parlays = st.session_state.get("nba_edge_three_leg_parlays", [])
+                        if daily_parlays:
+                            for parlay_index, parlay in enumerate(daily_parlays, 1):
+                                with st.container(border=True):
+                                    st.markdown(f"**Parlay {parlay_index}**")
+                                    for leg in parlay["legs"]:
+                                        st.markdown(
+                                            f"- **{leg['Player']}** ({leg['Team']}) "
+                                            f"{leg['Best side']} {leg['Prop line']:g} {leg['Market']} "
+                                            f"at **{leg['Sky Bet odds']:.2f}**"
+                                        )
+                                    st.metric("Combined odds", f"{parlay['combined_odds']:.2f}")
+                                    st.write(
+                                        f"Model-estimated chance: **{parlay['model_probability_pct']:.1f}%** · "
+                                        f"Bookmaker implied chance: **{parlay['implied_probability_pct']:.1f}%** · "
+                                        f"Estimated edge: **+{parlay['edge_pct']:.1f} percentage points**"
+                                    )
+                                    st.caption(
+                                        f"Estimated return per 1 unit: {parlay['expected_value_pct']:+.1f}% "
+                                        f"before variance. Independence assumption; not a calibrated guarantee."
+                                    )
+                                    post_text = [f"NBA EDGE | 3-LEG PARLAY {parlay_index}"]
+                                    post_text.extend(
+                                        f"{leg['Player']} {leg['Best side']} {leg['Prop line']:g} {leg['Market']} ({leg['Sky Bet odds']:.2f})"
+                                        for leg in parlay["legs"]
+                                    )
+                                    post_text.append(f"Combined odds: {parlay['combined_odds']:.2f}")
+                                    st.code("\\n".join(post_text), language="text")
+                        else:
+                            st.info("Enter odds for at least three suitable legs, then generate parlays. NBA Edge will not force a selection if the prices do not show value.")
+                except Exception as parlay_exc:
+                    st.warning("The 3-leg parlay builder could not be loaded.")
+                    st.caption(str(parlay_exc))
             else:
                 st.info("The prop feed returned data, but none of its player names and markets matched today's projections. Try refreshing the prop lines shortly.")
         except Exception as exc:
