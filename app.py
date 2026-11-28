@@ -542,7 +542,7 @@ else:
                     tuple(predictions["player"].dropna().astype(str).unique())
                 )
             prediction_columns = ["player", "team", "opponent", "game_date", "game_time_utc", "minutes_baseline",
-                                   "points_projection", "rebounds_projection", "assists_projection",
+                                   "points_projection", "rebounds_projection", "assists_projection", "threes_projection",
                                    "pts_last5", "pts_last10", "pts_trend",
                                    "reb_last5", "reb_last10", "reb_trend",
                                    "ast_last5", "ast_last10", "ast_trend"]
