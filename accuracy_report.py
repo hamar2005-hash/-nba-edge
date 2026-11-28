@@ -186,9 +186,9 @@ def send_email(report: dict[str, Any]) -> bool:
         print("Email not sent: configure NBA_EDGE_REPORT_EMAIL, SMTP_USERNAME, SMTP_PASSWORD, and NBA_EDGE_FROM_EMAIL GitHub Actions secrets.")
         return False
 
-    host = os.getenv("SMTP_HOST", "smtp.gmail.com")
-    port = int(os.getenv("SMTP_PORT", "465"))
-    security = os.getenv("SMTP_SECURITY", "ssl").lower()
+    host = os.getenv("SMTP_HOST", "").strip() or "smtp.gmail.com"
+    port = int(os.getenv("SMTP_PORT", "").strip() or "465")
+    security = os.getenv("SMTP_SECURITY", "").strip().lower() or "ssl"
     html_body, plain_body = render_email(report)
     message = EmailMessage()
     message["Subject"] = f"NBA Edge accuracy report | {report['report_date']}"
