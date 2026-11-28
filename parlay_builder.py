@@ -22,11 +22,15 @@ def _probability(value):
     return number if 0 < number < 1 else None
 
 
+def _text(value):
+    return "" if pd.isna(value) else str(value).strip()
+
+
 def _game_key(row):
-    team = str(row.get("Team", "") or "").strip().upper()
-    opponent = str(row.get("Opponent", "") or "").strip().upper()
-    game_date = str(row.get("Game date", "") or "").strip()
-    game_time = str(row.get("Game time UTC", "") or "").strip()
+    team = _text(row.get("Team", "")).upper()
+    opponent = _text(row.get("Opponent", "")).upper()
+    game_date = _text(row.get("Game date", ""))
+    game_time = _text(row.get("Game time UTC", ""))
     if team and opponent:
         matchup = "|".join(sorted((team, opponent)))
         return f"{game_date}|{matchup}"
