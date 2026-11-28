@@ -74,18 +74,9 @@ The daily dashboard includes experimental two-leg same-player milestone combinat
 
 The three-pointers-made model is trained separately with `python train_threes.py`. It uses a chronological holdout and must beat a last-five/season-average baseline before saving `models/threes_model.joblib`. The model is loaded automatically by `auto_daily.py` when present, displayed in the daily projections and Top 10 sections, and settled against ESPN's FG3M box-score statistic. To train and package it on the live app, run the GitHub Actions workflow **Weekly NBA Edge model improvement** on `main` with market **threes**. Rebounds and assists model files are not changed by this process.
 
-## Daily X publishing
+## Three-leg value parlays
 
-The scheduled daily workflow can publish one NBA Edge post to X at 23:00 UTC. It selects up to three single-stat props using current Stat Pick lines and the saved model residuals. Picks are only published when the market has at least 60 settled historical recommendations, the matching raw-confidence band has at least 20 settled examples, and the 80% one-sided Wilson lower bound for that band's observed hit rate is at least 55%. The post includes the calibrated lower-bound estimate and a brief model disclaimer. If no picks qualify, NBA Edge publishes a transparent no-qualified-picks update instead of forcing selections. Each game date is recorded to prevent normal scheduled reruns from duplicating posts.
-
-To enable publishing, create an X Developer App with user-context OAuth 1.0a read/write permission and add these repository Actions secrets:
-
-- `X_API_KEY`
-- `X_API_SECRET`
-- `X_ACCESS_TOKEN`
-- `X_ACCESS_TOKEN_SECRET`
-
-The workflow only publishes on the scheduled 23:00 UTC run, not on manual workflow dispatches. X API charges per create-post request; check the current rate in the [X Developer Console](https://developer.x.com/). The publisher does not include external URLs in posts.
+The dashboard includes a manual 3-leg parlay builder. It uses NBA Edge's player-prop side probabilities and requires the user to enter the live Sky Bet decimal odds for each leg. It only combines three different games, requires each leg to show positive estimated value on its own, and ranks combinations by model-estimated edge and expected return. Up to three distinct suggestions are shown with combined odds, estimated hit probability, bookmaker-implied probability and an X-ready text block. No odds are invented or fetched. The joint probability multiplies the three model probabilities under an independence assumption, so it is a screening estimate rather than a calibrated guarantee. If no combinations pass the value filters, the builder returns no parlays rather than forcing picks.
 
 ## Rebounds and assists minutes-rate candidates
 
