@@ -60,7 +60,10 @@ jobs:
         if: github.event_name == 'schedule' && github.event.schedule == '0 23 * * *'
         continue-on-error: true
         env:
-          X_USER_ACCESS_TOKEN: ${{ secrets.X_USER_ACCESS_TOKEN }}
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
         run: python publish_daily_x_picks.py
       - name: Commit projections and accuracy history
         run: |
