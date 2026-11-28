@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install pandas
       - name: Compile changed Python modules
         run: python -m py_compile accuracy_report.py app.py
       - name: Build a report from archived results without sending email
