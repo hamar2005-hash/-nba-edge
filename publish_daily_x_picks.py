@@ -268,7 +268,6 @@ def main():
         return
 
     picks = select_picks(game_date)
-    append_pick_history(picks)
     post_text = build_post(game_date, picks)
     response = requests.post(
         "https://api.x.com/2/tweets",
@@ -279,6 +278,7 @@ def main():
     )
     if response.status_code >= 300:
         raise RuntimeError(f"X post failed ({response.status_code}): {response.text[:500]}")
+    append_pick_history(picks)
     payload = response.json()
     post_id = (payload.get("data") or {}).get("id")
     if not post_id:
