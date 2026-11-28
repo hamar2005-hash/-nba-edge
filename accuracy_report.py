@@ -94,19 +94,12 @@ def build_report(report_date: date) -> dict[str, Any]:
         settled_window = settled[settled["_date"] >= start] if not settled.empty else settled
         picks_window = picks[picks["_date"] >= start] if not picks.empty else picks
         markets = market_metrics(settled_window)
-        total_players = sum(item["players"] for item in markets.values())
-        weighted_abs_error = sum(
-            item["mae"] * item["players"]
-            for item in markets.values()
-            if item["mae"] is not None and item["players"]
-        )
         total_market_players = sum(item["players"] for item in markets.values())
         windows[label] = {
             "start_date": start.isoformat(),
             "end_date": report_date.isoformat(),
             "settled_player_market_rows": int(total_market_players),
             "markets": markets,
-            "overall_mae": round(weighted_abs_error / total_market_players, 2) if total_market_players else None,
             "prop_picks": pick_metrics(picks_window),
         }
 
@@ -147,11 +140,14 @@ def render_email(report: dict[str, Any]) -> tuple[str, str]:
     trend_lines = []
     for label, title in (("7d", "Last 7 days"), ("30d", "Last 30 days")):
         window = windows[label]
-        mae = "n/a" if window["overall_mae"] is None else str(window["overall_mae"])
+        market_summary = ", ".join(
+            f"{name}: {'n/a' if values['mae'] is None else values['mae']}"
+            for name, values in window["markets"].items()
+        )
         p = window["prop_picks"]
         p_hit = "n/a" if p["hit_rate"] is None else f'{p["hit_rate"]}%'
         trend_lines.append(
-            f"<li><strong>{title}:</strong> overall MAE {mae}; "
+            f"<li><strong>{title}:</strong> market MAE ({escape(market_summary)}); "
             f"prop picks {p['wins']}-{p['losses']}-{p['pushes']} (hit rate {p_hit})</li>"
         )
 
