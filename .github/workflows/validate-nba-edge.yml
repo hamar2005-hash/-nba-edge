@@ -1,0 +1,29 @@
+name: Validate NBA Edge development changes
+
+on:
+  push:
+    branches: [nba-edge-accuracy-x-autopost]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas numpy scikit-learn joblib requests
+      - name: Compile Python modules
+        run: python -m compileall -q .
+      - name: Run model, parlay and settlement tests
+        run: |
+          python -m unittest test_rate_minutes_predictor test_parlay_builder
+          python test_settle_results.py

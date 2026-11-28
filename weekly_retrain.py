@@ -9,6 +9,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.pipeline import Pipeline
 from train_models import prepare, TARGETS, BASE_FEATURES, POINT_EXTRA
 from points_v2 import PointsV2Predictor
+from rate_minutes_predictor import RateMinutesPredictor
 from team_defense_snapshot import save_latest_team_defense_snapshot
 
 ROOT=Path(__file__).resolve().parent
@@ -131,6 +132,89 @@ def fit_points_v2(train, test, features):
     }
     return pack, score, test
 
+
+def fit_rate_minutes_candidate(train, test, features, market, target):
+    """Train minutes/rate/direct components; tune blend on inner dates only."""
+    train = train[train.GAMES_PLAYED_BEFORE >= 2].copy()
+    test = test[test.GAMES_PLAYED_BEFORE >= 2].copy()
+    train = train[(train.MIN > 0) & train[target].notna()].copy()
+    test = test[(test.MIN > 0) & test[target].notna()].copy()
+    if len(train) < 2000 or len(test) < 100:
+        raise RuntimeError(f'Insufficient {market} rate-model rows: train={len(train)}, holdout={len(test)}')
+    dates = np.sort(train.GAME_DATE.dropna().unique())
+    cutoff = dates[max(1, int(len(dates) * 0.82))]
+    inner_fit = train[train.GAME_DATE < cutoff]
+    inner_val = train[train.GAME_DATE >= cutoff]
+    if len(inner_fit) < 1000 or len(inner_val) < 200:
+        raise RuntimeError(f'Insufficient {market} inner validation rows: fit={len(inner_fit)}, validation={len(inner_val)}')
+
+    rate_cap = 0.85 if market == 'rebounds' else 0.65
+
+    def fit_components(frame):
+        minutes = Pipeline([
+            ('imputer', SimpleImputer(strategy='median', add_indicator=True)),
+            ('regressor', ExtraTreesRegressor(
+                n_estimators=350, min_samples_leaf=5, max_features=0.85,
+                n_jobs=-1, random_state=53
+            ))
+        ])
+        rate = make_regressor(seed=54)
+        direct = make_regressor(seed=55)
+        minutes.fit(frame[features], frame['MIN'])
+        rate.fit(frame[features], frame[target] / frame['MIN'].clip(lower=1))
+        direct.fit(frame[features], frame[target])
+        return minutes, rate, direct
+
+    val_minutes, val_rate, val_direct = fit_components(inner_fit)
+    val_min = np.clip(val_minutes.predict(inner_val[features]), 0, 48)
+    val_rate_per_min = np.clip(val_rate.predict(inner_val[features]), 0, rate_cap)
+    val_rate_projection = np.maximum(0, val_min * val_rate_per_min)
+    val_direct_projection = np.maximum(0, val_direct.predict(inner_val[features]))
+    weights = np.round(np.arange(0.0, 0.751, 0.05), 2)
+    validation_maes = {
+        str(float(w)): float(mean_absolute_error(
+            inner_val[target],
+            (1.0 - w) * val_rate_projection + w * val_direct_projection
+        )) for w in weights
+    }
+    best_weight = min(weights, key=lambda w: (validation_maes[str(float(w))], w))
+
+    minutes_model, rate_model, direct_model = fit_components(train)
+    predictor = RateMinutesPredictor(
+        minutes_model, rate_model, features, market,
+        direct_model=direct_model, direct_weight=float(best_weight)
+    )
+    details = predictor.predict_with_details(test[features])
+    pred = details['projection']
+    residual = test[target].to_numpy() - pred
+    minute_residual = test['MIN'].to_numpy() - details['expected_minutes']
+    baseline = test[f'{target}_L5'].fillna(
+        test[f'{target}_SEASON_PRE']
+    ).fillna(train[target].median()).to_numpy()
+    rate_actual = test[target].to_numpy() / test['MIN'].clip(lower=1).to_numpy()
+    score = {
+        'train_rows': int(len(train)), 'test_rows': int(len(test)),
+        'inner_validation_rows': int(len(inner_val)),
+        'inner_validation_start': str(pd.Timestamp(cutoff).date()),
+        'selected_direct_weight': float(best_weight),
+        'inner_validation_mae_by_weight': validation_maes,
+        'mae': float(mean_absolute_error(test[target], pred)),
+        'rmse': float(np.sqrt(mean_squared_error(test[target], pred))),
+        'direct_mae': float(mean_absolute_error(test[target], np.maximum(0.0, direct_model.predict(test[features])))),
+        'rate_product_mae': float(mean_absolute_error(test[target], details['rate_projection'])),
+        'minutes_mae': float(mean_absolute_error(test['MIN'], details['expected_minutes'])),
+        'minutes_baseline_mae': float(mean_absolute_error(test['MIN'], test['MIN_L5'].fillna(test['MIN_SEASON_PRE']).fillna(train['MIN'].median()))),
+        'last5_baseline_mae': float(mean_absolute_error(test[target], baseline)),
+        'rate_mae': float(mean_absolute_error(rate_actual, details['per_minute_rate'])),
+    }
+    pack = {
+        'model': predictor, 'feature_cols': features, 'target': target,
+        'market': market, 'model_version': f'{market}_minutes_rate_blend_v1',
+        'residual_std': float(np.std(residual, ddof=1)),
+        'minutes_residual_std': float(np.std(minute_residual, ddof=1)),
+    }
+    return pack, score, test
+
 def main():
     parser=argparse.ArgumentParser(description='Retrain and validate NBA Edge models.')
     parser.add_argument('--market', choices=['all','points','rebounds','assists'], default='all')
@@ -226,6 +310,52 @@ def main():
             continue
 
         features=base
+        if market in ('rebounds', 'assists'):
+            candidate,score,holdout=fit_rate_minutes_candidate(train,test,features,market,target)
+            incumbent_mae=None
+            incumbent_rmse=None
+            if incumbent_path.exists():
+                incumbent=joblib.load(incumbent_path)
+                old_features=incumbent.get('feature_cols',features)
+                common=holdout.dropna(subset=[target])
+                common=common[common.GAMES_PLAYED_BEFORE>=2]
+                try:
+                    incumbent_pred=incumbent['model'].predict(common[old_features])
+                    incumbent_mae=float(mean_absolute_error(common[target],incumbent_pred))
+                    incumbent_rmse=float(np.sqrt(mean_squared_error(common[target],incumbent_pred)))
+                except Exception as exc:
+                    print(f'{market}: incumbent comparison failed: {exc}')
+            accept=(not incumbent_path.exists()) or (
+                incumbent_mae is not None
+                and score['mae'] <= incumbent_mae * 0.99
+                and (incumbent_rmse is None or score['rmse'] <= incumbent_rmse)
+            )
+            if accept:
+                joblib.dump(candidate,incumbent_path)
+                accepted_any=True
+            report['markets'][market]={
+                'incumbent_holdout_mae':incumbent_mae,
+                'incumbent_holdout_rmse':incumbent_rmse,
+                'candidate_holdout_mae':score['mae'],
+                'candidate_holdout_rmse':score['rmse'],
+                'candidate_direct_mae':score['direct_mae'],
+                'candidate_rate_product_mae':score['rate_product_mae'],
+                'candidate_minutes_mae':score['minutes_mae'],
+                'candidate_minutes_baseline_mae':score['minutes_baseline_mae'],
+                'candidate_last5_baseline_mae':score['last5_baseline_mae'],
+                'candidate_rate_mae':score['rate_mae'],
+                'selected_direct_weight':score['selected_direct_weight'],
+                'inner_validation_start':score['inner_validation_start'],
+                'inner_validation_mae_by_weight':score['inner_validation_mae_by_weight'],
+                'promotion_threshold_mae_improvement_pct':1.0,
+                'candidate_accepted':bool(accept),
+                'train_rows':score['train_rows'],
+                'holdout_rows':score['test_rows'],
+                'model_version':candidate['model_version'],
+            }
+            print(f"{market}-minutes-rate: incumbent MAE={incumbent_mae}; candidate MAE={score['mae']:.4f}; minutes MAE/baseline={score['minutes_mae']:.3f}/{score['minutes_baseline_mae']:.3f}; accepted={accept}")
+            continue
+
         candidate,score,holdout=fit_candidate(train,test,features,market,target)
         incumbent_mae=None
         if incumbent_path.exists():

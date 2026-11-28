@@ -73,3 +73,11 @@ The daily dashboard includes experimental two-leg same-player milestone combinat
 ## Three-pointers-made model
 
 The three-pointers-made model is trained separately with `python train_threes.py`. It uses a chronological holdout and must beat a last-five/season-average baseline before saving `models/threes_model.joblib`. The model is loaded automatically by `auto_daily.py` when present, displayed in the daily projections and Top 10 sections, and settled against ESPN's FG3M box-score statistic. To train and package it on the live app, run the GitHub Actions workflow **Weekly NBA Edge model improvement** on `main` with market **threes**. Rebounds and assists model files are not changed by this process.
+
+## Three-leg value parlays
+
+The dashboard includes a manual 3-leg parlay builder. It uses NBA Edge's player-prop side probabilities and requires the user to enter the live Sky Bet decimal odds for each leg. It only combines three different games, requires each leg to show positive estimated value on its own, and ranks combinations by model-estimated edge and expected return. Up to three distinct suggestions are shown with combined odds, estimated hit probability, bookmaker-implied probability and an X-ready text block. No odds are invented or fetched. The joint probability multiplies the three model probabilities under an independence assumption, so it is a screening estimate rather than a calibrated guarantee. If no combinations pass the value filters, the builder returns no parlays rather than forcing picks.
+
+## Rebounds and assists minutes-rate candidates
+
+Weekly retraining now also evaluates minutes × per-minute-rate candidates for rebounds and assists, alongside a direct-stat model. Blend weights are selected using an inner chronological validation period. A candidate is promoted only when it improves the incumbent by at least 1% MAE on the same untouched chronological holdout without worsening RMSE. The model stores expected minutes and per-minute rate internally; daily projection output remains compatible with the existing market columns. If the candidate fails the promotion gate, the incumbent model remains in production.
