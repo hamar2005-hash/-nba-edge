@@ -846,11 +846,22 @@ if REPORT_SNAPSHOT.exists():
         )
         if _accuracy_report.get("settlement_status") != "settled":
             st.info("The latest automatic report has no settled player rows yet. It will populate after final box scores are available.")
-        _r1, _r2, _r3, _r4 = st.columns(4)
-        _r1.metric("Yesterday's player-markets", _report_daily.get("settled_player_market_rows", 0))
-        _r2.metric("Yesterday overall MAE", f"{_report_daily['overall_mae']:.2f}" if _report_daily.get("overall_mae") is not None else "Pending")
-        _r3.metric("7-day overall MAE", f"{_report_7d['overall_mae']:.2f}" if _report_7d.get("overall_mae") is not None else "Pending")
-        _r4.metric("30-day overall MAE", f"{_report_30d['overall_mae']:.2f}" if _report_30d.get("overall_mae") is not None else "Pending")
+        st.caption("Mean absolute error is shown separately for each market because points, rebounds, assists and threes use different units.")
+        _market_report_rows = []
+        for _market_name in ("Points", "Rebounds", "Assists", "Three-pointers made"):
+            _d = _report_daily.get("markets", {}).get(_market_name, {})
+            _w = _report_7d.get("markets", {}).get(_market_name, {})
+            _m = _report_30d.get("markets", {}).get(_market_name, {})
+            _market_report_rows.append({
+                "Market": _market_name,
+                "Yesterday MAE": _d.get("mae"),
+                "Yesterday players": _d.get("players", 0),
+                "7-day MAE": _w.get("mae"),
+                "7-day players": _w.get("players", 0),
+                "30-day MAE": _m.get("mae"),
+                "30-day players": _m.get("players", 0),
+            })
+        st.dataframe(pd.DataFrame(_market_report_rows), width="stretch", hide_index=True)
         _daily_pick = _report_daily.get("prop_picks", {})
         if _daily_pick.get("settled", 0):
             _daily_hit = _daily_pick.get("hit_rate")
