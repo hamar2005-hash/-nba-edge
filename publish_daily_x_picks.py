@@ -58,7 +58,8 @@ def load_calibration():
     if not required.issubset(history.columns):
         return {}
     history["market"] = history["market"].astype(str).str.lower()
-    history["confidence_pct"] = pd.to_numeric(history["confidence_pct"], errors="coerce")
+    calibration_col = "raw_confidence_pct" if "raw_confidence_pct" in history.columns else "confidence_pct"
+    history["confidence_pct"] = pd.to_numeric(history[calibration_col], errors="coerce")
     history["result"] = history["Actual result"].astype(str).str.lower()
     history = history[
         history["market"].isin(MARKETS)
@@ -251,10 +252,15 @@ def main():
     game_date = os.environ.get("NBA_EDGE_GAME_DATE") or datetime.now(
         timezone.utc
     ).astimezone(__import__("zoneinfo").ZoneInfo("America/New_York")).date().isoformat()
-    token = os.environ.get("X_USER_ACCESS_TOKEN", "").strip()
-    if not token:
-        print("X_USER_ACCESS_TOKEN is not configured; X publishing skipped.")
+    api_key = os.environ.get("X_API_KEY", "").strip()
+    api_secret = os.environ.get("X_API_SECRET", "").strip()
+    access_token = os.environ.get("X_ACCESS_TOKEN", "").strip()
+    access_token_secret = os.environ.get("X_ACCESS_TOKEN_SECRET", "").strip()
+    if not all((api_key, api_secret, access_token, access_token_secret)):
+        print("X OAuth 1.0a secrets are incomplete; X publishing skipped.")
         return
+    from requests_oauthlib import OAuth1
+    auth = OAuth1(api_key, api_secret, access_token, access_token_secret)
     POSTED_PATH.parent.mkdir(parents=True, exist_ok=True)
     posted = json.loads(POSTED_PATH.read_text()) if POSTED_PATH.exists() else {}
     if game_date in posted:
@@ -266,7 +272,8 @@ def main():
     post_text = build_post(game_date, picks)
     response = requests.post(
         "https://api.x.com/2/tweets",
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        auth=auth,
+        headers={"Content-Type": "application/json"},
         json={"text": post_text},
         timeout=30,
     )
