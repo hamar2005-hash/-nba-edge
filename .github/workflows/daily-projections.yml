@@ -56,21 +56,12 @@ jobs:
       - name: Settle yesterday's completed games
         continue-on-error: true
         run: python settle_results.py
-      - name: Publish daily NBA Edge picks to X
-        if: github.event_name == 'schedule' && github.event.schedule == '0 23 * * *'
-        continue-on-error: true
-        env:
-          X_API_KEY: ${{ secrets.X_API_KEY }}
-          X_API_SECRET: ${{ secrets.X_API_SECRET }}
-          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
-          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
-        run: python publish_daily_x_picks.py
       - name: Commit projections and accuracy history
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/daily_predictions.csv
-          for file in data/first_basket_predictions.csv data/prediction_history.csv data/settled_results.csv data/prop_pick_history.csv data/x_posted_dates.json data/x_post_history.csv; do
+          for file in data/first_basket_predictions.csv data/prediction_history.csv data/settled_results.csv data/prop_pick_history.csv; do
             if [ -f "$file" ]; then git add "$file"; fi
           done
           git diff --cached --quiet || git commit -m "Update NBA projections and accuracy history"
