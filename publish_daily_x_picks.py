@@ -58,8 +58,13 @@ def load_calibration():
     if not required.issubset(history.columns):
         return {}
     history["market"] = history["market"].astype(str).str.lower()
-    calibration_col = "raw_confidence_pct" if "raw_confidence_pct" in history.columns else "confidence_pct"
-    history["confidence_pct"] = pd.to_numeric(history[calibration_col], errors="coerce")
+    base_confidence = pd.to_numeric(history["confidence_pct"], errors="coerce")
+    if "raw_confidence_pct" in history.columns:
+        history["confidence_pct"] = pd.to_numeric(
+            history["raw_confidence_pct"], errors="coerce"
+        ).fillna(base_confidence)
+    else:
+        history["confidence_pct"] = base_confidence
     history["result"] = history["Actual result"].astype(str).str.lower()
     history = history[
         history["market"].isin(MARKETS)
