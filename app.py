@@ -807,7 +807,7 @@ else:
                     parlay_columns = [
                         "Player", "Team", "Opponent", "Game date", "Game time UTC",
                         "Market", "Best side", "Prop line", "Projection",
-                        "Estimated confidence",
+                        "Estimated confidence", "Over probability", "Under probability",
                     ]
                     parlay_input = parlay_source[[c for c in parlay_columns if c in parlay_source.columns]].copy()
                     parlay_input["Sky Bet odds"] = float("nan")
