@@ -200,7 +200,7 @@ def fit_rate_minutes_candidate(train, test, features, market, target):
         'inner_validation_mae_by_weight': validation_maes,
         'mae': float(mean_absolute_error(test[target], pred)),
         'rmse': float(np.sqrt(mean_squared_error(test[target], pred))),
-        'direct_mae': float(mean_absolute_error(test[target], details['direct_projection'])),
+        'direct_mae': float(mean_absolute_error(test[target], np.maximum(0.0, direct_model.predict(test[features])))),
         'rate_product_mae': float(mean_absolute_error(test[target], details['rate_projection'])),
         'minutes_mae': float(mean_absolute_error(test['MIN'], details['expected_minutes'])),
         'minutes_baseline_mae': float(mean_absolute_error(test['MIN'], test['MIN_L5'].fillna(test['MIN_SEASON_PRE']).fillna(train['MIN'].median()))),
