@@ -1,0 +1,32 @@
+name: Validate NBA Edge accuracy report
+
+on:
+  pull_request:
+    paths:
+      - "accuracy_report.py"
+      - "app.py"
+      - ".github/workflows/daily-accuracy-report.yml"
+      - ".github/workflows/validate-accuracy-report.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Compile changed Python modules
+        run: python -m py_compile accuracy_report.py app.py
+      - name: Build a report from archived results without sending email
+        run: python accuracy_report.py --date 2026-11-27 --no-email
