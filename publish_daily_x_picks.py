@@ -123,7 +123,8 @@ def load_residual_spreads():
 def select_picks(game_date):
     predictions_path = DATA / "daily_predictions.csv"
     if not predictions_path.exists():
-        raise RuntimeError("data/daily_predictions.csv is missing")
+        print("Daily predictions are missing; publishing a no-picks status update.")
+        return []
     predictions = pd.read_csv(predictions_path)
     if predictions.empty:
         return []
@@ -132,7 +133,11 @@ def select_picks(game_date):
         return []
 
     names = predictions["player"].dropna().astype(str).unique().tolist()
-    lines = fetch_current_lines(names)
+    try:
+        lines = fetch_current_lines(names)
+    except Exception as exc:
+        print(f"Prop-line feed unavailable; publishing a no-picks status update: {exc}")
+        return []
     if lines is None or lines.empty:
         return []
 
@@ -272,7 +277,11 @@ def main():
         print(f"An NBA Edge X post already exists for {game_date}; skipping duplicate.")
         return
 
-    picks = select_picks(game_date)
+    try:
+        picks = select_picks(game_date)
+    except Exception as exc:
+        print(f"Pick selection failed; publishing a no-picks status update: {exc}")
+        picks = []
     post_text = build_post(game_date, picks)
     response = requests.post(
         "https://api.x.com/2/tweets",
