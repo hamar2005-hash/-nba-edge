@@ -1,0 +1,71 @@
+name: NBA Edge daily accuracy report
+
+on:
+  schedule:
+    # Run after the previous US Eastern NBA slate has normally finished.
+    - cron: "15 13 * * *"
+  workflow_dispatch:
+    inputs:
+      report_date:
+        description: "Optional report date (YYYY-MM-DD, US Eastern)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nba-edge-daily-accuracy-report
+  cancel-in-progress: false
+
+jobs:
+  accuracy-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Settle completed games
+        env:
+          REPORT_DATE: ${{ inputs.report_date }}
+        run: |
+          if [ -n "$REPORT_DATE" ]; then
+            python settle_results.py --date "$REPORT_DATE"
+            python accuracy_report.py --date "$REPORT_DATE" --no-email
+          else
+            python settle_results.py
+            python accuracy_report.py --no-email
+          fi
+      - name: Send daily accuracy email
+        env:
+          NBA_EDGE_REPORT_EMAIL: ${{ secrets.NBA_EDGE_REPORT_EMAIL }}
+          NBA_EDGE_FROM_EMAIL: ${{ secrets.NBA_EDGE_FROM_EMAIL }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURITY: ${{ secrets.SMTP_SECURITY }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          REPORT_DATE: ${{ inputs.report_date }}
+        run: |
+          if [ -n "$REPORT_DATE" ]; then
+            python accuracy_report.py --date "$REPORT_DATE"
+          else
+            python accuracy_report.py
+          fi
+      - name: Commit dashboard accuracy snapshot
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/settled_results.csv data/prop_pick_history.csv data/accuracy_report.json 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Update daily NBA Edge accuracy report"
+          git pull --rebase origin main
+          git push
