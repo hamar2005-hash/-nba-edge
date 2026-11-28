@@ -73,3 +73,20 @@ The daily dashboard includes experimental two-leg same-player milestone combinat
 ## Three-pointers-made model
 
 The three-pointers-made model is trained separately with `python train_threes.py`. It uses a chronological holdout and must beat a last-five/season-average baseline before saving `models/threes_model.joblib`. The model is loaded automatically by `auto_daily.py` when present, displayed in the daily projections and Top 10 sections, and settled against ESPN's FG3M box-score statistic. To train and package it on the live app, run the GitHub Actions workflow **Weekly NBA Edge model improvement** on `main` with market **threes**. Rebounds and assists model files are not changed by this process.
+
+## Daily X publishing
+
+The scheduled daily workflow can publish one NBA Edge post to X at 23:00 UTC. It selects up to three single-stat props using current Stat Pick lines and the saved model residuals. Picks are only published when the market has at least 60 settled historical recommendations, the matching raw-confidence band has at least 20 settled examples, and the 80% one-sided Wilson lower bound for that band's observed hit rate is at least 55%. The post includes the calibrated lower-bound estimate and a brief model disclaimer. If no picks qualify, NBA Edge publishes a transparent no-qualified-picks update instead of forcing selections. Each game date is recorded to prevent normal scheduled reruns from duplicating posts.
+
+To enable publishing, create an X Developer App with user-context OAuth 1.0a read/write permission and add these repository Actions secrets:
+
+- `X_API_KEY`
+- `X_API_SECRET`
+- `X_ACCESS_TOKEN`
+- `X_ACCESS_TOKEN_SECRET`
+
+The workflow only publishes on the scheduled 23:00 UTC run, not on manual workflow dispatches. X API charges per create-post request; check the current rate in the [X Developer Console](https://developer.x.com/). The publisher does not include external URLs in posts.
+
+## Rebounds and assists minutes-rate candidates
+
+Weekly retraining now also evaluates minutes × per-minute-rate candidates for rebounds and assists, alongside a direct-stat model. Blend weights are selected using an inner chronological validation period. A candidate is promoted only when it improves the incumbent by at least 1% MAE on the same untouched chronological holdout without worsening RMSE. The model stores expected minutes and per-minute rate internally; daily projection output remains compatible with the existing market columns. If the candidate fails the promotion gate, the incumbent model remains in production.
