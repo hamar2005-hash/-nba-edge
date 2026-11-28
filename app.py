@@ -863,7 +863,7 @@ else:
                                         for leg in parlay["legs"]
                                     )
                                     post_text.append(f"Combined odds: {parlay['combined_odds']:.2f}")
-                                    st.code("\\n".join(post_text), language="text")
+                                    st.code("\n".join(post_text), language="text")
                         else:
                             st.info("Enter odds for at least three suitable legs, then generate parlays. NBA Edge will not force a selection if the prices do not show value.")
                 except Exception as parlay_exc:
