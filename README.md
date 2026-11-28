@@ -73,3 +73,22 @@ The daily dashboard includes experimental two-leg same-player milestone combinat
 ## Three-pointers-made model
 
 The three-pointers-made model is trained separately with `python train_threes.py`. It uses a chronological holdout and must beat a last-five/season-average baseline before saving `models/threes_model.joblib`. The model is loaded automatically by `auto_daily.py` when present, displayed in the daily projections and Top 10 sections, and settled against ESPN's FG3M box-score statistic. To train and package it on the live app, run the GitHub Actions workflow **Weekly NBA Edge model improvement** on `main` with market **threes**. Rebounds and assists model files are not changed by this process.
+
+
+## Daily accuracy reports and email
+
+The **NBA Edge daily accuracy report** workflow runs at 13:15 UTC every day, settles the previous US Eastern NBA slate against ESPN, writes `data/accuracy_report.json` for the dashboard, and emails a daily summary when SMTP secrets are configured.
+
+Configure these repository Actions secrets:
+
+- `NBA_EDGE_REPORT_EMAIL`: destination email address.
+- `NBA_EDGE_FROM_EMAIL`: sender address accepted by your SMTP provider.
+- `SMTP_USERNAME`: SMTP login (for Gmail, the full Gmail address).
+- `SMTP_PASSWORD`: SMTP password or provider app password. For Gmail, use a Google App Password, not your normal account password.
+- `SMTP_HOST`: optional; defaults to `smtp.gmail.com`.
+- `SMTP_PORT`: optional; defaults to `465`.
+- `SMTP_SECURITY`: optional; `ssl` (default) or `starttls`.
+
+The email contains daily MAE by market, sample counts, the percentage of projections within three stats, archived prop-pick W-L-P and hit rate, plus 7-day and 30-day trends. Pushes are excluded from prop hit rate. If email secrets are not configured, the workflow still updates the dashboard JSON and logs that email was skipped.
+
+You can run the workflow manually from GitHub Actions and optionally provide a report date in YYYY-MM-DD format (US Eastern).
