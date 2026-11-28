@@ -24,4 +24,6 @@ jobs:
       - name: Compile Python modules
         run: python -m compileall -q .
       - name: Run model and publisher tests
-        run: python -m unittest test_rate_minutes_predictor test_publish_daily_x_picks
+        run: |
+          python -m unittest test_rate_minutes_predictor test_publish_daily_x_picks
+          python test_settle_results.py
