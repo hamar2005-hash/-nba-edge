@@ -11,6 +11,7 @@ import joblib
 import pandas as pd
 import requests
 from points_v2 import PointsV2Predictor  # Ensure the saved Points V2 class is importable before joblib loads it.
+from rate_minutes_predictor import RateMinutesPredictor  # Required to unpickle minutes-rate market models.
 
 ROOT = Path(__file__).resolve().parent
 ESPN = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
