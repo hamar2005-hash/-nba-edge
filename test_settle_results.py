@@ -62,5 +62,6 @@ def test_update_pick_history_preserves_other_dates():
 
 if __name__ == "__main__":
     test_grade_pick_win_loss_push_pending()
-    test_update_pick_history_matches_team_and_grades()\n    test_update_pick_history_grades_threes_over_under_and_push()\n    test_update_pick_history_preserves_other_dates()
+    test_update_pick_history_matches_team_and_grades()
+    test_update_pick_history_grades_threes_over_under_and_push()\n    test_update_pick_history_preserves_other_dates()
     print("Settlement tests passed.")
