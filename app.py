@@ -829,6 +829,38 @@ else:
 
 st.divider()
 st.subheader("📈 Daily accuracy tracker")
+
+# The scheduled workflow writes a compact snapshot so the dashboard can show
+# the latest report even when nobody has opened the app to trigger settlement.
+REPORT_SNAPSHOT = DATA / "accuracy_report.json"
+if REPORT_SNAPSHOT.exists():
+    try:
+        _accuracy_report = json.loads(REPORT_SNAPSHOT.read_text(encoding="utf-8"))
+        _report_windows = _accuracy_report.get("windows", {})
+        _report_7d = _report_windows.get("7d", {})
+        _report_30d = _report_windows.get("30d", {})
+        _report_daily = _report_windows.get("daily", {})
+        st.caption(
+            f"Automatic report for {_accuracy_report.get('report_date', 'unknown date')} "
+            f"· Generated {_accuracy_report.get('generated_at_utc', 'time unavailable')} UTC"
+        )
+        if _accuracy_report.get("settlement_status") != "settled":
+            st.info("The latest automatic report has no settled player rows yet. It will populate after final box scores are available.")
+        _r1, _r2, _r3, _r4 = st.columns(4)
+        _r1.metric("Yesterday's player-markets", _report_daily.get("settled_player_market_rows", 0))
+        _r2.metric("Yesterday overall MAE", f"{_report_daily['overall_mae']:.2f}" if _report_daily.get("overall_mae") is not None else "Pending")
+        _r3.metric("7-day overall MAE", f"{_report_7d['overall_mae']:.2f}" if _report_7d.get("overall_mae") is not None else "Pending")
+        _r4.metric("30-day overall MAE", f"{_report_30d['overall_mae']:.2f}" if _report_30d.get("overall_mae") is not None else "Pending")
+        _daily_pick = _report_daily.get("prop_picks", {})
+        if _daily_pick.get("settled", 0):
+            _daily_hit = _daily_pick.get("hit_rate")
+            st.caption(
+                f"Yesterday's archived prop picks: "
+                f"{_daily_pick.get('wins', 0)}-{_daily_pick.get('losses', 0)}-{_daily_pick.get('pushes', 0)}"
+                + (f" · {_daily_hit:.1f}% hit rate (pushes excluded)" if _daily_hit is not None else "")
+            )
+    except Exception as _report_error:
+        st.warning(f"Could not read the latest automatic accuracy report: {_report_error}")
 SETTLED = DATA / "settled_results.csv"
 if SETTLED.exists():
     try:
