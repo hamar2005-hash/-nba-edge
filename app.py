@@ -2,6 +2,7 @@ from pathlib import Path
 import math, os, subprocess, sys, zipfile, html, re
 import requests
 import joblib
+from rate_minutes_predictor import RateMinutesPredictor  # Required to load upgraded rebounds/assists models.
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
